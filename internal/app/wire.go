@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/elythi0n/virta/internal/api"
 	"github.com/elythi0n/virta/internal/clock"
@@ -103,13 +104,16 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	log.Info("secrets backend selected", "backend", vault.Backend())
 
 	// Third-party emote overlays (7TV/BTTV/FFZ), resolved per channel off the hot path and
-	// applied as a pure pipeline stage. Snapshots populate once a channel's platform user id is
+	// applied as a pure pipeline stage. Each provider is wrapped with a disk-backed set cache
+	// (24h TTL, serves stale on a network blip), so a warm start skips the network and an
+	// offline start still has emotes. Snapshots populate once a channel's platform user id is
 	// available (Twitch via Helix in M3; Kick from the channel payload) — until then the stage
 	// is a no-op, never blocking the feed.
+	emoteCache := emoteSetCache{repo: st.Emotes(), clk: clk}
 	emoteResolver := emotes.NewResolver(
-		emotes.New7TV(nil, ""),
-		emotes.NewBTTV(nil, ""),
-		emotes.NewFFZ(nil, ""),
+		emotes.Cached(emotes.New7TV(nil, ""), emoteCache, clk, emotes.DefaultTTL),
+		emotes.Cached(emotes.NewBTTV(nil, ""), emoteCache, clk, emotes.DefaultTTL),
+		emotes.Cached(emotes.NewFFZ(nil, ""), emoteCache, clk, emotes.DefaultTTL),
 	)
 
 	// The pipeline annotates each message (emote overlays) then fans events out to the API hub
@@ -171,6 +175,33 @@ func (c kickChatroomCache) Put(ctx context.Context, slug, chatroomID string) err
 		LastSeenAt: c.clk.Now(),
 	})
 	return err
+}
+
+// emoteSetCache backs the emote resolver's per-provider cache with the emote_sets table, so a
+// warm start skips the network and an offline start still serves the last-known sets.
+type emoteSetCache struct {
+	repo store.EmoteRepo
+	clk  clock.Clock
+}
+
+func (c emoteSetCache) Get(ctx context.Context, key string) ([]platform.EmoteRef, time.Time, bool) {
+	s, err := c.repo.GetSet(ctx, key)
+	if err != nil {
+		return nil, time.Time{}, false
+	}
+	var refs []platform.EmoteRef
+	if err := json.Unmarshal(s.Data, &refs); err != nil {
+		return nil, time.Time{}, false
+	}
+	return refs, s.FetchedAt, true
+}
+
+func (c emoteSetCache) Put(ctx context.Context, key string, refs []platform.EmoteRef) error {
+	data, err := json.Marshal(refs)
+	if err != nil {
+		return err
+	}
+	return c.repo.PutSet(ctx, store.EmoteSet{Key: key, Data: data, FetchedAt: c.clk.Now()})
 }
 
 // channelControl adapts the engine to the API's join/leave controller, translating the
