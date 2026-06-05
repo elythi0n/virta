@@ -11,7 +11,7 @@ OVERALL_FLOOR="${OVERALL_FLOOR:-80}"
 CORE_FLOOR="${CORE_FLOOR:-90}"
 
 # Core package paths relative to internal/ (those that exist are held to CORE_FLOOR).
-CORE=(buildinfo clock pipeline platform secrets store store/sqlite store/postgres engine intel/usage)
+CORE=(buildinfo clock id pipeline platform secrets store store/sqlite store/postgres engine intel/usage)
 
 echo "running tests with coverage…"
 go test -covermode=atomic -coverprofile=coverage.out ./... 2>&1 | tee coverage.txt

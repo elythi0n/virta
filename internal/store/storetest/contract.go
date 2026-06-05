@@ -145,6 +145,34 @@ func RunContract(t *testing.T, newStore func(t *testing.T) store.Store) {
 		if _, err := s.Channels().GetBySlug(ctx, platform.Twitch, "xqc"); !errors.Is(err, store.ErrNotFound) {
 			t.Errorf("cross-platform slug = %v, want ErrNotFound", err)
 		}
+		// Re-upsert the same (platform, slug): updates in place, keeps the id, refreshes fields.
+		c2, err := s.Channels().Upsert(ctx, store.Channel{
+			Platform: platform.Kick, Slug: "xqc", DisplayName: "xQc", PlatformID: "p123",
+			Meta: json.RawMessage(`{"chatroom_id":99}`),
+		})
+		if err != nil {
+			t.Fatalf("re-upsert: %v", err)
+		}
+		if c2.ID != c.ID {
+			t.Errorf("re-upsert changed id: %s != %s", c2.ID, c.ID)
+		}
+		again, _ := s.Channels().GetBySlug(ctx, platform.Kick, "xqc")
+		if again.DisplayName != "xQc" || again.PlatformID != "p123" || string(again.Meta) != `{"chatroom_id":99}` {
+			t.Errorf("re-upsert did not refresh fields: %+v", again)
+		}
+		if list, _ := s.Channels().List(ctx); len(list) != 1 {
+			t.Errorf("re-upsert duplicated row: List len = %d, want 1", len(list))
+		}
+	})
+
+	t.Run("messages: Append of an empty batch is a no-op", func(t *testing.T) {
+		s := newStore(t)
+		if err := s.Messages().Append(ctx, nil); err != nil {
+			t.Errorf("Append(nil) = %v, want nil", err)
+		}
+		if err := s.Messages().Append(ctx, []platform.UnifiedMessage{}); err != nil {
+			t.Errorf("Append(empty) = %v, want nil", err)
+		}
 	})
 
 	t.Run("messages: append, history ordering + cursor, mark deleted, sweep", func(t *testing.T) {

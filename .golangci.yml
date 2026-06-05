@@ -75,6 +75,10 @@ linters:
       - path: 'internal/clock/'
         linters:
           - forbidigo
+      # The id package is the one place allowed to read randomness (ULID entropy).
+      - path: 'internal/id/'
+        linters:
+          - forbidigo
       # Tests may use time/rand freely.
       - path: '_test\.go'
         linters:
