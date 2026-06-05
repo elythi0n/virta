@@ -69,6 +69,7 @@ func TestToWire_AllEventKinds(t *testing.T) {
 		{"adapter health", platform.HealthEvent{Status: platform.HealthStatus{State: platform.HealthDegraded}}, "state", "", true},
 		{"chat settings", platform.ChatSettingsEvent{Channel: ch, Settings: platform.ChatSettings{SlowSeconds: 30}}, "chat_settings", "twitch:forsen", false},
 		{"stats", platform.StatsEvent{Channel: ch, Stats: platform.StatsSnapshot{MessagesPerSec: 1.5, UniqueChatters: 4}}, "stats", "twitch:forsen", false},
+		{"profile changed", platform.ProfileChangedEvent{ProfileID: "p1", Name: "main"}, "profile_changed", "", true},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

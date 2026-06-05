@@ -38,6 +38,8 @@ type wireEvent struct {
 	State             *platform.HealthStatus   `json:"state,omitempty"`
 	Settings          *platform.ChatSettings   `json:"settings,omitempty"`
 	Stats             *platform.StatsSnapshot  `json:"stats,omitempty"`
+	ProfileID         string                   `json:"profile_id,omitempty"`
+	ProfileName       string                   `json:"profile_name,omitempty"`
 }
 
 // replayEntry is one encoded event retained in the resume ring.
@@ -256,6 +258,9 @@ func toWire(ev platform.Event) (we wireEvent, key string, broadcastAll bool) {
 		ch := e.Channel
 		st := e.Stats
 		return wireEvent{Type: "stats", SchemaVersion: schemaVersion, Channel: &ch, Stats: &st}, channelKey(ch), false
+	case platform.ProfileChangedEvent:
+		// Adapter-wide: every client re-renders against the new profile.
+		return wireEvent{Type: "profile_changed", SchemaVersion: schemaVersion, ProfileID: e.ProfileID, ProfileName: e.Name}, "", true
 	default:
 		return wireEvent{}, "", false
 	}

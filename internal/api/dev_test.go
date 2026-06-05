@@ -31,4 +31,10 @@ func TestDev_ServesPageWithToken(t *testing.T) {
 	if !strings.Contains(page, "/v1/stream") || !strings.Contains(page, "/v1/channels") {
 		t.Error("dev page should drive the stream and channels endpoints")
 	}
+	// The M2 catch-up surfaces: profile switcher, stats line, and mask/highlight handling.
+	for _, want := range []string{"/v1/profiles", "id=\"statsbar\"", "profile_changed", "'stats'", "masked"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("dev page missing %q (M2 catch-up)", want)
+		}
+	}
 }

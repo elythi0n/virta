@@ -30,8 +30,16 @@
   .row .badges { color:var(--fg2); font-size:11px; }
   .row.deleted .body { text-decoration:line-through; color:var(--fg2); }
   .row.event { color:var(--fg2); font-style:italic; }
+  .row.hidden { opacity:.4; }
+  .row.hidden .author::after { content:" (hidden)"; color:var(--fg2); font-weight:400; font-size:11px; }
+  .row.highlight { background:#2b2336; box-shadow:inset 3px 0 0 #f5b942; }
   .plat-twitch { color:var(--twitch); } .plat-kick { color:var(--kick); } .plat-x { color:var(--x); }
   .emote { color:#bf94ff; }
+  .masked { color:#f05c5c; cursor:pointer; } .masked.revealed { color:var(--fg); }
+  #statsbar { display:flex; gap:1rem; padding:.3rem .75rem; border-bottom:1px solid var(--line); color:var(--fg2); font-size:11px; flex-wrap:wrap; }
+  #statsbar:empty { display:none; }
+  #statsbar .stat b { color:var(--fg); font-weight:600; }
+  #profile { display:inline-flex; gap:.3rem; align-items:center; }
 </style>
 </head>
 <body>
@@ -40,9 +48,11 @@
   <select id="platform"><option value="twitch">twitch</option><option value="kick">kick</option><option value="x">x</option></select>
   <input id="slug" placeholder="channel" size="14" autocomplete="off">
   <button id="join">Join</button>
+  <span id="profile">profile <select id="profiles"></select></span>
   <span id="status"><span class="dot"></span><span id="statetext">connecting…</span></span>
 </header>
 <div id="channels"></div>
+<div id="statsbar"></div>
 <div id="feed"></div>
 <script>
 const token = new URLSearchParams(location.search).get('token') || '';
@@ -101,9 +111,12 @@ function appendRow(row) {
   if (atBottom) window.scrollTo(0, document.body.scrollHeight);
 }
 function renderBody(segs) {
-  return (segs || []).map(s => s.kind === 'emote'
-    ? `<span class="emote">[${escapeHtml(s.text)}]</span>`
-    : escapeHtml(s.text)).join('');
+  return (segs || []).map(s => {
+    if (s.kind === 'emote') return `<span class="emote">[${escapeHtml(s.text)}]</span>`;
+    // Masked profanity: show the mask token; click to reveal the original (local feed only).
+    if (s.kind === 'masked') return `<span class="masked" data-reveal="${escapeHtml(s.reveal || '')}">${escapeHtml(s.text)}</span>`;
+    return escapeHtml(s.text);
+  }).join('');
 }
 function tsOf(m) {
   const raw = (m.sent_at && !m.sent_at.startsWith('0001')) ? m.sent_at : m.received_at;
@@ -113,16 +126,33 @@ function tsOf(m) {
 function addMessage(m) {
   const row = document.createElement('div');
   row.className = 'row';
+  const ann = m.annotations || {};
+  if (ann.first_time) row.classList.add('event'); // subtle styling cue for first-timers
+  if (ann.highlight) row.classList.add('highlight');
+  if (ann.hidden) row.classList.add('hidden');
   if (m.id) row.dataset.id = m.id;
   const badges = (m.author.badges || []).map(b => b.set).join(',');
+  const ft = ann.first_time ? '★ ' : '';
   const color = (m.author.color || '').replace(/[^#0-9a-fA-F]/g, '');
   row.innerHTML = `<span class="ts">${tsOf(m)}</span>`
     + `<span class="plat ${platClass(m.platform)}">${escapeHtml(m.platform)}</span>`
-    + `<span class="author"${color ? ` style="color:${color}"` : ''}>${escapeHtml(m.author.display_name || m.author.login)}</span>`
+    + `<span class="author"${color ? ` style="color:${color}"` : ''}>${ft}${escapeHtml(m.author.display_name || m.author.login)}</span>`
     + (badges ? `<span class="badges">[${escapeHtml(badges)}]</span>` : '')
     + `<span class="body">${renderBody(m.segments)}</span>`;
   appendRow(row);
 }
+
+// Click a masked span to reveal/hide the original (local feed only).
+document.getElementById('feed').addEventListener('click', e => {
+  const el = e.target.closest('.masked');
+  if (!el) return;
+  if (el.classList.toggle('revealed')) {
+    el.dataset.masked = el.textContent;
+    el.textContent = el.dataset.reveal;
+  } else {
+    el.textContent = el.dataset.masked;
+  }
+});
 function addEvent(text, platform) {
   const row = document.createElement('div');
   row.className = 'row event';
@@ -143,6 +173,49 @@ function setStatus(state, reason) {
   document.getElementById('statetext').textContent = state + (reason ? ' · ' + reason : '');
 }
 
+// --- profiles ---
+const profilesSel = document.getElementById('profiles');
+async function refreshProfiles() {
+  const r = await api('GET', '/v1/profiles');
+  if (!r.ok) return;
+  const { profiles } = await r.json();
+  profilesSel.innerHTML = '';
+  (profiles || []).forEach(p => {
+    const o = document.createElement('option');
+    o.value = p.id;
+    o.textContent = p.name + (p.default ? ' (default)' : '');
+    o.selected = p.active;
+    profilesSel.appendChild(o);
+  });
+}
+profilesSel.onchange = async () => {
+  const id = profilesSel.value;
+  if (!id) return;
+  await api('POST', `/v1/profiles/${encodeURIComponent(id)}/activate`);
+  // channels/feed update via the profile_changed event + refreshChannels below.
+  refreshChannels();
+};
+
+// --- stats line ---
+const statsByChannel = {}; // "platform:slug" → snapshot
+function renderStats() {
+  const bar = document.getElementById('statsbar');
+  const keys = Object.keys(statsByChannel).sort();
+  if (keys.length === 0) { bar.innerHTML = ''; return; }
+  let totalRate = 0, totalUniq = 0;
+  const parts = keys.map(k => {
+    const s = statsByChannel[k];
+    totalRate += s.messages_per_sec || 0;
+    totalUniq += s.unique_chatters || 0;
+    const top = (s.top_emotes || []).slice(0, 1).map(e => `${e.name}×${e.count}`).join('');
+    return `<span class="stat">${escapeHtml(k)} <b>${(s.messages_per_sec || 0).toFixed(1)}</b>/s · <b>${s.unique_chatters || 0}</b> chatters${top ? ' · ' + escapeHtml(top) : ''}</span>`;
+  });
+  if (keys.length > 1) {
+    parts.unshift(`<span class="stat">combined <b>${totalRate.toFixed(1)}</b>/s · <b>${totalUniq}</b> chatters</span>`);
+  }
+  bar.innerHTML = parts.join('');
+}
+
 // --- websocket ---
 function connect() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -151,6 +224,7 @@ function connect() {
     setStatus('ok');
     ws.send(JSON.stringify({ action: 'subscribe', channels: [], since: lastSeq }));
     refreshChannels();
+    refreshProfiles();
   };
   ws.onclose = () => { setStatus('down', 'disconnected'); setTimeout(connect, 1000); };
   ws.onmessage = ev => {
@@ -175,6 +249,17 @@ function connect() {
       }
       case 'state':
         if (e.state) { setStatus(e.state.state, e.state.reason); refreshChannels(); }
+        break;
+      case 'stats':
+        if (e.channel && e.stats) {
+          statsByChannel[e.channel.platform + ':' + e.channel.slug] = e.stats;
+          renderStats();
+        }
+        break;
+      case 'profile_changed':
+        addEvent('profile switched to ' + (e.profile_name || e.profile_id), '');
+        refreshProfiles();
+        refreshChannels();
         break;
     }
   };
