@@ -22,9 +22,9 @@ var ErrNotFound = errors.New("secrets: not found")
 type Backend string
 
 const (
-	BackendKeychain Backend = "keychain"  // OS-native (Credential Manager / Keychain / Secret Service)
-	BackendAgeVault Backend = "age_vault" // encrypted file fallback (documented as weaker)
-	BackendMemory   Backend = "memory"    // tests only
+	BackendKeychain  Backend = "keychain"   // OS-native (Credential Manager / Keychain / Secret Service)
+	BackendFileVault Backend = "file_vault" // encrypted local file fallback (weaker; for systems with no keychain)
+	BackendMemory    Backend = "memory"     // tests only
 )
 
 // Vault stores and retrieves secrets by key. Keys are built with the helpers below so every

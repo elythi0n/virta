@@ -2,10 +2,15 @@ module github.com/elythi0n/virta
 
 go 1.26
 
-require modernc.org/sqlite v1.51.0
+require (
+	github.com/zalando/go-keyring v0.2.8
+	modernc.org/sqlite v1.51.0
+)
 
 require (
+	github.com/danieljoos/wincred v1.2.3 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/godbus/dbus/v5 v5.2.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect

@@ -79,6 +79,10 @@ linters:
       - path: 'internal/id/'
         linters:
           - forbidigo
+      # The file vault reads randomness for its encryption key and nonces.
+      - path: 'internal/secrets/filevault/'
+        linters:
+          - forbidigo
       # Tests may use time/rand freely.
       - path: '_test\.go'
         linters:
