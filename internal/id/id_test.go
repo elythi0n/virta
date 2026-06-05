@@ -2,6 +2,7 @@ package id_test
 
 import (
 	"bytes"
+	"encoding/base64"
 	"sort"
 	"testing"
 	"time"
@@ -84,5 +85,27 @@ func TestFake_DeterministicAndSorted(t *testing.T) {
 	}
 	if a >= b || b >= c {
 		t.Errorf("fake ids not increasing: %q %q %q", a, b, c)
+	}
+}
+
+func TestRandomToken(t *testing.T) {
+	// A given byte count yields the matching base64-url length, decodes cleanly, and is unique.
+	a, err := id.RandomToken(32)
+	if err != nil {
+		t.Fatalf("RandomToken: %v", err)
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(a)
+	if err != nil {
+		t.Fatalf("token not base64-url: %v", err)
+	}
+	if len(raw) != 32 {
+		t.Errorf("decoded %d bytes, want 32", len(raw))
+	}
+	if b, _ := id.RandomToken(32); a == b {
+		t.Error("two tokens collided")
+	}
+	// Non-positive sizes fall back to the 32-byte default.
+	if d, _ := id.RandomToken(0); len(d) == 0 {
+		t.Error("zero size produced empty token")
 	}
 }

@@ -101,6 +101,8 @@ func New(cfg Config) (*Server, error) {
 	mux.Handle("POST /v1/profiles/{id}/activate", s.auth(http.HandlerFunc(s.handleActivateProfile)))
 	mux.Handle("POST /v1/auth/twitch/device", s.auth(http.HandlerFunc(s.handleTwitchDeviceStart)))
 	mux.Handle("GET /v1/auth/twitch/device/{id}", s.auth(http.HandlerFunc(s.handleTwitchDeviceStatus)))
+	mux.Handle("POST /v1/auth/kick/start", s.auth(http.HandlerFunc(s.handleKickAuthStart)))
+	mux.Handle("GET /v1/auth/kick/{id}", s.auth(http.HandlerFunc(s.handleKickAuthStatus)))
 	mux.Handle("GET /dev", s.auth(http.HandlerFunc(s.handleDev)))
 
 	s.httpSrv = &http.Server{

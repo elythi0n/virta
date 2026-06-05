@@ -10,6 +10,7 @@ package id
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 	"io"
 	"sync"
 
@@ -152,3 +153,18 @@ var (
 	_ Generator = (*ULID)(nil)
 	_ Generator = (*Fake)(nil)
 )
+
+// RandomToken returns a URL-safe, cryptographically random token of nBytes of entropy
+// (base64-url, no padding) — used for OAuth PKCE verifiers, state values, and the like. This
+// is the one package allowed to read randomness directly, so callers under the determinism
+// rules route here instead of touching crypto/rand themselves.
+func RandomToken(nBytes int) (string, error) {
+	if nBytes <= 0 {
+		nBytes = 32
+	}
+	b := make([]byte, nBytes)
+	if _, err := io.ReadFull(rand.Reader, b); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
+}

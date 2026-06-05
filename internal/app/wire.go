@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/elythi0n/virta/internal/api"
+	kickauth "github.com/elythi0n/virta/internal/auth/kick"
 	twitchauth "github.com/elythi0n/virta/internal/auth/twitch"
 	"github.com/elythi0n/virta/internal/clock"
 	"github.com/elythi0n/virta/internal/config"
@@ -84,6 +85,7 @@ type Daemon struct {
 	sweeper    *logbook.Sweeper
 	profiles   *profiles.Manager
 	twitchAuth *twitchauth.Manager
+	kickAuth   *kickauth.Manager
 	api        *api.Server
 }
 
@@ -91,6 +93,8 @@ type Daemon struct {
 type authControl struct {
 	tw               *twitchauth.Manager
 	twitchConfigured bool
+	kick             *kickauth.Manager
+	kickConfigured   bool
 }
 
 func (c authControl) StartTwitchDevice(ctx context.Context) (api.DeviceSession, error) {
@@ -110,6 +114,35 @@ func (c authControl) TwitchDeviceStatus(id string) (api.DeviceSession, bool) {
 		return api.DeviceSession{}, false
 	}
 	return toDeviceSession(s), true
+}
+
+func (c authControl) StartKickAuth(ctx context.Context) (api.AuthSession, error) {
+	if !c.kickConfigured {
+		return api.AuthSession{}, fmt.Errorf("kick sign-in is not configured (set VIRTA_KICK_CLIENT_ID)")
+	}
+	s, err := c.kick.StartAuth(ctx)
+	if err != nil {
+		return api.AuthSession{}, err
+	}
+	return toKickSession(s), nil
+}
+
+func (c authControl) KickAuthStatus(id string) (api.AuthSession, bool) {
+	s, ok := c.kick.Status(id)
+	if !ok {
+		return api.AuthSession{}, false
+	}
+	return toKickSession(s), true
+}
+
+func toKickSession(s kickauth.Session) api.AuthSession {
+	return api.AuthSession{
+		ID:           s.ID,
+		AuthorizeURL: s.AuthorizeURL,
+		State:        string(s.State),
+		Login:        s.Login,
+		Error:        s.Error,
+	}
 }
 
 func toDeviceSession(s twitchauth.Session) api.DeviceSession {
@@ -229,9 +262,13 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	// Twitch sign-in via Device Code Grant. Tokens live in the vault; the account row in the
 	// store. Disabled (sign-in returns a clear error) when no client id is configured.
 	twitchAuth := twitchauth.NewManager(twitchauth.NewClient(cfg.TwitchClientID, nil, clk), vault, st.Accounts(), gen, clk)
-	srv.SetAuth(authControl{tw: twitchAuth, twitchConfigured: cfg.TwitchClientID != ""})
+	kickAuth := kickauth.NewManager(kickauth.NewClient(cfg.KickClientID, cfg.KickClientSecret, nil, clk), vault, st.Accounts(), gen, clk)
+	srv.SetAuth(authControl{
+		tw: twitchAuth, twitchConfigured: cfg.TwitchClientID != "",
+		kick: kickAuth, kickConfigured: cfg.KickClientID != "",
+	})
 
-	return &Daemon{cfg: cfg, log: log, store: st, vault: vault, runner: runner, engine: eng, stats: statsAgg, logSink: logSink, sweeper: sweeper, profiles: mgr, twitchAuth: twitchAuth, api: srv}, nil
+	return &Daemon{cfg: cfg, log: log, store: st, vault: vault, runner: runner, engine: eng, stats: statsAgg, logSink: logSink, sweeper: sweeper, profiles: mgr, twitchAuth: twitchAuth, kickAuth: kickAuth, api: srv}, nil
 }
 
 // kickChatroomCache backs the Kick resolver's permanent cache with the channels table: a
@@ -439,6 +476,7 @@ func (d *Daemon) Pipeline() *pipeline.Runner { return d.runner }
 func (d *Daemon) Close(ctx context.Context) error {
 	apiErr := d.api.Close(ctx)
 	_ = d.twitchAuth.Close()
+	_ = d.kickAuth.Close()
 	_ = d.engine.Close()
 	_ = d.sweeper.Close()
 	_ = d.runner.Close() // closes the sinks, including the logbook sink (final flush)
