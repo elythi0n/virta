@@ -7,13 +7,17 @@ run:
   timeout: 5m
 
 linters:
-  default: standard # errcheck, govet, ineffassign, staticcheck, unused
+  # standard = errcheck, govet, ineffassign, staticcheck, unused (covers substantive
+  # correctness/style). The two rules below are the architecture's hard constraints.
+  # (revive is intentionally omitted: its "exported"/"unused-parameter" rules nag about
+  # doc comments on interface-implementing methods and unused callback params — noise the
+  # port files already address by hand; staticcheck covers the substance.)
+  default: standard
   enable:
     - depguard
     - forbidigo
     - bodyclose
     - misspell
-    - revive
   settings:
     depguard:
       rules:
