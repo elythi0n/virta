@@ -3,6 +3,7 @@ module github.com/elythi0n/virta
 go 1.26
 
 require (
+	github.com/coder/websocket v1.8.14
 	github.com/zalando/go-keyring v0.2.8
 	modernc.org/sqlite v1.51.0
 )

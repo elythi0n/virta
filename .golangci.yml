@@ -83,6 +83,11 @@ linters:
       - path: 'internal/secrets/filevault/'
         linters:
           - forbidigo
+      # The API/transport layer mints a random auth token and uses real-time deadlines;
+      # the determinism rule targets the business/engine path, not transport glue.
+      - path: 'internal/api/'
+        linters:
+          - forbidigo
       # Tests may use time/rand freely.
       - path: '_test\.go'
         linters:
