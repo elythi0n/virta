@@ -17,6 +17,7 @@ import (
 	"github.com/elythi0n/virta/internal/config"
 	"github.com/elythi0n/virta/internal/emotes"
 	"github.com/elythi0n/virta/internal/engine"
+	"github.com/elythi0n/virta/internal/filter"
 	"github.com/elythi0n/virta/internal/id"
 	"github.com/elythi0n/virta/internal/pipeline"
 	"github.com/elythi0n/virta/internal/platform"
@@ -116,11 +117,14 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 		emotes.Cached(emotes.NewFFZ(nil, ""), emoteCache, clk, emotes.DefaultTTL),
 	)
 
-	// The pipeline annotates each message (emote overlays) then fans events out to the API hub
-	// (and, later, the logger and other sinks).
+	// The pipeline annotates each message — filter rules (hide/highlight/mask) first, then
+	// emote overlays — and fans events out to the API hub (and, later, the logger and other
+	// sinks). The filter stage starts with an empty ruleset (no surprise masking); profiles and
+	// settings populate and hot-swap it once they land.
+	filterStage := filter.NewStage(nil)
 	runner := pipeline.NewRunner(pipeline.Options{
 		Clock:  clk,
-		Stages: []pipeline.Stage{emotes.NewStage(emoteResolver)},
+		Stages: []pipeline.Stage{filterStage, emotes.NewStage(emoteResolver)},
 		Sinks:  []pipeline.Sink{srv.Sink()},
 		Logger: log,
 	})
