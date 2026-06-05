@@ -14,6 +14,7 @@ import (
 	"github.com/elythi0n/virta/internal/api"
 	"github.com/elythi0n/virta/internal/clock"
 	"github.com/elythi0n/virta/internal/config"
+	"github.com/elythi0n/virta/internal/emotes"
 	"github.com/elythi0n/virta/internal/engine"
 	"github.com/elythi0n/virta/internal/id"
 	"github.com/elythi0n/virta/internal/pipeline"
@@ -101,10 +102,21 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	}
 	log.Info("secrets backend selected", "backend", vault.Backend())
 
-	// The pipeline fans events out to the API hub (and, later, the logger and other sinks).
-	// No stages are wired yet — they arrive next.
+	// Third-party emote overlays (7TV/BTTV/FFZ), resolved per channel off the hot path and
+	// applied as a pure pipeline stage. Snapshots populate once a channel's platform user id is
+	// available (Twitch via Helix in M3; Kick from the channel payload) — until then the stage
+	// is a no-op, never blocking the feed.
+	emoteResolver := emotes.NewResolver(
+		emotes.New7TV(nil, ""),
+		emotes.NewBTTV(nil, ""),
+		emotes.NewFFZ(nil, ""),
+	)
+
+	// The pipeline annotates each message (emote overlays) then fans events out to the API hub
+	// (and, later, the logger and other sinks).
 	runner := pipeline.NewRunner(pipeline.Options{
 		Clock:  clk,
+		Stages: []pipeline.Stage{emotes.NewStage(emoteResolver)},
 		Sinks:  []pipeline.Sink{srv.Sink()},
 		Logger: log,
 	})
@@ -124,7 +136,7 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 		clk,
 	)
 	eng.Register(kick.New(kick.Options{Clock: clk, Resolver: kickResolver}))
-	srv.SetChannels(channelControl{eng: eng})
+	srv.SetChannels(channelControl{eng: eng, emotes: emoteResolver})
 
 	return &Daemon{cfg: cfg, log: log, store: st, vault: vault, runner: runner, engine: eng, api: srv}, nil
 }
@@ -163,7 +175,10 @@ func (c kickChatroomCache) Put(ctx context.Context, slug, chatroomID string) err
 
 // channelControl adapts the engine to the API's join/leave controller, translating the
 // API's string boundary to platform types and back.
-type channelControl struct{ eng *engine.Engine }
+type channelControl struct {
+	eng    *engine.Engine
+	emotes *emotes.Resolver
+}
 
 func (c channelControl) Join(ctx context.Context, plat, slug, mode string) error {
 	p, ok := parsePlatform(plat)
@@ -174,7 +189,14 @@ func (c channelControl) Join(ctx context.Context, plat, slug, mode string) error
 	if m == "" {
 		m = platform.ModeAutomatic
 	}
-	return c.eng.Join(ctx, platform.ChannelRef{Platform: p, Slug: slug}, m)
+	ref := platform.ChannelRef{Platform: p, Slug: slug}
+	if err := c.eng.Join(ctx, ref, m); err != nil {
+		return err
+	}
+	// Warm the channel's third-party emote set off the request path. A no-op until the
+	// platform user id is known, but wired so it lights up the moment it is.
+	go func() { _ = c.emotes.Refresh(context.Background(), ref) }()
+	return nil
 }
 
 func (c channelControl) Leave(plat, slug string) error {
