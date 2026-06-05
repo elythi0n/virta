@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/elythi0n/virta/internal/api"
+	twitchauth "github.com/elythi0n/virta/internal/auth/twitch"
 	"github.com/elythi0n/virta/internal/clock"
 	"github.com/elythi0n/virta/internal/config"
 	"github.com/elythi0n/virta/internal/emotes"
@@ -72,17 +73,56 @@ func SelectStore(cfg config.Config, clk clock.Clock, gen id.Generator) (store.St
 // Daemon is the assembled engine: storage, the secret vault, the message pipeline, and the
 // local API, wired together and ready to run. It owns the lifecycle of everything it builds.
 type Daemon struct {
-	cfg      config.Config
-	log      *slog.Logger
-	store    store.Store
-	vault    secrets.Vault
-	runner   *pipeline.Runner
-	engine   *engine.Engine
-	stats    *stats.Aggregator
-	logSink  *logbook.Sink
-	sweeper  *logbook.Sweeper
-	profiles *profiles.Manager
-	api      *api.Server
+	cfg        config.Config
+	log        *slog.Logger
+	store      store.Store
+	vault      secrets.Vault
+	runner     *pipeline.Runner
+	engine     *engine.Engine
+	stats      *stats.Aggregator
+	logSink    *logbook.Sink
+	sweeper    *logbook.Sweeper
+	profiles   *profiles.Manager
+	twitchAuth *twitchauth.Manager
+	api        *api.Server
+}
+
+// authControl adapts the auth managers to the API's auth controller.
+type authControl struct {
+	tw               *twitchauth.Manager
+	twitchConfigured bool
+}
+
+func (c authControl) StartTwitchDevice(ctx context.Context) (api.DeviceSession, error) {
+	if !c.twitchConfigured {
+		return api.DeviceSession{}, fmt.Errorf("twitch sign-in is not configured (set VIRTA_TWITCH_CLIENT_ID)")
+	}
+	s, err := c.tw.StartDevice(ctx)
+	if err != nil {
+		return api.DeviceSession{}, err
+	}
+	return toDeviceSession(s), nil
+}
+
+func (c authControl) TwitchDeviceStatus(id string) (api.DeviceSession, bool) {
+	s, ok := c.tw.Status(id)
+	if !ok {
+		return api.DeviceSession{}, false
+	}
+	return toDeviceSession(s), true
+}
+
+func toDeviceSession(s twitchauth.Session) api.DeviceSession {
+	return api.DeviceSession{
+		ID:              s.ID,
+		UserCode:        s.UserCode,
+		VerificationURI: s.VerificationURI,
+		ExpiresIn:       s.ExpiresIn,
+		Interval:        s.Interval,
+		State:           string(s.State),
+		Login:           s.Login,
+		Error:           s.Error,
+	}
 }
 
 // loggingControl fans a profile's logging policy out to the engine (ephemeral flagging), the
@@ -186,7 +226,12 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	srv.SetChannels(channelControl{eng: eng, emotes: emoteResolver, profiles: mgr})
 	srv.SetProfiles(profileControl{mgr: mgr, repo: st.Profiles()})
 
-	return &Daemon{cfg: cfg, log: log, store: st, vault: vault, runner: runner, engine: eng, stats: statsAgg, logSink: logSink, sweeper: sweeper, profiles: mgr, api: srv}, nil
+	// Twitch sign-in via Device Code Grant. Tokens live in the vault; the account row in the
+	// store. Disabled (sign-in returns a clear error) when no client id is configured.
+	twitchAuth := twitchauth.NewManager(twitchauth.NewClient(cfg.TwitchClientID, nil, clk), vault, st.Accounts(), gen, clk)
+	srv.SetAuth(authControl{tw: twitchAuth, twitchConfigured: cfg.TwitchClientID != ""})
+
+	return &Daemon{cfg: cfg, log: log, store: st, vault: vault, runner: runner, engine: eng, stats: statsAgg, logSink: logSink, sweeper: sweeper, profiles: mgr, twitchAuth: twitchAuth, api: srv}, nil
 }
 
 // kickChatroomCache backs the Kick resolver's permanent cache with the channels table: a
@@ -393,6 +438,7 @@ func (d *Daemon) Pipeline() *pipeline.Runner { return d.runner }
 // events arrive, drain the pipeline, then release storage.
 func (d *Daemon) Close(ctx context.Context) error {
 	apiErr := d.api.Close(ctx)
+	_ = d.twitchAuth.Close()
 	_ = d.engine.Close()
 	_ = d.sweeper.Close()
 	_ = d.runner.Close() // closes the sinks, including the logbook sink (final flush)

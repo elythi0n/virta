@@ -28,6 +28,9 @@ type Config struct {
 	// engines are opt-in and chosen here (or, at runtime, in the Storage settings). Changing
 	// it on an existing install requires a data migration, not an instant swap.
 	StorageDriver string
+	// TwitchClientID is the registered public OAuth client id used for the Device Code Grant
+	// (no secret — ADR-008). Empty disables Twitch sign-in (anonymous read still works).
+	TwitchClientID string
 	// Token fixes the API bearer token instead of generating a random one. Left empty for
 	// the desktop case (a random token is written to the discovery file for local frontends);
 	// set it for a server deployment, where remote clients can't read the discovery file and
@@ -59,14 +62,15 @@ func Load() (Config, error) {
 	}
 
 	c := Config{
-		Addr:          envOr("VIRTA_ADDR", "127.0.0.1:0"),
-		DataDir:       dataDir,
-		CacheDir:      cacheDir,
-		RuntimeDir:    runtimeDir(dataDir),
-		DBPath:        filepath.Join(dataDir, appName+".db"),
-		DBDSN:         os.Getenv("VIRTA_DB_DSN"),
-		StorageDriver: envOr("VIRTA_STORAGE", StorageSQLite),
-		Token:         os.Getenv("VIRTA_TOKEN"),
+		Addr:           envOr("VIRTA_ADDR", "127.0.0.1:0"),
+		DataDir:        dataDir,
+		CacheDir:       cacheDir,
+		RuntimeDir:     runtimeDir(dataDir),
+		DBPath:         filepath.Join(dataDir, appName+".db"),
+		DBDSN:          os.Getenv("VIRTA_DB_DSN"),
+		StorageDriver:  envOr("VIRTA_STORAGE", StorageSQLite),
+		TwitchClientID: os.Getenv("VIRTA_TWITCH_CLIENT_ID"),
+		Token:          os.Getenv("VIRTA_TOKEN"),
 	}
 	return c, nil
 }

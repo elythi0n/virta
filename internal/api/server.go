@@ -47,6 +47,7 @@ type Server struct {
 	hub      *hub
 	channels Channels // join/leave controller, installed via SetChannels
 	profiles Profiles // profile controller, installed via SetProfiles
+	authCtl  Auth     // account-auth controller, installed via SetAuth
 
 	token         string
 	runtimeDir    string
@@ -98,6 +99,8 @@ func New(cfg Config) (*Server, error) {
 	mux.Handle("GET /v1/profiles", s.auth(http.HandlerFunc(s.handleListProfiles)))
 	mux.Handle("POST /v1/profiles", s.auth(http.HandlerFunc(s.handleCreateProfile)))
 	mux.Handle("POST /v1/profiles/{id}/activate", s.auth(http.HandlerFunc(s.handleActivateProfile)))
+	mux.Handle("POST /v1/auth/twitch/device", s.auth(http.HandlerFunc(s.handleTwitchDeviceStart)))
+	mux.Handle("GET /v1/auth/twitch/device/{id}", s.auth(http.HandlerFunc(s.handleTwitchDeviceStatus)))
 	mux.Handle("GET /dev", s.auth(http.HandlerFunc(s.handleDev)))
 
 	s.httpSrv = &http.Server{
