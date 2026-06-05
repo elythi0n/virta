@@ -15,6 +15,7 @@ func TestLoad_EnvOverrides(t *testing.T) {
 	run := t.TempDir()
 	t.Setenv("VIRTA_ADDR", "127.0.0.1:9999")
 	t.Setenv("VIRTA_STORAGE", "postgres")
+	t.Setenv("VIRTA_TOKEN", "fixed-server-token")
 	t.Setenv("VIRTA_DATA_DIR", data)
 	t.Setenv("VIRTA_CACHE_DIR", cache)
 	t.Setenv("VIRTA_RUNTIME_DIR", run)
@@ -28,6 +29,9 @@ func TestLoad_EnvOverrides(t *testing.T) {
 	}
 	if c.StorageDriver != "postgres" {
 		t.Errorf("StorageDriver = %q", c.StorageDriver)
+	}
+	if c.Token != "fixed-server-token" {
+		t.Errorf("Token = %q", c.Token)
 	}
 	if c.DataDir != data || c.CacheDir != cache || c.RuntimeDir != run {
 		t.Errorf("dirs = %q %q %q", c.DataDir, c.CacheDir, c.RuntimeDir)

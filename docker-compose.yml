@@ -1,0 +1,49 @@
+# Run Virta on a server. The desktop app is the primary way to use Virta; this is for people
+# who'd rather host the engine and connect to it from a browser or other clients.
+#
+# Set VIRTA_TOKEN to a long random secret before starting; clients authenticate with it.
+# By default the engine uses its built-in SQLite storage and the encrypted file vault, so no
+# other services are required. The commented postgres and meilisearch services show how the
+# optional backends slot in once they're supported.
+
+services:
+  virtad:
+    build: .
+    # image: ghcr.io/elythi0n/virta:latest   # use a published image instead of building
+    restart: unless-stopped
+    ports:
+      - "8344:8344"
+    environment:
+      VIRTA_ADDR: "0.0.0.0:8344"
+      VIRTA_TOKEN: "${VIRTA_TOKEN:?set VIRTA_TOKEN to a long random secret}"
+      VIRTA_STORAGE: "sqlite"
+      # To use Postgres instead (once supported), point at the db service below:
+      # VIRTA_STORAGE: "postgres"
+      # VIRTA_POSTGRES_DSN: "postgres://virta:virta@db:5432/virta?sslmode=disable"
+    volumes:
+      - virta-data:/data
+
+  # Optional: Postgres backend (uncomment and switch VIRTA_STORAGE to "postgres").
+  # db:
+  #   image: postgres:17
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_USER: virta
+  #     POSTGRES_PASSWORD: virta
+  #     POSTGRES_DB: virta
+  #   volumes:
+  #     - virta-db:/var/lib/postgresql/data
+
+  # Optional: Meilisearch for fast chat search (a later feature).
+  # search:
+  #   image: getmeili/meilisearch:v1
+  #   restart: unless-stopped
+  #   environment:
+  #     MEILI_MASTER_KEY: "${MEILI_MASTER_KEY:-}"
+  #   volumes:
+  #     - virta-search:/meili_data
+
+volumes:
+  virta-data:
+  # virta-db:
+  # virta-search:

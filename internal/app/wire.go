@@ -72,6 +72,7 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 
 	srv, err := api.New(api.Config{
 		Addr:       cfg.Addr,
+		Token:      cfg.Token, // fixed token for server deployments; empty → random (desktop)
 		RuntimeDir: cfg.RuntimeDir,
 		Logger:     slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})),
 	})

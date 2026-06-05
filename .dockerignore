@@ -1,0 +1,15 @@
+# Keep the build context small and free of local artifacts.
+/dist/
+/bin/
+coverage.out
+coverage.txt
+*.test
+.git/
+docs/
+tracker.md
+frontends/*/node_modules/
+*.db
+*.db-wal
+*.db-shm
+.env
+.env.*

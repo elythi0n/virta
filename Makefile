@@ -14,7 +14,7 @@ LDFLAGS     := -s -w \
 PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64
 
 .PHONY: all ci build run lint fmt fmt-check vet test test-race cover cross app fixtures \
-        test-live-twitch test-live-kick test-live-x test-live-llm clean tidy
+        test-live-twitch test-live-kick test-live-x test-live-llm docker clean tidy
 
 all: ci
 
@@ -77,9 +77,13 @@ app: build
 	go build -ldflags '$(LDFLAGS)' -o dist/virtad ./cmd/virtad
 	@echo "✓ artifact: dist/virtad  (desktop bundle lands at M4)"
 
-## fixtures: regenerate adapter fixtures (no adapters yet — wired in M1).
+## fixtures: regenerate golden fixtures by re-running normalization with -update.
 fixtures:
-	@echo "no fixtures yet (adapters arrive in M1)"
+	go test ./... -run 'Golden|Replay' -update
+
+## docker: build the server image (for hosting virtad via docker compose).
+docker:
+	docker build -t virta:dev .
 
 ## tidy: go mod tidy.
 tidy:

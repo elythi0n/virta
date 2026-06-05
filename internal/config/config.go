@@ -25,6 +25,11 @@ type Config struct {
 	// engines are opt-in and chosen here (or, at runtime, in the Storage settings). Changing
 	// it on an existing install requires a data migration, not an instant swap.
 	StorageDriver string
+	// Token fixes the API bearer token instead of generating a random one. Left empty for
+	// the desktop case (a random token is written to the discovery file for local frontends);
+	// set it for a server deployment, where remote clients can't read the discovery file and
+	// need a known token.
+	Token string
 }
 
 const appName = "virta"
@@ -57,6 +62,7 @@ func Load() (Config, error) {
 		RuntimeDir:    runtimeDir(dataDir),
 		DBPath:        filepath.Join(dataDir, appName+".db"),
 		StorageDriver: envOr("VIRTA_STORAGE", StorageSQLite),
+		Token:         os.Getenv("VIRTA_TOKEN"),
 	}
 	return c, nil
 }
