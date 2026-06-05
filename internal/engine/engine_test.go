@@ -214,6 +214,24 @@ func TestEngine_FirstTimeHonorsAdapterTag(t *testing.T) {
 	}
 }
 
+func TestEngine_EphemeralUnlessLoggingEnabled(t *testing.T) {
+	eng, out, tw := newTestEngine()
+	t.Cleanup(func() { _ = eng.Close() })
+
+	// Default: logging off → messages are ephemeral (never persisted).
+	tw.EmitMessage(chatFrom("p1", "alice"))
+	if !out.waitForCount(t, 1)[0].(platform.MessageEvent).Message.Ephemeral {
+		t.Error("message not ephemeral with logging off")
+	}
+
+	// Logging on → subsequent messages are non-ephemeral.
+	eng.SetLogging(true)
+	tw.EmitMessage(chatFrom("p2", "bob"))
+	if out.waitForCount(t, 2)[1].(platform.MessageEvent).Message.Ephemeral {
+		t.Error("message ephemeral despite logging on")
+	}
+}
+
 func TestEngine_CloseIsIdempotent(t *testing.T) {
 	eng, _, _ := newTestEngine()
 	if err := eng.Close(); err != nil {

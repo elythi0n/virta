@@ -19,6 +19,7 @@ import (
 	"github.com/elythi0n/virta/internal/engine"
 	"github.com/elythi0n/virta/internal/filter"
 	"github.com/elythi0n/virta/internal/id"
+	"github.com/elythi0n/virta/internal/logbook"
 	"github.com/elythi0n/virta/internal/pipeline"
 	"github.com/elythi0n/virta/internal/platform"
 	"github.com/elythi0n/virta/internal/platform/kick"
@@ -72,8 +73,24 @@ type Daemon struct {
 	runner   *pipeline.Runner
 	engine   *engine.Engine
 	stats    *stats.Aggregator
+	logSink  *logbook.Sink
+	sweeper  *logbook.Sweeper
 	profiles *profiles.Manager
 	api      *api.Server
+}
+
+// loggingControl fans a profile's logging policy out to the engine (ephemeral flagging), the
+// logbook sink (write gating), and the sweeper (retention). It satisfies profiles.LoggingSetter.
+type loggingControl struct {
+	eng     *engine.Engine
+	sink    *logbook.Sink
+	sweeper *logbook.Sweeper
+}
+
+func (c loggingControl) SetLogging(enabled bool, retention string) {
+	c.eng.SetLogging(enabled)
+	c.sink.SetEnabled(enabled)
+	c.sweeper.SetRetention(retention)
 }
 
 // NewDaemon builds every component from cfg. It does not start serving; call Start.
@@ -129,10 +146,14 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	// The stats aggregator is a sink that tallies activity and feeds periodic StatsEvents back
 	// through the pipeline (started after the runner exists, so it has something to submit to).
 	statsAgg := stats.New(clk, 0)
+	// The logbook sink persists chat when logging is enabled (opt-in, default off). It only
+	// writes non-ephemeral messages, so logging-off persists nothing (ADR-014).
+	logSink := logbook.NewSink(st.Messages(), clk, log)
+	sweeper := logbook.NewSweeper(logSink, clk)
 	runner := pipeline.NewRunner(pipeline.Options{
 		Clock:  clk,
 		Stages: []pipeline.Stage{filterStage, emotes.NewStage(emoteResolver)},
-		Sinks:  []pipeline.Sink{srv.Sink(), statsAgg},
+		Sinks:  []pipeline.Sink{srv.Sink(), statsAgg, logSink},
 		Logger: log,
 	})
 
@@ -152,13 +173,14 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	)
 	eng.Register(kick.New(kick.Options{Clock: clk, Resolver: kickResolver}))
 
-	// The profile manager owns the active workspace: it drives the engine and filter stage on
-	// activation and persists live channel changes. Profiles are activated at Start.
-	mgr := profiles.New(st.Profiles(), eng, filterStage, runner, clk)
+	// The profile manager owns the active workspace: it drives the engine, filter stage, and
+	// logging policy on activation and persists live channel changes. Profiles activate at Start.
+	logCtl := loggingControl{eng: eng, sink: logSink, sweeper: sweeper}
+	mgr := profiles.New(st.Profiles(), eng, filterStage, logCtl, runner, clk)
 	srv.SetChannels(channelControl{eng: eng, emotes: emoteResolver, profiles: mgr})
 	srv.SetProfiles(profileControl{mgr: mgr, repo: st.Profiles()})
 
-	return &Daemon{cfg: cfg, log: log, store: st, vault: vault, runner: runner, engine: eng, stats: statsAgg, profiles: mgr, api: srv}, nil
+	return &Daemon{cfg: cfg, log: log, store: st, vault: vault, runner: runner, engine: eng, stats: statsAgg, logSink: logSink, sweeper: sweeper, profiles: mgr, api: srv}, nil
 }
 
 // kickChatroomCache backs the Kick resolver's permanent cache with the channels table: a
@@ -330,6 +352,8 @@ func parsePlatform(s string) (platform.Platform, bool) {
 func (d *Daemon) Start() error {
 	d.runner.Start()
 	d.stats.Start(d.runner) // feed StatsEvents back through the pipeline
+	d.logSink.Start()       // periodic batch flush
+	d.sweeper.Start()       // retention sweeps
 
 	// Activate the default profile so its channels connect and its filters apply on startup.
 	ctx := context.Background()
@@ -364,7 +388,8 @@ func (d *Daemon) Pipeline() *pipeline.Runner { return d.runner }
 func (d *Daemon) Close(ctx context.Context) error {
 	apiErr := d.api.Close(ctx)
 	_ = d.engine.Close()
-	_ = d.runner.Close()
+	_ = d.sweeper.Close()
+	_ = d.runner.Close() // closes the sinks, including the logbook sink (final flush)
 	storeErr := d.store.Close()
 	if apiErr != nil {
 		return apiErr

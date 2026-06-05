@@ -41,13 +41,25 @@ type fakeEmitter struct{ evs []platform.Event }
 
 func (e *fakeEmitter) Submit(ev platform.Event) { e.evs = append(e.evs, ev) }
 
+type fakeLogging struct {
+	enabled   bool
+	retention string
+	calls     int
+}
+
+func (l *fakeLogging) SetLogging(enabled bool, retention string) {
+	l.enabled = enabled
+	l.retention = retention
+	l.calls++
+}
+
 func newManager(t *testing.T) (*Manager, *store.Memory, *fakeChannels, *fakeFilter, *fakeEmitter) {
 	t.Helper()
 	mem := store.NewMemory(clock.NewFake(time.Unix(1000, 0)))
 	ch := &fakeChannels{}
 	ff := &fakeFilter{}
 	em := &fakeEmitter{}
-	m := New(mem.Profiles(), ch, ff, em, clock.NewFake(time.Unix(1000, 0)))
+	m := New(mem.Profiles(), ch, ff, &fakeLogging{}, em, clock.NewFake(time.Unix(1000, 0)))
 	return m, mem, ch, ff, em
 }
 
@@ -166,6 +178,20 @@ func TestMigrate(t *testing.T) {
 	}
 	if _, err := Migrate(json.RawMessage(`not json`)); err == nil {
 		t.Error("bad json did not error")
+	}
+}
+
+func TestActivate_AppliesLoggingPolicy(t *testing.T) {
+	mem := store.NewMemory(clock.NewFake(time.Unix(1000, 0)))
+	lg := &fakeLogging{}
+	m := New(mem.Profiles(), &fakeChannels{}, &fakeFilter{}, lg, &fakeEmitter{}, clock.NewFake(time.Unix(1000, 0)))
+	p := createProfile(t, mem, "log", Doc{Version: CurrentVersion, Logging: Logging{Enabled: true, Retention: "30d"}})
+
+	if err := m.Activate(context.Background(), p.ID); err != nil {
+		t.Fatal(err)
+	}
+	if !lg.enabled || lg.retention != "30d" {
+		t.Errorf("logging policy = {enabled:%v retention:%q}, want {true 30d}", lg.enabled, lg.retention)
 	}
 }
 

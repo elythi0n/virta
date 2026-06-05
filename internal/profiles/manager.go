@@ -27,11 +27,18 @@ type Emitter interface {
 	Submit(ev platform.Event)
 }
 
+// LoggingSetter applies the profile's logging policy (enables/disables persistence and sets
+// retention). The wiring layer fans it to the engine, the logbook sink, and the sweeper.
+type LoggingSetter interface {
+	SetLogging(enabled bool, retention string)
+}
+
 // Manager owns the active profile and performs atomic switches. Safe for concurrent use.
 type Manager struct {
 	repo     store.ProfileRepo
 	channels Channels
 	filter   FilterSetter
+	logging  LoggingSetter
 	emitter  Emitter
 	clk      clock.Clock
 
@@ -42,8 +49,8 @@ type Manager struct {
 }
 
 // New builds a profile manager.
-func New(repo store.ProfileRepo, channels Channels, filter FilterSetter, emitter Emitter, clk clock.Clock) *Manager {
-	return &Manager{repo: repo, channels: channels, filter: filter, emitter: emitter, clk: clk}
+func New(repo store.ProfileRepo, channels Channels, filter FilterSetter, logging LoggingSetter, emitter Emitter, clk clock.Clock) *Manager {
+	return &Manager{repo: repo, channels: channels, filter: filter, logging: logging, emitter: emitter, clk: clk}
 }
 
 // EnsureDefault returns the default profile, creating an empty one on first run. Everything a
@@ -89,6 +96,9 @@ func (m *Manager) Activate(ctx context.Context, id string) error {
 	if prevLoaded {
 		prevChannels = prev.Channels
 	}
+	// Apply the logging policy first so messages arriving mid-activation are flagged correctly.
+	m.logging.SetLogging(doc.Logging.Enabled, doc.Logging.Retention)
+
 	add, remove := diffChannels(prevChannels, doc.Channels)
 
 	for _, ch := range remove {

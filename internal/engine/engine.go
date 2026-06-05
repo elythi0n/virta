@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 
 	"github.com/elythi0n/virta/internal/id"
 	"github.com/elythi0n/virta/internal/platform"
@@ -30,9 +31,10 @@ type Submitter interface {
 
 // Engine wires adapters to a pipeline Submitter. It is safe for concurrent use.
 type Engine struct {
-	out Submitter
-	gen id.Generator
-	ids *idMap
+	out     Submitter
+	gen     id.Generator
+	ids     *idMap
+	logging atomic.Bool // when false (default), messages are marked ephemeral and never persisted
 
 	mu       sync.Mutex
 	adapters map[platform.Platform]platform.Adapter
@@ -85,6 +87,9 @@ func (e *Engine) ingest(ev platform.Event) {
 		if t.Message.PlatformMessageID != "" {
 			e.ids.put(idKey(t.Message.Channel, t.Message.PlatformMessageID), t.Message.ID)
 		}
+		// Ephemeral unless logging is on — the flag the store's choke point enforces, so
+		// logging-off can never persist chat (ADR-014).
+		t.Message.Ephemeral = !e.logging.Load()
 		e.markFirstTime(&t.Message)
 		e.out.Submit(t)
 	case platform.MessageDeletedEvent:
@@ -131,6 +136,10 @@ func (e *Engine) markFirstTime(m *platform.UnifiedMessage) {
 		m.Annotate().FirstTime = true
 	}
 }
+
+// SetLogging turns message persistence on or off. Off (the default) marks every ingested
+// message ephemeral, so nothing is written. The profile manager calls this on activation.
+func (e *Engine) SetLogging(enabled bool) { e.logging.Store(enabled) }
 
 // Join connects the channel through the adapter for its platform.
 func (e *Engine) Join(ctx context.Context, ch platform.ChannelRef, mode platform.ConnMode) error {
