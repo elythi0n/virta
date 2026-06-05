@@ -89,6 +89,7 @@ const (
 	SegMention SegmentKind = "mention"
 	SegLink    SegmentKind = "link"
 	SegCheer   SegmentKind = "cheer"
+	SegMasked  SegmentKind = "masked" // profanity replaced with a mask token; original in Reveal
 )
 
 // EmoteProvider identifies where an emote comes from. Third-party providers (7TV/BTTV/FFZ)
@@ -133,10 +134,14 @@ type Author struct {
 // populated according to Kind; Text always carries the literal/displayed text.
 type Segment struct {
 	Kind  SegmentKind `json:"kind"`
-	Text  string      `json:"text"`            // literal text, emote name, mention text, or URL
+	Text  string      `json:"text"`            // literal text, emote name, mention text, URL, or the mask token
 	Emote *EmoteRef   `json:"emote,omitempty"` // when Kind == SegEmote
 	// CheerBits is set when Kind == SegCheer.
 	CheerBits int `json:"cheer_bits,omitempty"`
+	// Reveal holds the original text behind a SegMasked segment, for the local feed's
+	// click-to-reveal. Text is the mask token (so PlainText — and thus TTS/webhooks/logging —
+	// stays masked); outbound integrations must not forward Reveal.
+	Reveal string `json:"reveal,omitempty"`
 }
 
 // MessageRef points at another message — used for replies. The platform message
@@ -162,6 +167,25 @@ type UnifiedMessage struct {
 	ReceivedAt        time.Time       `json:"received_at"` // local arrival (feed ordering key)
 	Ephemeral         bool            `json:"-"`           // true → never persisted; the one flag enforcing the logging-off guarantee
 	Raw               json.RawMessage `json:"-"`           // original payload, retained bounded for debugging
+	Annotations       *Annotations    `json:"annotations,omitempty"`
+}
+
+// Annotations are filter/view results attached by pipeline stages. They are display hints —
+// a hidden or highlighted message is still logged and counted in stats; only frontends act on
+// them — so the feed stays consistent across every client.
+type Annotations struct {
+	Hidden    bool   `json:"hidden,omitempty"`    // matched a hide rule; frontends don't render it
+	Highlight string `json:"highlight,omitempty"` // id of the rule that highlighted it ("" = not highlighted)
+	Masked    bool   `json:"masked,omitempty"`    // profanity was masked in Segments
+}
+
+// Annotate returns the message's annotations, allocating them on first use, so stages can set
+// fields without nil checks.
+func (m *UnifiedMessage) Annotate() *Annotations {
+	if m.Annotations == nil {
+		m.Annotations = &Annotations{}
+	}
+	return m.Annotations
 }
 
 // PlainText returns the message body with emotes rendered as their names — the form used
