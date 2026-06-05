@@ -14,7 +14,7 @@ LDFLAGS     := -s -w \
 PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64
 
 .PHONY: all ci build run lint fmt fmt-check vet test test-race cover cross app fixtures \
-        test-live-twitch test-live-kick test-live-x test-live-llm docker clean tidy
+        test-live-twitch test-live-kick test-live-x test-live-llm soak docker clean tidy
 
 all: ci
 
@@ -103,3 +103,8 @@ test-live-x:
 	go test -tags live -run TestLive ./internal/platform/x/... 2>/dev/null || echo "no live x tests yet"
 test-live-llm:
 	go test -tags live -run TestLive ./internal/llm/... 2>/dev/null || echo "no live llm tests yet"
+
+# --- Soak (manual, build-tagged). Offline memory/goroutine stability under sustained load. ---
+## soak: drive the full ingest path for SOAK_SECONDS (default 60) at SOAK_RATE msg/s (default 200).
+soak:
+	go test -tags soak -run TestSoak_FullPath -v -timeout 0 ./internal/engine/...
