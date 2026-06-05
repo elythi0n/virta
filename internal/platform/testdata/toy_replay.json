@@ -1,0 +1,77 @@
+[
+  {
+    "id": "",
+    "platform_message_id": "forsen-alice",
+    "platform": "twitch",
+    "channel": {
+      "platform": "twitch",
+      "id": "",
+      "slug": "forsen"
+    },
+    "type": "chat",
+    "author": {
+      "id": "",
+      "login": "alice",
+      "display_name": "alice",
+      "color": ""
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "hello world"
+      }
+    ],
+    "sent_at": "0001-01-01T00:00:00Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "forsen-bob",
+    "platform": "twitch",
+    "channel": {
+      "platform": "twitch",
+      "id": "",
+      "slug": "forsen"
+    },
+    "type": "chat",
+    "author": {
+      "id": "",
+      "login": "bob",
+      "display_name": "bob",
+      "color": ""
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "PogChamp"
+      }
+    ],
+    "sent_at": "0001-01-01T00:00:00Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "xqc-carol",
+    "platform": "twitch",
+    "channel": {
+      "platform": "twitch",
+      "id": "",
+      "slug": "xqc"
+    },
+    "type": "chat",
+    "author": {
+      "id": "",
+      "login": "carol",
+      "display_name": "carol",
+      "color": ""
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "gg"
+      }
+    ],
+    "sent_at": "0001-01-01T00:00:00Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  }
+]

@@ -2,10 +2,13 @@ package app_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/coder/websocket"
 
 	"github.com/elythi0n/virta/internal/api"
 	"github.com/elythi0n/virta/internal/app"
@@ -109,5 +112,97 @@ func TestSelectVault_ReturnsWorkingVault(t *testing.T) {
 	got, err := v.Get(ctx, key)
 	if err != nil || got != "secret" {
 		t.Fatalf("Get = %q, %v; want secret", got, err)
+	}
+}
+
+// diagnosticsClientCount reads the number of connected stream clients from the daemon's
+// diagnostics endpoint — a deterministic way to wait until a just-dialed client is registered.
+func diagnosticsClientCount(t *testing.T, disc api.Discovery) int {
+	t.Helper()
+	req, _ := http.NewRequest(http.MethodGet, "http://"+disc.Addr+"/v1/diagnostics", nil)
+	req.Header.Set("Authorization", "Bearer "+disc.Token)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return -1
+	}
+	defer func() { _ = resp.Body.Close() }()
+	var body struct {
+		Clients int `json:"clients"`
+	}
+	_ = json.NewDecoder(resp.Body).Decode(&body)
+	return body.Clients
+}
+
+// The Phase-0 capstone: an adapter's events flow through the assembled daemon's pipeline and
+// reach a WebSocket client — proving every founding piece is wired together.
+func TestDaemon_AdapterEventReachesStreamClient(t *testing.T) {
+	cfg := tempConfig(t)
+	d, err := app.NewDaemon(cfg)
+	if err != nil {
+		t.Fatalf("NewDaemon: %v", err)
+	}
+	if err := d.Start(); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = d.Close(ctx)
+	})
+
+	disc, err := api.ReadDiscovery(cfg.RuntimeDir)
+	if err != nil {
+		t.Fatalf("ReadDiscovery: %v", err)
+	}
+
+	// A platform adapter feeding into the daemon's pipeline.
+	adapter := platform.NewFakeAdapter(platform.Twitch, platform.Capabilities{ReadAnonymous: true})
+	t.Cleanup(func() { _ = adapter.Close() })
+	d.Pipeline().Attach(adapter.Events())
+
+	// Connect a stream client and wait until the daemon reports it as connected.
+	dctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	conn, resp, err := websocket.Dial(dctx, "ws://"+disc.Addr+"/v1/stream?token="+disc.Token, nil)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	if resp != nil && resp.Body != nil {
+		_ = resp.Body.Close()
+	}
+	defer func() { _ = conn.Close(websocket.StatusNormalClosure, "") }()
+
+	deadline := time.Now().Add(3 * time.Second)
+	for diagnosticsClientCount(t, disc) != 1 {
+		if time.Now().After(deadline) {
+			t.Fatal("client never registered")
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+
+	// The adapter emits a chat message; it should arrive at the client, end to end.
+	adapter.EmitMessage(platform.UnifiedMessage{
+		ID: "e2e-1", Type: platform.TypeChat,
+		Channel:  platform.ChannelRef{Platform: platform.Twitch, Slug: "forsen"},
+		Segments: []platform.Segment{{Kind: platform.SegText, Text: "end to end"}},
+	})
+
+	rctx, rcancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer rcancel()
+	_, data, err := conn.Read(rctx)
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	var we struct {
+		Type    string `json:"type"`
+		Message *struct {
+			ID string `json:"id"`
+		} `json:"message"`
+	}
+	if err := json.Unmarshal(data, &we); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if we.Type != "message" || we.Message == nil || we.Message.ID != "e2e-1" {
+		t.Fatalf("client received %s, want message e2e-1", data)
 	}
 }
