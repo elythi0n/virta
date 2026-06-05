@@ -1,12 +1,12 @@
 // Package store defines the persistence contract: the Store port, its repositories, and
 // the domain records they hold. Implementations live in subpackages (store/sqlite,
-// store/postgres), import only this package, and are wired in internal/app (ADR-020).
+// store/postgres), import only this package, and are wired in internal/app.
 //
-// Default storage is SQLite (ADR-003); Postgres is a drop-in alternative behind the same
+// Default storage is SQLite; Postgres is a drop-in alternative behind the same
 // contract. The shared conformance suite (store/storetest) runs against every impl AND the
-// in-memory fake, so no backend can quietly diverge (ADR-024).
+// in-memory fake, so no backend can quietly diverge.
 //
-// Persistence is opt-in (ADR-014): chat messages are written only when logging is on.
+// Persistence is opt-in: chat messages are written only when logging is on.
 // MessageRepo.Append enforces this — it is the single choke point that refuses to write an
 // Ephemeral message — so "logging off ⇒ nothing stored" is a store-level invariant, not a
 // convention scattered across callers.
@@ -28,9 +28,10 @@ var (
 	ErrNotFound = errors.New("store: not found")
 	// ErrConflict is returned on a uniqueness violation (e.g. duplicate profile name).
 	ErrConflict = errors.New("store: conflict")
-	// ErrEphemeral is returned by MessageRepo.Append for a message marked Ephemeral —
-	// the ADR-014 choke point. Logging-off code must never reach Append; if it does, this
-	// is the backstop that keeps the "nothing stored" guarantee true.
+	// ErrEphemeral is returned by MessageRepo.Append for a message marked Ephemeral. It is
+	// the single backstop for the "nothing is written unless logging is on" guarantee:
+	// callers should not reach Append while logging is off, and if they do, nothing is
+	// persisted and this error is returned.
 	ErrEphemeral = errors.New("store: refusing to persist an ephemeral message")
 )
 
@@ -71,7 +72,7 @@ type SettingsRepo interface {
 // ---- Profiles ----
 
 // Profile is a saved workspace. The full ProfileDoc (channels/filters/layouts/…) lives in
-// Doc as JSON, versioned and interpreted by the engine (docs 07) — the store treats it as
+// Doc as JSON, versioned and interpreted by the engine — the store treats it as
 // opaque except for Name/IsDefault which it indexes.
 type Profile struct {
 	ID        string          `json:"id"` // ULID
@@ -99,7 +100,7 @@ type ProfileRepo interface {
 // ---- Accounts ----
 
 // Account is a connected platform identity. Tokens never live here — SecretRef points at
-// the OS keychain entry (ADR-013); the DB stores only the reference.
+// the OS keychain entry; the DB stores only the reference.
 type Account struct {
 	ID          string            `json:"id"` // ULID
 	Platform    platform.Platform `json:"platform"`
@@ -125,7 +126,7 @@ type AccountRepo interface {
 // ---- Channels ----
 
 // Channel is known-channel metadata. Meta holds platform-specific JSON — crucially the Kick
-// chatroom id, cached forever once resolved (docs 04).
+// chatroom id, cached forever once resolved.
 type Channel struct {
 	ID          string            `json:"id"` // ULID
 	Platform    platform.Platform `json:"platform"`
@@ -172,7 +173,7 @@ type HistoryQuery struct {
 // see the package doc for the Ephemeral choke point.
 type MessageRepo interface {
 	// Append persists messages. It MUST return ErrEphemeral (and write nothing from the
-	// batch) if any message is marked Ephemeral — the ADR-014 invariant.
+	// batch) if any message is marked Ephemeral — this invariant: logging off means nothing is written.
 	Append(ctx context.Context, msgs []platform.UnifiedMessage) error
 	History(ctx context.Context, q HistoryQuery) ([]StoredMessage, error)
 	// MarkDeleted flags a logged message as deleted by its engine ULID. The engine

@@ -1,6 +1,6 @@
 // Package secretstest is the reusable conformance suite for secrets.Vault. The in-memory
 // fake runs it; the keychain and age-vault backends run the exact same suite so the
-// fallback rung behaves identically to the native one (ADR-024, docs 14).
+// fallback rung behaves identically to the native one.
 package secretstest
 
 import (

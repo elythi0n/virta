@@ -1,10 +1,10 @@
 // Package platformtest provides a reusable conformance suite for platform.Adapter
 // implementations. The fake runs it here; each real adapter (twitch/kick/x) runs the same
-// suite, so an implementation can never quietly diverge from the contract (ADR-024).
+// suite, so an implementation can never quietly diverge from the contract.
 //
 // It asserts only the mode-independent invariants that hold without network access, so it
 // is safe in `make ci`. Behavior that needs a live endpoint is covered by build-tagged
-// live tests (docs/live-debt.md).
+// build-tagged live tests, run on demand.
 package platformtest
 
 import (

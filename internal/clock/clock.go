@@ -1,6 +1,7 @@
-// Package clock provides an injectable time source. Feature code takes a Clock instead of
-// calling time.Now directly, so all time-dependent logic is deterministic in tests
-// (ADR-024). The forbidigo lint rule forbids time.Now/Since/Until outside this package.
+// Package clock provides an injectable time source. Production code takes a Clock instead
+// of calling time.Now directly, so time-dependent logic stays deterministic under test
+// (inject a Fake, advance it explicitly). A lint rule forbids time.Now/Since/Until outside
+// this package to keep that guarantee enforced rather than merely encouraged.
 package clock
 
 import (

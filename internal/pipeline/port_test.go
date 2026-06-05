@@ -53,7 +53,7 @@ func TestTagStage_AnnotatesInPlace(t *testing.T) {
 	}
 }
 
-// Ordered stages compose — the property the runner relies on (step 0.3).
+// Ordered stages compose — the property the Runner relies on.
 func TestStages_ComposeInOrder(t *testing.T) {
 	msg := platform.UnifiedMessage{Segments: []platform.Segment{{Kind: platform.SegText, Text: "a"}}}
 	stages := []pipeline.Stage{pipeline.NewTagStage("b"), pipeline.NewTagStage("c")}

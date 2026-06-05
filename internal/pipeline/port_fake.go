@@ -16,19 +16,27 @@ type RecordingSink struct {
 	events []platform.Event
 	closed bool
 
-	// gate, when non-nil, blocks Consume until it is closed — used to simulate a slow sink
-	// in backpressure tests (step 0.3). nil means "consume immediately".
+	// gate, when non-nil, blocks Consume until it is closed — simulates a slow sink so
+	// tests can verify it doesn't stall others. nil means "consume immediately".
 	gate chan struct{}
+
+	// entered is closed the first time Consume is called, so a test can wait until the
+	// sink is genuinely blocked before continuing.
+	entered   chan struct{}
+	enterOnce sync.Once
 }
 
-// NewRecordingSink creates a recording sink with the given diagnostic name.
+// NewRecordingSink creates a recording sink with the given name.
 func NewRecordingSink(name string) *RecordingSink { return &RecordingSink{name: name} }
 
-// NewBlockingSink creates a recording sink whose Consume blocks until Release is called —
-// for testing that a slow sink doesn't stall others.
+// NewBlockingSink creates a recording sink whose Consume blocks until Release is called.
 func NewBlockingSink(name string) *RecordingSink {
-	return &RecordingSink{name: name, gate: make(chan struct{})}
+	return &RecordingSink{name: name, gate: make(chan struct{}), entered: make(chan struct{})}
 }
+
+// Entered returns a channel closed when Consume is first called. Only meaningful for a
+// blocking sink; lets a test wait until the sink is actually blocked.
+func (s *RecordingSink) Entered() <-chan struct{} { return s.entered }
 
 // Release unblocks a sink created with NewBlockingSink.
 func (s *RecordingSink) Release() {
@@ -43,6 +51,11 @@ func (s *RecordingSink) Release() {
 func (s *RecordingSink) Name() string { return s.name }
 
 func (s *RecordingSink) Consume(ctx context.Context, ev platform.Event) error {
+	s.enterOnce.Do(func() {
+		if s.entered != nil {
+			close(s.entered)
+		}
+	})
 	s.mu.Lock()
 	gate := s.gate
 	s.mu.Unlock()

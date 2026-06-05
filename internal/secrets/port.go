@@ -1,10 +1,10 @@
 // Package secrets defines the credential-storage contract. Every credential — platform
 // OAuth tokens, LLM API keys, webhook secrets, the local API token — lives in the OS
-// keychain via a Vault; the database stores only the reference string (ADR-013).
+// keychain via a Vault; the database stores only the reference string.
 //
 // Implementations live in subpackages: secrets/keychain (OS-native, the default) and
 // secrets/agevault (an age-encrypted file, the headless fallback). They are wired in
-// internal/app and selected by a startup probe (docs 14 fallback chain). Both run the same
+// internal/app and selected by a startup probe (native OS keychain first; an encrypted-file fallback when none is available). Both run the same
 // conformance suite (secrets/secretstest), so the fallback can't behave differently.
 package secrets
 
@@ -18,7 +18,7 @@ import (
 var ErrNotFound = errors.New("secrets: not found")
 
 // Backend names which storage rung is active — surfaced to the UI (in user terms) and
-// diagnostics so the user knows where their secrets live (docs 14).
+// diagnostics so the user knows where their secrets live.
 type Backend string
 
 const (
@@ -40,7 +40,7 @@ type Vault interface {
 	Backend() Backend
 }
 
-// ---- Canonical key scheme (docs 06) ----
+// ---- Canonical key scheme ----
 //
 // Keys are namespaced strings stored under the OS service name "virta". Build them only
 // with these helpers so the DB's secret_ref values and the vault stay in lockstep.

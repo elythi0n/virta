@@ -1,11 +1,11 @@
 // Package platform defines the contract every streaming platform implements: the
 // Adapter port and the UnifiedMessage model that all chat normalizes into.
 //
-// This file is the documentation of the subsystem (ADR-020). An implementation lives in
+// This file is the documentation of the subsystem. An implementation lives in
 // a subpackage (platform/twitch, platform/kick, platform/x, …), imports only this package,
 // and is wired in internal/app — never imported elsewhere (enforced by depguard).
 //
-// The golden rule (ADR-020): adding a platform means a new subpackage + fixtures + one
+// The golden rule: adding a platform means a new subpackage + fixtures + one
 // wire.go line + UI tokens. If it forces a change to the engine, pipeline, store, API, or
 // frontends, that is a design bug in *this* contract — fix the boundary, not the caller.
 package platform
@@ -18,7 +18,7 @@ import (
 )
 
 // Platform identifies a streaming platform. Open string type: adding YouTube/TikTok/etc.
-// (docs 17) introduces a new const here and a new adapter subpackage, nothing more.
+// introduces a new const here and a new adapter subpackage, nothing more.
 type Platform string
 
 const (
@@ -27,7 +27,7 @@ const (
 	X      Platform = "x"
 )
 
-// ConnMode is how a channel is connected. Users choose per platform (ADR-025); Automatic
+// ConnMode is how a channel is connected. Users choose per platform; Automatic
 // picks the most robust available method and upgrades on sign-in.
 type ConnMode string
 
@@ -39,7 +39,7 @@ const (
 )
 
 // StabilityTier communicates how reliable a platform's access is, surfaced in the UI so a
-// best-effort platform (X today, TikTok later) is honestly labeled (ADR-006/025).
+// best-effort platform (X today, TikTok later) is honestly labeled.
 type StabilityTier string
 
 const (
@@ -50,14 +50,14 @@ const (
 
 // Capabilities report what an adapter can do *right now*, given its connection mode and
 // auth state. The UI greys out unavailable actions from this — no frontend hardcodes
-// platform knowledge (ADR-020). Capabilities are dynamic: signing in flips Send/Moderation.
+// platform knowledge. Capabilities are dynamic: signing in flips Send/Moderation.
 type Capabilities struct {
 	ReadAnonymous bool          // can read without an account
 	ReadAuthed    bool          // can read with an account (richer events)
 	Send          bool          // can send messages
 	Moderation    bool          // can ban/timeout/delete/chat-settings
-	Replies       bool          // supports reply-to-message (ADR-029)
-	HeldQueue     bool          // supports an AutoMod/held-message queue (ADR-029)
+	Replies       bool          // supports reply-to-message
+	HeldQueue     bool          // supports an AutoMod/held-message queue
 	Stability     StabilityTier // honesty label for the UI
 }
 
@@ -80,7 +80,7 @@ const (
 )
 
 // SegmentKind tags a piece of message content. Parsing happens once, in the adapter — never
-// in a frontend (ADR re segments, docs 02).
+// in a frontend.
 type SegmentKind string
 
 const (
@@ -139,7 +139,7 @@ type Segment struct {
 	CheerBits int `json:"cheer_bits,omitempty"`
 }
 
-// MessageRef points at another message — used for replies (ADR-029). The platform message
+// MessageRef points at another message — used for replies. The platform message
 // id lets the engine resolve the parent via its per-channel id→ULID map.
 type MessageRef struct {
 	PlatformMessageID string `json:"platform_message_id"`
@@ -148,7 +148,7 @@ type MessageRef struct {
 }
 
 // UnifiedMessage is the contract of the whole product. Every adapter emits this; every
-// frontend renders it. Change it carefully and version it on the wire (docs 02).
+// frontend renders it. Change it carefully and version it on the wire.
 type UnifiedMessage struct {
 	ID                string          `json:"id"`                  // engine-assigned ULID (sortable, unique across platforms; set by the engine, not the adapter)
 	PlatformMessageID string          `json:"platform_message_id"` // the platform's own id (for dedup, deletion mapping, replies)
@@ -160,7 +160,7 @@ type UnifiedMessage struct {
 	ReplyTo           *MessageRef     `json:"reply_to,omitempty"`
 	SentAt            time.Time       `json:"sent_at"`     // platform timestamp (displayed)
 	ReceivedAt        time.Time       `json:"received_at"` // local arrival (feed ordering key)
-	Ephemeral         bool            `json:"-"`           // true → never persisted (ADR-014 choke point)
+	Ephemeral         bool            `json:"-"`           // true → never persisted; the one flag enforcing the logging-off guarantee
 	Raw               json.RawMessage `json:"-"`           // original payload, retained bounded for debugging
 }
 
@@ -188,7 +188,7 @@ type ChannelRef struct {
 	DisplayName string   `json:"display_name,omitempty"`
 }
 
-// ---- Health & reason codes (ADR-021: machine codes, never prose) ----
+// ---- Health & reason codes machine codes, never prose ----
 
 // HealthState is the coarse adapter/channel state.
 type HealthState string
@@ -200,7 +200,7 @@ const (
 )
 
 // ReasonCode is a machine-readable cause. Frontends map it to user copy; the raw code +
-// Detail appear only in diagnostics (ADR-021). Open type — adapters may emit codes beyond
+// Detail appear only in diagnostics. Open type — adapters may emit codes beyond
 // these constants.
 type ReasonCode string
 
@@ -230,11 +230,11 @@ type HealthStatus struct {
 // SendOpts carries optional send parameters.
 type SendOpts struct {
 	Action        bool   // send as a /me action
-	ReplyParentID string // platform message id to reply to (ADR-029); "" for a normal message
+	ReplyParentID string // platform message id to reply to; "" for a normal message
 }
 
 // ModActionType enumerates moderation operations. The single typed action path that mod
-// buttons, slash commands (ADR-028), and the held-message queue (ADR-029) all funnel
+// buttons, slash commands, and the held-message queue all funnel
 // through — so behavior and capability/rate checks live in one place.
 type ModActionType string
 
@@ -269,7 +269,7 @@ type ModAction struct {
 
 // Event is anything an adapter emits on its Events() channel: a normalized message, a
 // deletion, or a health transition. Sealed interface — the pipeline type-switches on it
-// and only MessageEvent runs through stages (docs 02). Add a case here, not a new channel.
+// and only MessageEvent runs through stages. Add a case here, not a new channel.
 type Event interface{ isEvent() }
 
 // MessageEvent carries a normalized chat message (the high-volume path).

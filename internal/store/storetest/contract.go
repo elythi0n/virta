@@ -1,6 +1,6 @@
 // Package storetest is the reusable conformance suite for store.Store. The in-memory fake
 // runs it; the SQLite and Postgres backends run the exact same suite, so every backend —
-// and the fake the rest of the codebase tests against — behaves identically (ADR-024).
+// and the fake the rest of the codebase tests against — behaves identically.
 package storetest
 
 import (
@@ -208,7 +208,7 @@ func RunContract(t *testing.T, newStore func(t *testing.T) store.Store) {
 		}
 	})
 
-	t.Run("messages: Append refuses ephemeral (ADR-014 invariant)", func(t *testing.T) {
+	t.Run("messages: Append refuses ephemeral (logging-off invariant)", func(t *testing.T) {
 		s := newStore(t)
 		ch := "chan_e"
 		batch := []platform.UnifiedMessage{

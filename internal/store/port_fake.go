@@ -14,10 +14,10 @@ import (
 
 // Memory is a complete in-memory Store. It is the unit-test backend for the whole codebase
 // and the reference implementation the storetest conformance suite runs against alongside
-// the real SQLite/Postgres backends — so it stays honest (ADR-024). Safe for concurrent use.
+// the real SQLite/Postgres backends — so it stays honest. Safe for concurrent use.
 //
-// Timestamps come from an injected clock (ADR-024 determinism); ids are a deterministic
-// monotonic counter (the real ULID generator arrives in step 0.4 for the SQL backends).
+// Timestamps come from an injected clock so tests are deterministic; ids are a deterministic
+// monotonic counter (the SQL backends generate ULIDs instead).
 type Memory struct {
 	clk clock.Clock
 
@@ -361,7 +361,7 @@ func (r memChannels) Delete(_ context.Context, id string) error {
 type memMessages struct{ m *Memory }
 
 func (r memMessages) Append(_ context.Context, msgs []platform.UnifiedMessage) error {
-	// Choke point (ADR-014): refuse the whole batch if any message is ephemeral.
+	// Choke point: refuse the whole batch if any message is ephemeral.
 	for i := range msgs {
 		if msgs[i].Ephemeral {
 			return ErrEphemeral

@@ -16,6 +16,11 @@ coverage.txt
 .env.*
 !.env.example
 
+# Internal planning docs — kept locally, not part of the published repo.
+# Code comments are written to be self-contained, so nothing in the codebase depends on these.
+/docs/
+/tracker.md
+
 # Editor / OS
 .DS_Store
 .idea/
