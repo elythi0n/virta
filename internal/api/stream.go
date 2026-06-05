@@ -12,8 +12,9 @@ import (
 const writeTimeout = 10 * time.Second
 
 // handleStream upgrades the request to a WebSocket and streams pipeline events to the client.
-// The client may send {"action":"subscribe","channels":[...]} to narrow what it receives; an
-// empty channel list (or no subscribe) means all channels.
+// The client may send {"action":"subscribe","channels":[...],"since":N} to narrow what it
+// receives; an empty channel list (or no subscribe) means all channels, and a non-zero "since"
+// replays buffered events past that sequence number to resume after a reconnect.
 //
 // Origin checking is disabled because the listener is loopback-only — the only reachable
 // clients are processes on this machine.
@@ -55,6 +56,11 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 		var msg subscribeMessage
 		if json.Unmarshal(data, &msg) == nil && msg.Action == "subscribe" {
 			c.setSubscription(toSubscription(msg.Channels))
+			if msg.Since > 0 {
+				// Resume: replay buffered events past the client's cursor (at-least-once;
+				// the client dedupes by seq).
+				s.hub.replayTo(c, msg.Since)
+			}
 		}
 	}
 }

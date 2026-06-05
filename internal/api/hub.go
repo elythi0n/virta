@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"sort"
 	"sync"
 
 	"github.com/elythi0n/virta/internal/platform"
@@ -16,25 +17,47 @@ const schemaVersion = 1
 // events are dropped. A slow client degrades only itself.
 const clientBuffer = 256
 
+// replayBuffer is how many recent events are retained for resume-on-reconnect. A client
+// presents the highest seq it processed and the server replays buffered events past it.
+// Bounded, so memory is constant; a client gone longer than this window misses the gap.
+const replayBuffer = 1024
+
 // wireEvent is the JSON envelope sent to clients. Exactly the fields relevant to Type are
-// populated.
+// populated. Seq is a per-server monotonic sequence number: clients track the highest they've
+// processed and present it as the resume cursor (delivery on resume is at-least-once — dedupe
+// by Seq).
 type wireEvent struct {
 	Type              string                   `json:"type"`
 	SchemaVersion     int                      `json:"schema_version"`
+	Seq               uint64                   `json:"seq"`
 	Message           *platform.UnifiedMessage `json:"message,omitempty"`
 	Channel           *platform.ChannelRef     `json:"channel,omitempty"`
 	PlatformMessageID string                   `json:"platform_message_id,omitempty"`
+	MessageID         string                   `json:"message_id,omitempty"` // engine ULID of a deleted message, when resolved
 	TargetUserID      string                   `json:"target_user_id,omitempty"`
 	State             *platform.HealthStatus   `json:"state,omitempty"`
 	Settings          *platform.ChatSettings   `json:"settings,omitempty"`
 }
 
+// replayEntry is one encoded event retained in the resume ring.
+type replayEntry struct {
+	seq   uint64
+	key   string
+	all   bool
+	bytes []byte
+}
+
 // hub is the set of connected stream clients. It is a pipeline sink: every event the
-// pipeline produces is broadcast to the clients whose subscription matches.
+// pipeline produces is broadcast to the clients whose subscription matches, and a bounded
+// ring of recent events backs resume-on-reconnect.
 type hub struct {
 	mu      sync.Mutex
 	clients map[*client]struct{}
 	closed  bool
+
+	seq    uint64        // monotonic event counter (guarded by mu)
+	replay []replayEntry // ring of recent events; replay[rnext] is oldest when full
+	rnext  int
 }
 
 func newHub() *hub {
@@ -43,39 +66,74 @@ func newHub() *hub {
 
 func (h *hub) Name() string { return "wsclients" }
 
-// Consume encodes the event once and delivers it to each matching client without blocking:
-// if a client's buffer is full its oldest queued event is dropped to make room, so a slow
-// reader never holds up the broadcast or other clients.
+// Consume stamps the event with the next sequence number, encodes it once, records it in the
+// resume ring, and delivers it to each matching client without blocking: if a client's buffer
+// is full its oldest queued event is dropped to make room, so a slow reader never holds up the
+// broadcast or other clients.
 func (h *hub) Consume(_ context.Context, ev platform.Event) error {
 	we, key, broadcastAll := toWire(ev)
 	if we.Type == "" {
 		return nil // event type we don't forward
 	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.seq++
+	we.Seq = h.seq
 	b, err := json.Marshal(we)
 	if err != nil {
 		return err
 	}
-	h.mu.Lock()
-	defer h.mu.Unlock()
+	h.record(h.seq, key, broadcastAll, b)
 	for c := range h.clients {
 		if !broadcastAll && !c.wants(key) {
 			continue
 		}
+		pushBytes(c, b)
+	}
+	return nil
+}
+
+// record appends an encoded event to the bounded resume ring (oldest overwritten when full).
+func (h *hub) record(seq uint64, key string, all bool, b []byte) {
+	if h.replay == nil {
+		h.replay = make([]replayEntry, replayBuffer)
+	}
+	h.replay[h.rnext] = replayEntry{seq: seq, key: key, all: all, bytes: b}
+	h.rnext = (h.rnext + 1) % len(h.replay)
+}
+
+// replayTo sends every buffered event past since that matches c's subscription, in sequence
+// order. Used to resume a reconnecting client from its last processed cursor.
+func (h *hub) replayTo(c *client, since uint64) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	var pending []replayEntry
+	for _, e := range h.replay {
+		if e.seq > since && (e.all || c.wants(e.key)) {
+			pending = append(pending, e)
+		}
+	}
+	sort.Slice(pending, func(i, j int) bool { return pending[i].seq < pending[j].seq })
+	for _, e := range pending {
+		pushBytes(c, e.bytes)
+	}
+}
+
+// pushBytes enqueues b to a client without blocking, dropping its oldest queued event first
+// if the buffer is full so the newest always makes it in.
+func pushBytes(c *client, b []byte) {
+	select {
+	case c.send <- b:
+	default:
+		select {
+		case <-c.send:
+		default:
+		}
 		select {
 		case c.send <- b:
 		default:
-			// Buffer full: drop the oldest queued event, then enqueue the newest.
-			select {
-			case <-c.send:
-			default:
-			}
-			select {
-			case c.send <- b:
-			default:
-			}
 		}
 	}
-	return nil
 }
 
 func (h *hub) Close() error {
@@ -157,6 +215,7 @@ func (s subscription) matches(key string) bool {
 type subscribeMessage struct {
 	Action   string   `json:"action"`             // "subscribe"
 	Channels []string `json:"channels,omitempty"` // "platform:slug"; empty/omitted = all
+	Since    uint64   `json:"since,omitempty"`    // resume cursor: replay buffered events past this seq
 }
 
 func channelKey(ch platform.ChannelRef) string {
@@ -173,7 +232,7 @@ func toWire(ev platform.Event) (we wireEvent, key string, broadcastAll bool) {
 		return wireEvent{Type: "message", SchemaVersion: schemaVersion, Message: &m}, channelKey(m.Channel), false
 	case platform.MessageDeletedEvent:
 		ch := e.Channel
-		return wireEvent{Type: "message_deleted", SchemaVersion: schemaVersion, Channel: &ch, PlatformMessageID: e.PlatformMessageID}, channelKey(ch), false
+		return wireEvent{Type: "message_deleted", SchemaVersion: schemaVersion, Channel: &ch, PlatformMessageID: e.PlatformMessageID, MessageID: e.MessageID}, channelKey(ch), false
 	case platform.ChannelClearEvent:
 		ch := e.Channel
 		return wireEvent{Type: "channel_clear", SchemaVersion: schemaVersion, Channel: &ch, TargetUserID: e.TargetUserID}, channelKey(ch), false

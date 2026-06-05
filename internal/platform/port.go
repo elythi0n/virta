@@ -271,11 +271,14 @@ type Event interface{ isEvent() }
 // MessageEvent carries a normalized chat message (the high-volume path).
 type MessageEvent struct{ Message UnifiedMessage }
 
-// MessageDeletedEvent reports a message removal (CLEARMSG, deletion). The engine maps the
-// platform id to the ULID it assigned.
+// MessageDeletedEvent reports a message removal (CLEARMSG, deletion). Adapters set Channel
+// and PlatformMessageID; the engine resolves MessageID to the ULID it assigned the original
+// message (empty if that message was never seen or has aged out of the bounded map) so
+// frontends can strike the exact row they rendered.
 type MessageDeletedEvent struct {
 	Channel           ChannelRef
-	PlatformMessageID string // empty + TargetUserID-style clears handled by ChannelClearEvent
+	PlatformMessageID string // platform's own id for the removed message
+	MessageID         string // engine ULID of the original message, resolved by the engine ("" if unknown)
 }
 
 // ChannelClearEvent reports a full or per-user chat clear (CLEARCHAT).

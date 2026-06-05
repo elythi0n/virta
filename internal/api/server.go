@@ -42,9 +42,10 @@ type Config struct {
 
 // Server is the local HTTP/WebSocket API.
 type Server struct {
-	log  *slog.Logger
-	ring *logRing
-	hub  *hub
+	log      *slog.Logger
+	ring     *logRing
+	hub      *hub
+	channels Channels // join/leave controller, installed via SetChannels
 
 	token         string
 	runtimeDir    string
@@ -90,6 +91,9 @@ func New(cfg Config) (*Server, error) {
 	mux.HandleFunc("GET /v1/health", s.handleHealth)
 	mux.Handle("GET /v1/diagnostics", s.auth(http.HandlerFunc(s.handleDiagnostics)))
 	mux.Handle("GET /v1/stream", s.auth(http.HandlerFunc(s.handleStream)))
+	mux.Handle("GET /v1/channels", s.auth(http.HandlerFunc(s.handleListChannels)))
+	mux.Handle("POST /v1/channels", s.auth(http.HandlerFunc(s.handleJoinChannel)))
+	mux.Handle("DELETE /v1/channels", s.auth(http.HandlerFunc(s.handleLeaveChannel)))
 
 	s.httpSrv = &http.Server{
 		Handler:           mux,

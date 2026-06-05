@@ -13,9 +13,11 @@ import (
 	"github.com/elythi0n/virta/internal/api"
 	"github.com/elythi0n/virta/internal/clock"
 	"github.com/elythi0n/virta/internal/config"
+	"github.com/elythi0n/virta/internal/engine"
 	"github.com/elythi0n/virta/internal/id"
 	"github.com/elythi0n/virta/internal/pipeline"
 	"github.com/elythi0n/virta/internal/platform"
+	"github.com/elythi0n/virta/internal/platform/twitch"
 	"github.com/elythi0n/virta/internal/secrets"
 	"github.com/elythi0n/virta/internal/secrets/filevault"
 	"github.com/elythi0n/virta/internal/secrets/keychain"
@@ -61,6 +63,7 @@ type Daemon struct {
 	store  store.Store
 	vault  secrets.Vault
 	runner *pipeline.Runner
+	engine *engine.Engine
 	api    *api.Server
 }
 
@@ -97,14 +100,74 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	log.Info("secrets backend selected", "backend", vault.Backend())
 
 	// The pipeline fans events out to the API hub (and, later, the logger and other sinks).
-	// No stages are wired yet — adapters and stages arrive next.
+	// No stages are wired yet — they arrive next.
 	runner := pipeline.NewRunner(pipeline.Options{
 		Clock:  clk,
 		Sinks:  []pipeline.Sink{srv.Sink()},
 		Logger: log,
 	})
 
-	return &Daemon{cfg: cfg, log: log, store: st, vault: vault, runner: runner, api: srv}, nil
+	// The engine sits between adapters and the pipeline: it mints message ULIDs, resolves
+	// deletions, and routes channel join/leave to the right adapter. Register the read-only
+	// anonymous Twitch adapter (no credentials needed); more platforms register here later.
+	eng := engine.New(runner, gen)
+	eng.Register(twitch.New(twitch.Options{Clock: clk}))
+	srv.SetChannels(channelControl{eng: eng})
+
+	return &Daemon{cfg: cfg, log: log, store: st, vault: vault, runner: runner, engine: eng, api: srv}, nil
+}
+
+// channelControl adapts the engine to the API's join/leave controller, translating the
+// API's string boundary to platform types and back.
+type channelControl struct{ eng *engine.Engine }
+
+func (c channelControl) Join(ctx context.Context, plat, slug, mode string) error {
+	p, ok := parsePlatform(plat)
+	if !ok {
+		return fmt.Errorf("%w: %q", api.ErrUnknownPlatform, plat)
+	}
+	m := platform.ConnMode(mode)
+	if m == "" {
+		m = platform.ModeAutomatic
+	}
+	return c.eng.Join(ctx, platform.ChannelRef{Platform: p, Slug: slug}, m)
+}
+
+func (c channelControl) Leave(plat, slug string) error {
+	p, ok := parsePlatform(plat)
+	if !ok {
+		return fmt.Errorf("%w: %q", api.ErrUnknownPlatform, plat)
+	}
+	return c.eng.Leave(platform.ChannelRef{Platform: p, Slug: slug})
+}
+
+func (c channelControl) List() []api.ChannelInfo {
+	statuses := c.eng.Channels()
+	out := make([]api.ChannelInfo, 0, len(statuses))
+	for _, s := range statuses {
+		out = append(out, api.ChannelInfo{
+			Platform: string(s.Channel.Platform),
+			Slug:     s.Channel.Slug,
+			State:    string(s.Health.State),
+			Reason:   string(s.Health.Reason),
+		})
+	}
+	return out
+}
+
+// parsePlatform validates a platform string against the known platforms, so an unknown one is
+// the caller's 400 rather than a connection error.
+func parsePlatform(s string) (platform.Platform, bool) {
+	switch platform.Platform(s) {
+	case platform.Twitch:
+		return platform.Twitch, true
+	case platform.Kick:
+		return platform.Kick, true
+	case platform.X:
+		return platform.X, true
+	default:
+		return "", false
+	}
 }
 
 // Start launches the pipeline and begins serving the local API.
@@ -126,10 +189,11 @@ func (d *Daemon) Store() store.Store         { return d.store }
 func (d *Daemon) Vault() secrets.Vault       { return d.vault }
 func (d *Daemon) Pipeline() *pipeline.Runner { return d.runner }
 
-// Close shuts everything down in order: stop accepting clients, drain the pipeline, then
-// release storage.
+// Close shuts everything down in order: stop accepting clients, close adapters so no new
+// events arrive, drain the pipeline, then release storage.
 func (d *Daemon) Close(ctx context.Context) error {
 	apiErr := d.api.Close(ctx)
+	_ = d.engine.Close()
 	_ = d.runner.Close()
 	storeErr := d.store.Close()
 	if apiErr != nil {
