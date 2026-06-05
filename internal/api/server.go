@@ -94,6 +94,7 @@ func New(cfg Config) (*Server, error) {
 	mux.Handle("GET /v1/channels", s.auth(http.HandlerFunc(s.handleListChannels)))
 	mux.Handle("POST /v1/channels", s.auth(http.HandlerFunc(s.handleJoinChannel)))
 	mux.Handle("DELETE /v1/channels", s.auth(http.HandlerFunc(s.handleLeaveChannel)))
+	mux.Handle("GET /dev", s.auth(http.HandlerFunc(s.handleDev)))
 
 	s.httpSrv = &http.Server{
 		Handler:           mux,
@@ -144,6 +145,7 @@ func (s *Server) Start() error {
 		}
 	}()
 	s.log.Info("api listening", "addr", s.Addr())
+	s.log.Info("dev feed", "url", "http://"+s.Addr()+"/dev?token="+s.token)
 	return nil
 }
 

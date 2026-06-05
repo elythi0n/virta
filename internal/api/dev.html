@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Virta — dev feed</title>
+<style>
+  :root { --twitch:#9146FF; --kick:#53FC18; --x:#e7e9ea; --bg:#0e0e10; --bg1:#18181b; --fg:#efeff1; --fg2:#adadb8; --line:#2a2a2e; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; background:var(--bg); color:var(--fg); }
+  header { display:flex; gap:.6rem; align-items:center; padding:.5rem .75rem; border-bottom:1px solid var(--line); background:var(--bg1); flex-wrap:wrap; position:sticky; top:0; }
+  header b { color:#fff; letter-spacing:.02em; }
+  select, input, button { font:inherit; background:#1f1f23; color:var(--fg); border:1px solid var(--line); border-radius:4px; padding:.25rem .5rem; }
+  button { cursor:pointer; }
+  button:hover { border-color:#3a3a40; }
+  #status { margin-left:auto; color:var(--fg2); }
+  #status .dot { display:inline-block; width:.6rem; height:.6rem; border-radius:50%; background:var(--fg2); margin-right:.3rem; vertical-align:middle; }
+  #status.ok .dot { background:var(--kick); } #status.degraded .dot { background:#f5b942; } #status.down .dot { background:#f05c5c; }
+  #channels { display:flex; gap:.4rem; padding:.4rem .75rem; flex-wrap:wrap; border-bottom:1px solid var(--line); }
+  #channels:empty::before { content:"no channels — join one above"; color:var(--fg2); }
+  .chip { display:inline-flex; gap:.4rem; align-items:center; background:#1f1f23; border:1px solid var(--line); border-radius:999px; padding:.15rem .5rem; }
+  .chip .st { color:var(--fg2); font-size:11px; }
+  .chip button { padding:0 .35rem; border:none; background:none; color:var(--fg2); }
+  #feed { padding:.25rem 0 2rem; }
+  .row { display:flex; gap:.5rem; padding:.1rem .75rem; align-items:baseline; }
+  .row:hover { background:#141417; }
+  .row .ts { color:var(--fg2); font-size:11px; min-width:4rem; }
+  .row .plat { font-weight:700; }
+  .row .author { font-weight:600; }
+  .row .badges { color:var(--fg2); font-size:11px; }
+  .row.deleted .body { text-decoration:line-through; color:var(--fg2); }
+  .row.event { color:var(--fg2); font-style:italic; }
+  .plat-twitch { color:var(--twitch); } .plat-kick { color:var(--kick); } .plat-x { color:var(--x); }
+  .emote { color:#bf94ff; }
+</style>
+</head>
+<body>
+<header>
+  <b>Virta</b> <span class="plat-twitch">dev feed</span>
+  <select id="platform"><option value="twitch">twitch</option><option value="kick">kick</option><option value="x">x</option></select>
+  <input id="slug" placeholder="channel" size="14" autocomplete="off">
+  <button id="join">Join</button>
+  <span id="status"><span class="dot"></span><span id="statetext">connecting…</span></span>
+</header>
+<div id="channels"></div>
+<div id="feed"></div>
+<script>
+const token = new URLSearchParams(location.search).get('token') || '';
+const platClass = p => 'plat-' + (p || '');
+const MAX_ROWS = 500;
+let lastSeq = 0;
+
+function api(method, path, body) {
+  return fetch(path, {
+    method,
+    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+}
+function escapeHtml(s) { return (s || '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
+
+// --- channels ---
+async function refreshChannels() {
+  const r = await api('GET', '/v1/channels');
+  if (!r.ok) return;
+  const { channels } = await r.json();
+  const el = document.getElementById('channels');
+  el.innerHTML = '';
+  (channels || []).forEach(c => {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.innerHTML = `<span class="${platClass(c.platform)}">${escapeHtml(c.platform)}</span> ${escapeHtml(c.slug)} `
+      + `<span class="st">${escapeHtml(c.state)}${c.reason ? ' · ' + escapeHtml(c.reason) : ''}</span>`;
+    const x = document.createElement('button');
+    x.textContent = '✕'; x.title = 'leave';
+    x.onclick = async () => {
+      await api('DELETE', `/v1/channels?platform=${encodeURIComponent(c.platform)}&slug=${encodeURIComponent(c.slug)}`);
+      refreshChannels();
+    };
+    chip.appendChild(x);
+    el.appendChild(chip);
+  });
+}
+document.getElementById('join').onclick = async () => {
+  const platform = document.getElementById('platform').value;
+  const slug = document.getElementById('slug').value.trim();
+  if (!slug) return;
+  const r = await api('POST', '/v1/channels', { platform, slug, mode: 'anonymous' });
+  if (!r.ok) { alert('join failed: ' + r.status + ' ' + (await r.text())); return; }
+  document.getElementById('slug').value = '';
+  refreshChannels();
+};
+document.getElementById('slug').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('join').click(); });
+
+// --- feed ---
+const feed = document.getElementById('feed');
+function appendRow(row) {
+  const atBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 40;
+  feed.appendChild(row);
+  while (feed.childElementCount > MAX_ROWS) feed.removeChild(feed.firstChild);
+  if (atBottom) window.scrollTo(0, document.body.scrollHeight);
+}
+function renderBody(segs) {
+  return (segs || []).map(s => s.kind === 'emote'
+    ? `<span class="emote">[${escapeHtml(s.text)}]</span>`
+    : escapeHtml(s.text)).join('');
+}
+function tsOf(m) {
+  const raw = (m.sent_at && !m.sent_at.startsWith('0001')) ? m.sent_at : m.received_at;
+  const d = new Date(raw);
+  return isNaN(d.getTime()) ? '' : d.toLocaleTimeString();
+}
+function addMessage(m) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  if (m.id) row.dataset.id = m.id;
+  const badges = (m.author.badges || []).map(b => b.set).join(',');
+  const color = (m.author.color || '').replace(/[^#0-9a-fA-F]/g, '');
+  row.innerHTML = `<span class="ts">${tsOf(m)}</span>`
+    + `<span class="plat ${platClass(m.platform)}">${escapeHtml(m.platform)}</span>`
+    + `<span class="author"${color ? ` style="color:${color}"` : ''}>${escapeHtml(m.author.display_name || m.author.login)}</span>`
+    + (badges ? `<span class="badges">[${escapeHtml(badges)}]</span>` : '')
+    + `<span class="body">${renderBody(m.segments)}</span>`;
+  appendRow(row);
+}
+function addEvent(text, platform) {
+  const row = document.createElement('div');
+  row.className = 'row event';
+  row.innerHTML = `<span class="ts"></span><span class="plat ${platClass(platform)}">${escapeHtml(platform || '')}</span>`
+    + `<span class="body">${escapeHtml(text)}</span>`;
+  appendRow(row);
+}
+function markDeleted(id) {
+  if (!id) return;
+  const r = feed.querySelector(`[data-id="${CSS.escape(id)}"]`);
+  if (r) r.classList.add('deleted');
+}
+
+// --- connection state ---
+function setStatus(state, reason) {
+  const s = document.getElementById('status');
+  s.className = state || '';
+  document.getElementById('statetext').textContent = state + (reason ? ' · ' + reason : '');
+}
+
+// --- websocket ---
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const ws = new WebSocket(`${proto}://${location.host}/v1/stream?token=${encodeURIComponent(token)}`);
+  ws.onopen = () => {
+    setStatus('ok');
+    ws.send(JSON.stringify({ action: 'subscribe', channels: [], since: lastSeq }));
+    refreshChannels();
+  };
+  ws.onclose = () => { setStatus('down', 'disconnected'); setTimeout(connect, 1000); };
+  ws.onmessage = ev => {
+    const e = JSON.parse(ev.data);
+    if (e.seq) lastSeq = Math.max(lastSeq, e.seq);
+    switch (e.type) {
+      case 'message': addMessage(e.message); break;
+      case 'message_deleted': markDeleted(e.message_id); break;
+      case 'channel_clear':
+        addEvent(e.target_user_id ? 'cleared a user’s messages' : 'chat cleared', e.channel && e.channel.platform);
+        break;
+      case 'chat_settings': {
+        const s = e.settings || {};
+        const on = [];
+        if (s.emote_only) on.push('emote-only');
+        if (s.subs_only) on.push('subs-only');
+        if (s.unique_chat) on.push('unique-chat');
+        if (s.followers_only_minutes >= 0) on.push('followers-only');
+        if (s.slow_seconds > 0) on.push('slow ' + s.slow_seconds + 's');
+        addEvent('chat settings: ' + (on.join(', ') || 'all off'), e.channel && e.channel.platform);
+        break;
+      }
+      case 'state':
+        if (e.state) { setStatus(e.state.state, e.state.reason); refreshChannels(); }
+        break;
+    }
+  };
+}
+connect();
+</script>
+</body>
+</html>
