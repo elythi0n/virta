@@ -42,6 +42,12 @@ type Manager struct {
 	emitter  Emitter
 	clk      clock.Clock
 
+	// activateMu serializes whole activations so two concurrent switches can't diff against the
+	// same stale previous profile and leave the engine joined to a mix of both. It is held
+	// across the (I/O-bearing) join/leave work; mu only guards the field reads/writes below, so
+	// AddChannel/Health-style callers never block on a switch.
+	activateMu sync.Mutex
+
 	mu       sync.Mutex
 	active   Doc
 	activeID string
@@ -78,6 +84,9 @@ func (m *Manager) EnsureDefault(ctx context.Context) (store.Profile, error) {
 // their feed never gaps), swaps the filter ruleset, and announces the change. A join that
 // fails (e.g. a blocked resolver) doesn't abort the switch — it surfaces via channel health.
 func (m *Manager) Activate(ctx context.Context, id string) error {
+	m.activateMu.Lock()
+	defer m.activateMu.Unlock()
+
 	p, err := m.repo.Get(ctx, id)
 	if err != nil {
 		return fmt.Errorf("profiles: activate %s: %w", id, err)

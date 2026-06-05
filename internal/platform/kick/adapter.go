@@ -140,11 +140,20 @@ func (a *Adapter) Join(ctx context.Context, ch platform.ChannelRef, _ platform.C
 		a.mu.Unlock()
 		return nil
 	}
-	if !a.started {
-		if err := a.connectLocked(ctx); err != nil {
-			a.mu.Unlock()
+	needConnect := !a.started
+	a.mu.Unlock()
+
+	// Dial outside the lock so a slow handshake never blocks Leave/Health/dispatch.
+	if needConnect {
+		if err := a.ensureConnected(ctx); err != nil {
 			return err
 		}
+	}
+
+	a.mu.Lock()
+	if a.closed {
+		a.mu.Unlock()
+		return fmt.Errorf("kick: adapter closed")
 	}
 	a.subs[ch.ID] = ch
 	conn := a.conn
@@ -214,19 +223,34 @@ func (a *Adapter) Close() error {
 	return nil
 }
 
-// connectLocked dials and starts the supervisor. Caller holds a.mu.
-func (a *Adapter) connectLocked(ctx context.Context) error {
+// ensureConnected dials (outside any lock — it's network I/O) and starts the supervisor, unless
+// another Join connected first or the adapter closed meanwhile (in which case the dial is
+// discarded).
+func (a *Adapter) ensureConnected(ctx context.Context) error {
 	conn, err := a.dial(ctx)
 	if err != nil {
-		a.health = platform.HealthStatus{State: platform.HealthDown, Reason: platform.ReasonUpstreamDown, Detail: err.Error()}
+		a.setHealth(platform.HealthStatus{State: platform.HealthDown, Reason: platform.ReasonUpstreamDown, Detail: err.Error()})
 		return fmt.Errorf("kick: dial: %w", err)
 	}
-	a.conn = conn
-	a.started = true
-	a.health = platform.HealthStatus{State: platform.HealthOK}
-	a.wg.Add(1)
-	go a.supervise(conn)
-	return nil
+	a.mu.Lock()
+	switch {
+	case a.closed:
+		a.mu.Unlock()
+		_ = conn.Close()
+		return fmt.Errorf("kick: adapter closed")
+	case a.started:
+		a.mu.Unlock()
+		_ = conn.Close() // another Join won the race
+		return nil
+	default:
+		a.conn = conn
+		a.started = true
+		a.health = platform.HealthStatus{State: platform.HealthOK}
+		a.wg.Add(1)
+		go a.supervise(conn)
+		a.mu.Unlock()
+		return nil
+	}
 }
 
 // supervise reads from conn until it drops, then reconnects and resumes — until shutdown.

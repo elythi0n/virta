@@ -166,6 +166,7 @@ func (e *Engine) Leave(ch platform.ChannelRef) error {
 	e.mu.Lock()
 	a, ok := e.adapters[ch.Platform]
 	delete(e.joined, channelKey(ch))
+	delete(e.seen, channelKey(ch)) // release the first-time-chatter set (re-join resets it)
 	e.mu.Unlock()
 	if !ok {
 		return fmt.Errorf("engine: no adapter registered for platform %q", ch.Platform)

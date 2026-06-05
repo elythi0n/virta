@@ -103,6 +103,7 @@ func (r *Resolver) Resolve(ctx context.Context, slug string) (string, error) {
 
 	if r.fallback != nil {
 		if id, err := r.fallback.Fetch(ctx, slug); err == nil {
+			r.onSuccess() // resolution is working again; let the breaker recover
 			_ = r.cache.Put(ctx, slug, id)
 			return id, nil
 		} else if errors.Is(err, errNotFound) {

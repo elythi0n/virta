@@ -37,6 +37,7 @@ type Sink struct {
 	log   *slog.Logger
 
 	enabled atomic.Bool
+	closed  atomic.Bool
 
 	mu       sync.Mutex
 	buf      []platform.UnifiedMessage
@@ -71,7 +72,7 @@ func (s *Sink) SetEnabled(on bool) { s.enabled.Store(on) }
 // Consume buffers a chat message for persistence (when logging is on and it isn't ephemeral)
 // and applies deletions. Other events are ignored.
 func (s *Sink) Consume(_ context.Context, ev platform.Event) error {
-	if !s.enabled.Load() {
+	if s.closed.Load() || !s.enabled.Load() {
 		return nil
 	}
 	switch e := ev.(type) {
@@ -154,6 +155,7 @@ func (s *Sink) loggedChannels() []string {
 // Close stops the flush loop after a final drain. Idempotent; satisfies pipeline.Sink.
 func (s *Sink) Close() error {
 	s.closeOnce.Do(func() {
+		s.closed.Store(true) // stop accepting before the final drain
 		close(s.quit)
 		s.wg.Wait()
 	})

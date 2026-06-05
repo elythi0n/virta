@@ -195,6 +195,24 @@ func TestActivate_AppliesLoggingPolicy(t *testing.T) {
 	}
 }
 
+func TestActivate_ConcurrentIsSerialized(t *testing.T) {
+	m, mem, _, _, _ := newManager(t)
+	a := createProfile(t, mem, "a", Doc{Version: CurrentVersion, Channels: []ChannelSpec{spec("x")}})
+	b := createProfile(t, mem, "b", Doc{Version: CurrentVersion, Channels: []ChannelSpec{spec("y")}})
+
+	var wg sync.WaitGroup
+	for i := 0; i < 20; i++ {
+		wg.Add(2)
+		go func() { defer wg.Done(); _ = m.Activate(context.Background(), a.ID) }()
+		go func() { defer wg.Done(); _ = m.Activate(context.Background(), b.ID) }()
+	}
+	wg.Wait()
+	// No torn state: the active profile is one of the two, not a mix.
+	if id := m.ActiveID(); id != a.ID && id != b.ID {
+		t.Errorf("active id = %q, want one of the two profiles", id)
+	}
+}
+
 func TestActivate_UnknownProfileErrors(t *testing.T) {
 	m, _, _, _, _ := newManager(t)
 	if err := m.Activate(context.Background(), "nope"); err == nil {
