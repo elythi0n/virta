@@ -357,12 +357,20 @@ type StatsEvent struct {
 	Stats   StatsSnapshot
 }
 
+// ProfileChangedEvent announces that the active workspace profile switched, so every attached
+// frontend re-renders against the new channel set, filters, and layout.
+type ProfileChangedEvent struct {
+	ProfileID string
+	Name      string
+}
+
 func (MessageEvent) isEvent()        {}
 func (MessageDeletedEvent) isEvent() {}
 func (ChannelClearEvent) isEvent()   {}
 func (HealthEvent) isEvent()         {}
 func (ChatSettingsEvent) isEvent()   {}
 func (StatsEvent) isEvent()          {}
+func (ProfileChangedEvent) isEvent() {}
 
 // ---- The Adapter port ----
 

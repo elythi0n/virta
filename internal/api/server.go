@@ -46,6 +46,7 @@ type Server struct {
 	ring     *logRing
 	hub      *hub
 	channels Channels // join/leave controller, installed via SetChannels
+	profiles Profiles // profile controller, installed via SetProfiles
 
 	token         string
 	runtimeDir    string
@@ -94,6 +95,9 @@ func New(cfg Config) (*Server, error) {
 	mux.Handle("GET /v1/channels", s.auth(http.HandlerFunc(s.handleListChannels)))
 	mux.Handle("POST /v1/channels", s.auth(http.HandlerFunc(s.handleJoinChannel)))
 	mux.Handle("DELETE /v1/channels", s.auth(http.HandlerFunc(s.handleLeaveChannel)))
+	mux.Handle("GET /v1/profiles", s.auth(http.HandlerFunc(s.handleListProfiles)))
+	mux.Handle("POST /v1/profiles", s.auth(http.HandlerFunc(s.handleCreateProfile)))
+	mux.Handle("POST /v1/profiles/{id}/activate", s.auth(http.HandlerFunc(s.handleActivateProfile)))
 	mux.Handle("GET /dev", s.auth(http.HandlerFunc(s.handleDev)))
 
 	s.httpSrv = &http.Server{

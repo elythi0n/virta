@@ -23,6 +23,7 @@ import (
 	"github.com/elythi0n/virta/internal/platform"
 	"github.com/elythi0n/virta/internal/platform/kick"
 	"github.com/elythi0n/virta/internal/platform/twitch"
+	"github.com/elythi0n/virta/internal/profiles"
 	"github.com/elythi0n/virta/internal/secrets"
 	"github.com/elythi0n/virta/internal/secrets/filevault"
 	"github.com/elythi0n/virta/internal/secrets/keychain"
@@ -64,14 +65,15 @@ func SelectStore(cfg config.Config, clk clock.Clock, gen id.Generator) (store.St
 // Daemon is the assembled engine: storage, the secret vault, the message pipeline, and the
 // local API, wired together and ready to run. It owns the lifecycle of everything it builds.
 type Daemon struct {
-	cfg    config.Config
-	log    *slog.Logger
-	store  store.Store
-	vault  secrets.Vault
-	runner *pipeline.Runner
-	engine *engine.Engine
-	stats  *stats.Aggregator
-	api    *api.Server
+	cfg      config.Config
+	log      *slog.Logger
+	store    store.Store
+	vault    secrets.Vault
+	runner   *pipeline.Runner
+	engine   *engine.Engine
+	stats    *stats.Aggregator
+	profiles *profiles.Manager
+	api      *api.Server
 }
 
 // NewDaemon builds every component from cfg. It does not start serving; call Start.
@@ -149,9 +151,14 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 		clk,
 	)
 	eng.Register(kick.New(kick.Options{Clock: clk, Resolver: kickResolver}))
-	srv.SetChannels(channelControl{eng: eng, emotes: emoteResolver})
 
-	return &Daemon{cfg: cfg, log: log, store: st, vault: vault, runner: runner, engine: eng, stats: statsAgg, api: srv}, nil
+	// The profile manager owns the active workspace: it drives the engine and filter stage on
+	// activation and persists live channel changes. Profiles are activated at Start.
+	mgr := profiles.New(st.Profiles(), eng, filterStage, runner, clk)
+	srv.SetChannels(channelControl{eng: eng, emotes: emoteResolver, profiles: mgr})
+	srv.SetProfiles(profileControl{mgr: mgr, repo: st.Profiles()})
+
+	return &Daemon{cfg: cfg, log: log, store: st, vault: vault, runner: runner, engine: eng, stats: statsAgg, profiles: mgr, api: srv}, nil
 }
 
 // kickChatroomCache backs the Kick resolver's permanent cache with the channels table: a
@@ -214,10 +221,12 @@ func (c emoteSetCache) Put(ctx context.Context, key string, refs []platform.Emot
 }
 
 // channelControl adapts the engine to the API's join/leave controller, translating the
-// API's string boundary to platform types and back.
+// API's string boundary to platform types and back, and persisting changes to the active
+// profile so a user's channel edits survive a restart.
 type channelControl struct {
-	eng    *engine.Engine
-	emotes *emotes.Resolver
+	eng      *engine.Engine
+	emotes   *emotes.Resolver
+	profiles *profiles.Manager
 }
 
 func (c channelControl) Join(ctx context.Context, plat, slug, mode string) error {
@@ -233,6 +242,7 @@ func (c channelControl) Join(ctx context.Context, plat, slug, mode string) error
 	if err := c.eng.Join(ctx, ref, m); err != nil {
 		return err
 	}
+	_ = c.profiles.AddChannel(ctx, ref, m) // persist to the active profile
 	// Warm the channel's third-party emote set off the request path. A no-op until the
 	// platform user id is known, but wired so it lights up the moment it is.
 	go func() { _ = c.emotes.Refresh(context.Background(), ref) }()
@@ -244,7 +254,47 @@ func (c channelControl) Leave(plat, slug string) error {
 	if !ok {
 		return fmt.Errorf("%w: %q", api.ErrUnknownPlatform, plat)
 	}
-	return c.eng.Leave(platform.ChannelRef{Platform: p, Slug: slug})
+	ref := platform.ChannelRef{Platform: p, Slug: slug}
+	if err := c.eng.Leave(ref); err != nil {
+		return err
+	}
+	_ = c.profiles.RemoveChannel(context.Background(), ref)
+	return nil
+}
+
+// profileControl adapts the profile manager to the API's profile controller.
+type profileControl struct {
+	mgr  *profiles.Manager
+	repo store.ProfileRepo
+}
+
+func (c profileControl) List(ctx context.Context) ([]api.ProfileInfo, error) {
+	ps, err := c.repo.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	active := c.mgr.ActiveID()
+	out := make([]api.ProfileInfo, 0, len(ps))
+	for _, p := range ps {
+		out = append(out, api.ProfileInfo{ID: p.ID, Name: p.Name, Active: p.ID == active, Default: p.IsDefault})
+	}
+	return out, nil
+}
+
+func (c profileControl) Create(ctx context.Context, name string) (api.ProfileInfo, error) {
+	doc, err := profiles.NewDoc().Marshal()
+	if err != nil {
+		return api.ProfileInfo{}, err
+	}
+	p, err := c.repo.Create(ctx, name, doc)
+	if err != nil {
+		return api.ProfileInfo{}, err
+	}
+	return api.ProfileInfo{ID: p.ID, Name: p.Name, Default: p.IsDefault}, nil
+}
+
+func (c profileControl) Activate(ctx context.Context, id string) error {
+	return c.mgr.Activate(ctx, id)
 }
 
 func (c channelControl) List() []api.ChannelInfo {
@@ -280,6 +330,19 @@ func parsePlatform(s string) (platform.Platform, bool) {
 func (d *Daemon) Start() error {
 	d.runner.Start()
 	d.stats.Start(d.runner) // feed StatsEvents back through the pipeline
+
+	// Activate the default profile so its channels connect and its filters apply on startup.
+	ctx := context.Background()
+	def, err := d.profiles.EnsureDefault(ctx)
+	if err != nil {
+		_ = d.runner.Close()
+		return fmt.Errorf("ensure default profile: %w", err)
+	}
+	if err := d.profiles.Activate(ctx, def.ID); err != nil {
+		_ = d.runner.Close()
+		return fmt.Errorf("activate default profile: %w", err)
+	}
+
 	if err := d.api.Start(); err != nil {
 		_ = d.runner.Close()
 		return err
