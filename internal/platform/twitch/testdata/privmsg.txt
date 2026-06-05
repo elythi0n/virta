@@ -1,0 +1,16 @@
+# Recorded-shape Twitch PRIVMSG lines for normalization golden tests. One raw IRC line per
+# line; blank lines and lines starting with '#' are ignored. Covers plain text, single and
+# multi emotes, multi-range emotes, unicode (rune-indexed emotes), emote-only, /me actions,
+# replies, badges/colors, bits, mentions, and links.
+@badge-info=;badges=;color=;display-name=alice;emotes=;first-msg=0;id=1a;mod=0;subscriber=0;tmi-sent-ts=1717500000000;user-id=101;turbo=0 :alice!alice@alice.tmi.twitch.tv PRIVMSG #forsen :hello world
+@badges=broadcaster/1;color=#FF0000;display-name=Forsen;emotes=25:6-10;id=2b;mod=0;subscriber=0;tmi-sent-ts=1717500001000;user-id=102 :forsen!forsen@forsen.tmi.twitch.tv PRIVMSG #forsen :hello Kappa there
+@badges=subscriber/12;color=#00FF7F;display-name=Bob;emotes=25:0-4,12-16/1902:6-10;id=3c;tmi-sent-ts=1717500002000;user-id=103 :bob!bob@bob.tmi.twitch.tv PRIVMSG #forsen :Kappa Keepo Kappa
+@badges=;color=#1E90FF;display-name=Ünïcödé;emotes=25:3-7;id=4d;tmi-sent-ts=1717500003000;user-id=104 :uni!uni@uni.tmi.twitch.tv PRIVMSG #forsen :héy Kappa ok
+@badges=;color=;display-name=onlyemote;emotes=1902:0-4;id=5e;tmi-sent-ts=1717500004000;user-id=105 :onlyemote!o@o.tmi.twitch.tv PRIVMSG #forsen :Keepo
+@badges=moderator/1;color=#8A2BE2;display-name=Mod;emotes=;id=6f;mod=1;tmi-sent-ts=1717500005000;user-id=106 :mod!mod@mod.tmi.twitch.tv PRIVMSG #forsen :ACTION waves at chat
+@badges=;color=;display-name=Replyer;emotes=;id=7g;reply-parent-msg-id=1a;reply-parent-user-login=alice;reply-parent-msg-body=hello\sworld;tmi-sent-ts=1717500006000;user-id=107 :replyer!r@r.tmi.twitch.tv PRIVMSG #forsen :@alice yes hi
+@badges=vip/1,subscriber/6;color=#FF69B4;display-name=Linker;emotes=;id=8h;tmi-sent-ts=1717500007000;user-id=108 :linker!l@l.tmi.twitch.tv PRIVMSG #forsen :check https://example.com/clip cool @forsen
+@badges=;bits=100;color=;display-name=Cheerer;emotes=;id=9i;tmi-sent-ts=1717500008000;user-id=109 :cheerer!c@c.tmi.twitch.tv PRIVMSG #forsen :Cheer100 nice play
+@badges=;color=;display-name=Longmsg;emotes=;id=10j;tmi-sent-ts=1717500009000;user-id=110 :longmsg!lm@lm.tmi.twitch.tv PRIVMSG #forsen :this is a fairly long message that goes on for a while to make sure we handle longer content without trouble and keep it as a single text run
+@badges=;color=;display-name=Edges;emotes=25:0-4;id=11k;tmi-sent-ts=1717500010000;user-id=111 :edges!e@e.tmi.twitch.tv PRIVMSG #forsen :Kappa
+@badges=;color=;display-name=MentionMid;emotes=;id=12l;tmi-sent-ts=1717500011000;user-id=112 :mm!mm@mm.tmi.twitch.tv PRIVMSG #forsen :thanks @carol! and @dave_99 for the help

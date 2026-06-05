@@ -1,0 +1,448 @@
+[
+  {
+    "id": "",
+    "platform_message_id": "1a",
+    "platform": "twitch",
+    "channel": {
+      "platform": "twitch",
+      "id": "",
+      "slug": "forsen"
+    },
+    "type": "chat",
+    "author": {
+      "id": "101",
+      "login": "alice",
+      "display_name": "alice",
+      "color": ""
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "hello world"
+      }
+    ],
+    "sent_at": "2024-06-04T11:20:00Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "2b",
+    "platform": "twitch",
+    "channel": {
+      "platform": "twitch",
+      "id": "",
+      "slug": "forsen"
+    },
+    "type": "chat",
+    "author": {
+      "id": "102",
+      "login": "forsen",
+      "display_name": "Forsen",
+      "color": "#FF0000",
+      "badges": [
+        {
+          "set": "broadcaster",
+          "version": "1"
+        }
+      ]
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "hello "
+      },
+      {
+        "kind": "emote",
+        "text": "Kappa",
+        "emote": {
+          "provider": "twitch",
+          "id": "25",
+          "name": "Kappa",
+          "url_template": "https://static-cdn.jtvnw.net/emoticons/v2/25/default/dark/{size}",
+          "animated": false
+        }
+      },
+      {
+        "kind": "text",
+        "text": " there"
+      }
+    ],
+    "sent_at": "2024-06-04T11:20:01Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "3c",
+    "platform": "twitch",
+    "channel": {
+      "platform": "twitch",
+      "id": "",
+      "slug": "forsen"
+    },
+    "type": "chat",
+    "author": {
+      "id": "103",
+      "login": "bob",
+      "display_name": "Bob",
+      "color": "#00FF7F",
+      "badges": [
+        {
+          "set": "subscriber",
+          "version": "12"
+        }
+      ]
+    },
+    "segments": [
+      {
+        "kind": "emote",
+        "text": "Kappa",
+        "emote": {
+          "provider": "twitch",
+          "id": "25",
+          "name": "Kappa",
+          "url_template": "https://static-cdn.jtvnw.net/emoticons/v2/25/default/dark/{size}",
+          "animated": false
+        }
+      },
+      {
+        "kind": "text",
+        "text": " "
+      },
+      {
+        "kind": "emote",
+        "text": "Keepo",
+        "emote": {
+          "provider": "twitch",
+          "id": "1902",
+          "name": "Keepo",
+          "url_template": "https://static-cdn.jtvnw.net/emoticons/v2/1902/default/dark/{size}",
+          "animated": false
+        }
+      },
+      {
+        "kind": "text",
+        "text": " "
+      },
+      {
+        "kind": "emote",
+        "text": "Kappa",
+        "emote": {
+          "provider": "twitch",
+          "id": "25",
+          "name": "Kappa",
+          "url_template": "https://static-cdn.jtvnw.net/emoticons/v2/25/default/dark/{size}",
+          "animated": false
+        }
+      }
+    ],
+    "sent_at": "2024-06-04T11:20:02Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "4d",
+    "platform": "twitch",
+    "channel": {
+      "platform": "twitch",
+      "id": "",
+      "slug": "forsen"
+    },
+    "type": "chat",
+    "author": {
+      "id": "104",
+      "login": "uni",
+      "display_name": "Ünïcödé",
+      "color": "#1E90FF"
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "héy"
+      },
+      {
+        "kind": "emote",
+        "text": " Kapp",
+        "emote": {
+          "provider": "twitch",
+          "id": "25",
+          "name": " Kapp",
+          "url_template": "https://static-cdn.jtvnw.net/emoticons/v2/25/default/dark/{size}",
+          "animated": false
+        }
+      },
+      {
+        "kind": "text",
+        "text": "a ok"
+      }
+    ],
+    "sent_at": "2024-06-04T11:20:03Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "5e",
+    "platform": "twitch",
+    "channel": {
+      "platform": "twitch",
+      "id": "",
+      "slug": "forsen"
+    },
+    "type": "chat",
+    "author": {
+      "id": "105",
+      "login": "onlyemote",
+      "display_name": "onlyemote",
+      "color": ""
+    },
+    "segments": [
+      {
+        "kind": "emote",
+        "text": "Keepo",
+        "emote": {
+          "provider": "twitch",
+          "id": "1902",
+          "name": "Keepo",
+          "url_template": "https://static-cdn.jtvnw.net/emoticons/v2/1902/default/dark/{size}",
+          "animated": false
+        }
+      }
+    ],
+    "sent_at": "2024-06-04T11:20:04Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "6f",
+    "platform": "twitch",
+    "channel": {
+      "platform": "twitch",
+      "id": "",
+      "slug": "forsen"
+    },
+    "type": "chat",
+    "author": {
+      "id": "106",
+      "login": "mod",
+      "display_name": "Mod",
+      "color": "#8A2BE2",
+      "badges": [
+        {
+          "set": "moderator",
+          "version": "1"
+        }
+      ]
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "ACTION waves at chat"
+      }
+    ],
+    "sent_at": "2024-06-04T11:20:05Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "7g",
+    "platform": "twitch",
+    "channel": {
+      "platform": "twitch",
+      "id": "",
+      "slug": "forsen"
+    },
+    "type": "chat",
+    "author": {
+      "id": "107",
+      "login": "replyer",
+      "display_name": "Replyer",
+      "color": ""
+    },
+    "segments": [
+      {
+        "kind": "mention",
+        "text": "@alice"
+      },
+      {
+        "kind": "text",
+        "text": " yes hi"
+      }
+    ],
+    "reply_to": {
+      "platform_message_id": "1a",
+      "author_login": "alice",
+      "text_snippet": "hello world"
+    },
+    "sent_at": "2024-06-04T11:20:06Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "8h",
+    "platform": "twitch",
+    "channel": {
+      "platform": "twitch",
+      "id": "",
+      "slug": "forsen"
+    },
+    "type": "chat",
+    "author": {
+      "id": "108",
+      "login": "linker",
+      "display_name": "Linker",
+      "color": "#FF69B4",
+      "badges": [
+        {
+          "set": "vip",
+          "version": "1"
+        },
+        {
+          "set": "subscriber",
+          "version": "6"
+        }
+      ]
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "check "
+      },
+      {
+        "kind": "link",
+        "text": "https://example.com/clip"
+      },
+      {
+        "kind": "text",
+        "text": " cool "
+      },
+      {
+        "kind": "mention",
+        "text": "@forsen"
+      }
+    ],
+    "sent_at": "2024-06-04T11:20:07Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "9i",
+    "platform": "twitch",
+    "channel": {
+      "platform": "twitch",
+      "id": "",
+      "slug": "forsen"
+    },
+    "type": "chat",
+    "author": {
+      "id": "109",
+      "login": "cheerer",
+      "display_name": "Cheerer",
+      "color": ""
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "Cheer100 nice play"
+      }
+    ],
+    "sent_at": "2024-06-04T11:20:08Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "10j",
+    "platform": "twitch",
+    "channel": {
+      "platform": "twitch",
+      "id": "",
+      "slug": "forsen"
+    },
+    "type": "chat",
+    "author": {
+      "id": "110",
+      "login": "longmsg",
+      "display_name": "Longmsg",
+      "color": ""
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "this is a fairly long message that goes on for a while to make sure we handle longer content without trouble and keep it as a single text run"
+      }
+    ],
+    "sent_at": "2024-06-04T11:20:09Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "11k",
+    "platform": "twitch",
+    "channel": {
+      "platform": "twitch",
+      "id": "",
+      "slug": "forsen"
+    },
+    "type": "chat",
+    "author": {
+      "id": "111",
+      "login": "edges",
+      "display_name": "Edges",
+      "color": ""
+    },
+    "segments": [
+      {
+        "kind": "emote",
+        "text": "Kappa",
+        "emote": {
+          "provider": "twitch",
+          "id": "25",
+          "name": "Kappa",
+          "url_template": "https://static-cdn.jtvnw.net/emoticons/v2/25/default/dark/{size}",
+          "animated": false
+        }
+      }
+    ],
+    "sent_at": "2024-06-04T11:20:10Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "12l",
+    "platform": "twitch",
+    "channel": {
+      "platform": "twitch",
+      "id": "",
+      "slug": "forsen"
+    },
+    "type": "chat",
+    "author": {
+      "id": "112",
+      "login": "mm",
+      "display_name": "MentionMid",
+      "color": ""
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "thanks "
+      },
+      {
+        "kind": "mention",
+        "text": "@carol"
+      },
+      {
+        "kind": "text",
+        "text": "! and "
+      },
+      {
+        "kind": "mention",
+        "text": "@dave_99"
+      },
+      {
+        "kind": "text",
+        "text": " for the help"
+      }
+    ],
+    "sent_at": "2024-06-04T11:20:11Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  }
+]
