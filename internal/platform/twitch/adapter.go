@@ -2,6 +2,10 @@
 // over Twitch's IRC interface (anonymously, with no account, using a justinfan nick) and
 // normalizes each message into a UnifiedMessage. Sending and moderation require an
 // authenticated connection and arrive later; an anonymous adapter is read-only.
+//
+// Channels are spread across several IRC connections (shards) to stay under a
+// per-connection channel cap, and each shard reconnects itself on an unexpected drop —
+// rejoining its channels — so the merged feed survives socket churn with only a health blip.
 package twitch
 
 import (
@@ -9,7 +13,9 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/elythi0n/virta/internal/clock"
 	"github.com/elythi0n/virta/internal/platform"
 )
 
@@ -20,6 +26,14 @@ const defaultNick = "justinfan12345"
 // capabilities requested on connect: message tags (badges, color, emotes, ids), Twitch
 // commands (USERNOTICE, CLEARCHAT, …), and membership (JOIN/PART).
 const capRequest = "CAP REQ :twitch.tv/tags twitch.tv/commands twitch.tv/membership"
+
+// Connection-sharding and reconnect defaults. The channel cap keeps any one socket well
+// within Twitch's join limits with headroom; the backoff bounds reconnect storms.
+const (
+	defaultChannelsPerConn = 20
+	defaultBackoffBase     = 500 * time.Millisecond
+	defaultBackoffMax      = 30 * time.Second
+)
 
 // transport is a line-oriented connection to Twitch IRC. The real implementation runs over
 // a WebSocket; tests inject a fake so the adapter's handshake and read loop are exercised
@@ -34,30 +48,34 @@ type transport interface {
 // a fake in tests.
 type DialFunc func(ctx context.Context) (transport, error)
 
-// Options configure an anonymous Twitch adapter.
+// Options configure an anonymous Twitch adapter. Zero values select sensible defaults.
 type Options struct {
-	Nick string   // anonymous login; defaults to a justinfan nick
-	Dial DialFunc // transport opener; defaults to the WebSocket dialer
+	Nick            string        // anonymous login; defaults to a justinfan nick
+	Dial            DialFunc      // transport opener; defaults to the WebSocket dialer
+	Clock           clock.Clock   // time source for reconnect jitter; defaults to the system clock
+	ChannelsPerConn int           // max channels per connection before a new shard opens
+	BackoffBase     time.Duration // first reconnect delay
+	BackoffMax      time.Duration // reconnect delay ceiling
 }
 
-// Adapter is an anonymous, read-only Twitch chat adapter. One connection serves all joined
-// channels (connection sharding for very large channel counts comes later).
+// Adapter is an anonymous, read-only Twitch chat adapter. It distributes joined channels
+// across one or more self-healing connection shards.
 type Adapter struct {
-	nick string
-	dial DialFunc
+	nick    string
+	dial    DialFunc
+	clk     clock.Clock
+	backoff backoff
+	perConn int
 
 	events chan platform.Event
 
-	mu      sync.Mutex
-	joined  map[string]struct{} // channel slugs
-	conn    transport
-	started bool
-	health  platform.HealthStatus
+	mu     sync.Mutex
+	shards []*shard
+	health platform.HealthStatus // floor for initial-connect failures (no shard retained)
+	closed bool
 
 	ctx    context.Context
 	cancel context.CancelFunc
-	wg     sync.WaitGroup
-	closed bool
 }
 
 // New creates an anonymous Twitch adapter. It does not connect until the first Join.
@@ -70,15 +88,32 @@ func New(opts Options) *Adapter {
 	if dial == nil {
 		dial = dialWebSocket
 	}
+	clk := opts.Clock
+	if clk == nil {
+		clk = clock.System{}
+	}
+	perConn := opts.ChannelsPerConn
+	if perConn <= 0 {
+		perConn = defaultChannelsPerConn
+	}
+	bo := backoff{base: opts.BackoffBase, max: opts.BackoffMax}
+	if bo.base <= 0 {
+		bo.base = defaultBackoffBase
+	}
+	if bo.max <= 0 {
+		bo.max = defaultBackoffMax
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Adapter{
-		nick:   nick,
-		dial:   dial,
-		events: make(chan platform.Event, 256),
-		joined: map[string]struct{}{},
-		health: platform.HealthStatus{State: platform.HealthOK},
-		ctx:    ctx,
-		cancel: cancel,
+		nick:    nick,
+		dial:    dial,
+		clk:     clk,
+		backoff: bo,
+		perConn: perConn,
+		events:  make(chan platform.Event, 256),
+		health:  platform.HealthStatus{State: platform.HealthOK},
+		ctx:     ctx,
+		cancel:  cancel,
 	}
 }
 
@@ -91,40 +126,56 @@ func (a *Adapter) Capabilities() platform.Capabilities {
 	}
 }
 
-// Join connects (on first call) and joins the channel. Anonymous mode is the only mode this
-// adapter supports today.
+// Join routes the channel to a shard with spare capacity, opening a new connection when all
+// existing shards are full. Anonymous mode is the only mode this adapter supports today.
 func (a *Adapter) Join(ctx context.Context, ch platform.ChannelRef, _ platform.ConnMode) error {
+	slug := strings.ToLower(ch.Slug)
 	a.mu.Lock()
-	defer a.mu.Unlock()
 	if a.closed {
+		a.mu.Unlock()
 		return fmt.Errorf("twitch: adapter closed")
 	}
-	if !a.started {
-		if err := a.connectLocked(ctx); err != nil {
-			return err
+	for _, sh := range a.shards {
+		if sh.has(slug) {
+			a.mu.Unlock()
+			return nil
 		}
 	}
-	slug := strings.ToLower(ch.Slug)
-	if _, ok := a.joined[slug]; ok {
-		return nil
+	var sh *shard
+	for _, candidate := range a.shards {
+		if candidate.count() < a.perConn {
+			sh = candidate
+			break
+		}
 	}
-	if err := a.conn.WriteLine(ctx, "JOIN #"+slug); err != nil {
-		return fmt.Errorf("twitch: join %s: %w", slug, err)
+	if sh == nil {
+		sh = newShard(a.ctx, a.nick, a.dial, a.clk, a.backoff, a.emit)
+		if err := sh.start(ctx); err != nil {
+			a.health = platform.HealthStatus{State: platform.HealthDown, Reason: platform.ReasonUpstreamDown, Detail: err.Error()}
+			a.mu.Unlock()
+			return err
+		}
+		a.health = platform.HealthStatus{State: platform.HealthOK}
+		a.shards = append(a.shards, sh)
 	}
-	a.joined[slug] = struct{}{}
-	return nil
+	a.mu.Unlock()
+	return sh.join(ctx, slug)
 }
 
+// Leave parts the channel from whichever shard holds it.
 func (a *Adapter) Leave(ch platform.ChannelRef) error {
-	a.mu.Lock()
-	defer a.mu.Unlock()
 	slug := strings.ToLower(ch.Slug)
-	if _, ok := a.joined[slug]; !ok {
-		return nil
+	a.mu.Lock()
+	var sh *shard
+	for _, candidate := range a.shards {
+		if candidate.has(slug) {
+			sh = candidate
+			break
+		}
 	}
-	delete(a.joined, slug)
-	if a.conn != nil {
-		_ = a.conn.WriteLine(a.ctx, "PART #"+slug)
+	a.mu.Unlock()
+	if sh != nil {
+		sh.leave(slug)
 	}
 	return nil
 }
@@ -140,13 +191,36 @@ func (a *Adapter) Moderate(context.Context, platform.ModAction) error {
 
 func (a *Adapter) Events() <-chan platform.Event { return a.events }
 
+// Health reports the worst state across all shards (so any one connection reconnecting or
+// down is visible adapter-wide), falling back to the initial-connect floor when there are
+// no shards yet.
 func (a *Adapter) Health() platform.HealthStatus {
 	a.mu.Lock()
-	defer a.mu.Unlock()
-	return a.health
+	shards := append([]*shard(nil), a.shards...)
+	worst := a.health
+	a.mu.Unlock()
+	for _, sh := range shards {
+		if h := sh.healthStatus(); healthRank(h.State) > healthRank(worst.State) {
+			worst = h
+		}
+	}
+	return worst
 }
 
-// Close shuts the adapter down and closes Events.
+func healthRank(s platform.HealthState) int {
+	switch s {
+	case platform.HealthDown:
+		return 2
+	case platform.HealthDegraded:
+		return 1
+	default:
+		return 0
+	}
+}
+
+// Close shuts the adapter down and closes Events. Cancelling the context first unblocks any
+// shard goroutine waiting to emit, so waiting on the shards can't deadlock against the
+// event channel.
 func (a *Adapter) Close() error {
 	a.mu.Lock()
 	if a.closed {
@@ -154,81 +228,15 @@ func (a *Adapter) Close() error {
 		return nil
 	}
 	a.closed = true
-	conn := a.conn
-	started := a.started
+	shards := append([]*shard(nil), a.shards...)
 	a.mu.Unlock()
 
 	a.cancel()
-	if conn != nil {
-		_ = conn.Close()
-	}
-	if started {
-		a.wg.Wait() // let the read loop finish before closing the channel it sends on
+	for _, sh := range shards {
+		sh.close()
 	}
 	close(a.events)
 	return nil
-}
-
-// connectLocked dials, performs the anonymous handshake, and starts the read loop. Caller
-// holds a.mu.
-func (a *Adapter) connectLocked(ctx context.Context) error {
-	conn, err := a.dial(ctx)
-	if err != nil {
-		a.setHealthLocked(platform.HealthStatus{State: platform.HealthDown, Reason: platform.ReasonUpstreamDown, Detail: err.Error()})
-		return fmt.Errorf("twitch: dial: %w", err)
-	}
-	// Anonymous handshake: request capabilities, then log in with the justinfan nick.
-	for _, line := range []string{capRequest, "NICK " + a.nick} {
-		if err := conn.WriteLine(ctx, line); err != nil {
-			_ = conn.Close()
-			return fmt.Errorf("twitch: handshake: %w", err)
-		}
-	}
-	a.conn = conn
-	a.started = true
-	a.setHealthLocked(platform.HealthStatus{State: platform.HealthOK})
-	a.wg.Add(1)
-	go a.readLoop(conn)
-	return nil
-}
-
-// readLoop reads lines until the connection closes or the adapter is shut down, normalizing
-// PRIVMSGs into events and answering PINGs to keep the connection alive.
-func (a *Adapter) readLoop(conn transport) {
-	defer a.wg.Done()
-	for {
-		line, err := conn.ReadLine(a.ctx)
-		if err != nil {
-			a.onDisconnect(err)
-			return
-		}
-		msg, ok := parseLine(line)
-		if !ok {
-			continue
-		}
-		// PING needs a reply rather than an event, so handle it directly; everything else
-		// that maps to an event is emitted.
-		if msg.command == "PING" {
-			_ = conn.WriteLine(a.ctx, "PONG :"+msg.trailing())
-			continue
-		}
-		if ev, ok := eventFromLine(msg); ok {
-			a.emit(ev)
-		}
-	}
-}
-
-// onDisconnect records a degraded state and emits a health event. Reconnection is added
-// separately; for now a dropped connection simply surfaces as down.
-func (a *Adapter) onDisconnect(err error) {
-	a.mu.Lock()
-	closed := a.closed
-	a.mu.Unlock()
-	if closed {
-		return // expected: we're shutting down
-	}
-	a.setHealth(platform.HealthStatus{State: platform.HealthDown, Reason: platform.ReasonUpstreamDown, Detail: err.Error()})
-	a.emit(platform.HealthEvent{Status: platform.HealthStatus{State: platform.HealthDown, Reason: platform.ReasonUpstreamDown}})
 }
 
 // emit sends an event unless the adapter is shutting down (avoids sending on a closed
@@ -239,13 +247,5 @@ func (a *Adapter) emit(ev platform.Event) {
 	case a.events <- ev:
 	}
 }
-
-func (a *Adapter) setHealth(h platform.HealthStatus) {
-	a.mu.Lock()
-	a.health = h
-	a.mu.Unlock()
-}
-
-func (a *Adapter) setHealthLocked(h platform.HealthStatus) { a.health = h }
 
 var _ platform.Adapter = (*Adapter)(nil)
