@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/elythi0n/virta/internal/clock"
 	"github.com/elythi0n/virta/internal/platform"
 )
 
@@ -23,7 +22,6 @@ const downAfterAttempts = 5
 type shard struct {
 	nick    string
 	dial    DialFunc
-	clk     clock.Clock
 	backoff backoff
 	emit    func(platform.Event) // adapter's event sink; safe to call after shutdown (drops)
 
@@ -32,25 +30,37 @@ type shard struct {
 	conn     transport
 	health   platform.HealthStatus
 	closed   bool
+	rng      uint64 // backoff-jitter generator state; only touched by the supervisor goroutine
 
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
 }
 
-func newShard(parent context.Context, nick string, dial DialFunc, clk clock.Clock, bo backoff, emit func(platform.Event)) *shard {
+func newShard(parent context.Context, nick string, dial DialFunc, bo backoff, emit func(platform.Event), seed uint64) *shard {
 	ctx, cancel := context.WithCancel(parent)
 	return &shard{
 		nick:     nick,
 		dial:     dial,
-		clk:      clk,
 		backoff:  bo,
 		emit:     emit,
 		channels: map[string]struct{}{},
 		health:   platform.HealthStatus{State: platform.HealthOK},
+		rng:      seed,
 		ctx:      ctx,
 		cancel:   cancel,
 	}
+}
+
+// nextRand advances the shard's splitmix64 generator. Each shard is seeded distinctly, so a
+// fleet dropped together draws independent backoff jitter without a shared/global RNG (which
+// the determinism rules forbid here). Only the supervisor goroutine calls this.
+func (s *shard) nextRand() uint64 {
+	s.rng += 0x9e3779b97f4a7c15
+	z := s.rng
+	z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9
+	z = (z ^ (z >> 27)) * 0x94d049bb133111eb
+	return z ^ (z >> 31)
 }
 
 // start performs the initial, synchronous connect so a caller's first Join surfaces a dial
@@ -87,8 +97,12 @@ func (s *shard) connect(ctx context.Context) (transport, error) {
 }
 
 // join records the channel and, if currently connected, sends JOIN immediately. The slug is
-// kept in the set regardless, so a reconnect replays it even if this write fails.
-func (s *shard) join(ctx context.Context, slug string) error {
+// kept in the set as the source of truth, so a reconnect replays it. A failed write is not an
+// error: the membership is recorded and a (re)connect will (re)join it — duplicate JOINs are
+// harmless on Twitch. Recording the slug and reading conn happen in one critical section that
+// pairs with reconnect's publish step, so a slug added mid-reconnect is never silently lost
+// (it is either replayed by reconnect or written here against the freshly published conn).
+func (s *shard) join(_ context.Context, slug string) error {
 	s.mu.Lock()
 	if s.closed {
 		s.mu.Unlock()
@@ -102,9 +116,7 @@ func (s *shard) join(ctx context.Context, slug string) error {
 	conn := s.conn
 	s.mu.Unlock()
 	if conn != nil {
-		if err := conn.WriteLine(ctx, "JOIN #"+slug); err != nil {
-			return fmt.Errorf("twitch: join %s: %w", slug, err)
-		}
+		_ = conn.WriteLine(s.ctx, "JOIN #"+slug)
 	}
 	return nil
 }
@@ -202,33 +214,40 @@ func (s *shard) reconnect() (transport, bool) {
 		} else {
 			s.setHealth(platform.HealthStatus{State: platform.HealthDegraded, Reason: platform.ReasonReconnecting}, true)
 		}
-		if !s.sleep(s.backoff.delay(attempt, s.clk)) {
+		if !s.sleep(s.backoff.delay(attempt, s.nextRand())) {
 			return nil, false
 		}
 		conn, err := s.connect(s.ctx)
 		if err != nil {
 			continue
 		}
-		if err := s.rejoin(conn); err != nil {
+		// Publish the connection and snapshot the channel set in one critical section: a
+		// join() racing this either lands before (its slug is in the snapshot, replayed
+		// below) or after (it sees the published conn and writes its own JOIN). Either way
+		// the channel is joined; the worst case is a duplicate JOIN, which Twitch ignores.
+		s.mu.Lock()
+		s.conn = conn
+		slugs := make([]string, 0, len(s.channels))
+		for slug := range s.channels {
+			slugs = append(slugs, slug)
+		}
+		s.mu.Unlock()
+		if err := s.writeJoins(conn, slugs); err != nil {
+			s.mu.Lock()
+			if s.conn == conn {
+				s.conn = nil
+			}
+			s.mu.Unlock()
 			_ = conn.Close()
 			continue
 		}
-		s.mu.Lock()
-		s.conn = conn
-		s.mu.Unlock()
 		s.setHealth(platform.HealthStatus{State: platform.HealthOK}, true)
 		return conn, true
 	}
 }
 
-// rejoin replays JOIN for every channel currently in the set onto a fresh connection.
-func (s *shard) rejoin(conn transport) error {
-	s.mu.Lock()
-	slugs := make([]string, 0, len(s.channels))
-	for slug := range s.channels {
-		slugs = append(slugs, slug)
-	}
-	s.mu.Unlock()
+// writeJoins replays JOIN for each slug onto a fresh connection.
+func (s *shard) writeJoins(conn transport, slugs []string) error {
 	for _, slug := range slugs {
 		if err := conn.WriteLine(s.ctx, "JOIN #"+slug); err != nil {
 			return err

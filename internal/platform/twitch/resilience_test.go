@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elythi0n/virta/internal/clock"
 	"github.com/elythi0n/virta/internal/platform"
 )
 
@@ -214,11 +213,10 @@ func TestAdapter_ShardsAcrossConnections(t *testing.T) {
 }
 
 func TestBackoff_GrowsCapsAndJitters(t *testing.T) {
-	clk := clock.NewFake(time.Unix(0, 0))
 	b := backoff{base: 100 * time.Millisecond, max: time.Second}
 
-	// At a clock instant with zero nanosecond remainder, delay is exactly half the
-	// (capped, exponential) interval — the fixed floor of equal jitter.
+	// With rnd = 0 the jitter is zero, so delay is exactly half the (capped, exponential)
+	// interval — the fixed floor of equal jitter.
 	for _, tc := range []struct {
 		attempt int
 		want    time.Duration
@@ -228,14 +226,17 @@ func TestBackoff_GrowsCapsAndJitters(t *testing.T) {
 		{3, 200 * time.Millisecond}, // base*4/2
 		{8, 500 * time.Millisecond}, // capped at max/2
 	} {
-		if got := b.delay(tc.attempt, clk); got != tc.want {
-			t.Errorf("delay(attempt=%d) = %v, want %v", tc.attempt, got, tc.want)
+		if got := b.delay(tc.attempt, 0); got != tc.want {
+			t.Errorf("delay(attempt=%d, rnd=0) = %v, want %v", tc.attempt, got, tc.want)
 		}
 	}
 
-	// A non-zero nanosecond remainder adds jitter on top of the fixed half, bounded by it.
-	clk.Set(time.Unix(0, 500)) // remainder 500/1000 → +half/2
-	if got := b.delay(1, clk); got != 50*time.Millisecond+25*time.Millisecond {
+	// rnd adds jitter on top of the fixed half, bounded by half.
+	if got := b.delay(1, 25*uint64(time.Millisecond)); got != 75*time.Millisecond {
 		t.Errorf("jittered delay = %v, want 75ms", got)
+	}
+	// The jitter never exceeds half, so the delay never exceeds the full interval.
+	if got := b.delay(1, ^uint64(0)); got > 100*time.Millisecond {
+		t.Errorf("delay with max rnd = %v, want <= 100ms (full interval)", got)
 	}
 }

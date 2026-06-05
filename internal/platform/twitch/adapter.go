@@ -69,10 +69,11 @@ type Adapter struct {
 
 	events chan platform.Event
 
-	mu     sync.Mutex
-	shards []*shard
-	health platform.HealthStatus // floor for initial-connect failures (no shard retained)
-	closed bool
+	mu       sync.Mutex
+	shards   []*shard
+	shardSeq uint64                // distinct per-shard jitter seed source
+	health   platform.HealthStatus // floor for initial-connect failures (no shard retained)
+	closed   bool
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -149,7 +150,11 @@ func (a *Adapter) Join(ctx context.Context, ch platform.ChannelRef, _ platform.C
 		}
 	}
 	if sh == nil {
-		sh = newShard(a.ctx, a.nick, a.dial, a.clk, a.backoff, a.emit)
+		// Seed each shard distinctly (counter mixed with the clock) so a fleet dropped
+		// together draws independent reconnect jitter.
+		a.shardSeq++
+		seed := uint64(a.clk.Now().UnixNano()) ^ (a.shardSeq * 0x9e3779b97f4a7c15)
+		sh = newShard(a.ctx, a.nick, a.dial, a.backoff, a.emit, seed)
 		if err := sh.start(ctx); err != nil {
 			a.health = platform.HealthStatus{State: platform.HealthDown, Reason: platform.ReasonUpstreamDown, Detail: err.Error()}
 			a.mu.Unlock()

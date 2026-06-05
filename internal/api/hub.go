@@ -75,14 +75,17 @@ func (h *hub) Consume(_ context.Context, ev platform.Event) error {
 	if we.Type == "" {
 		return nil // event type we don't forward
 	}
-	h.mu.Lock()
-	defer h.mu.Unlock()
+	// The pipeline drives one sink with a single worker goroutine, so Consume is never
+	// concurrent with itself — seq and the JSON encode need no lock, keeping the expensive
+	// marshal off the critical section that the client set and replay ring share.
 	h.seq++
 	we.Seq = h.seq
 	b, err := json.Marshal(we)
 	if err != nil {
 		return err
 	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	h.record(h.seq, key, broadcastAll, b)
 	for c := range h.clients {
 		if !broadcastAll && !c.wants(key) {
