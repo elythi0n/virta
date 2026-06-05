@@ -19,6 +19,10 @@ import (
 // across busy channels while keeping memory flat.
 const defaultIDMapCap = 8192
 
+// seenCapPerChannel bounds the first-time-chatter set per channel. Beyond it we stop claiming
+// first-time (rather than over-claim) — far above any real channel's distinct chatters.
+const seenCapPerChannel = 100_000
+
 // Submitter is the pipeline entry point the engine feeds. *pipeline.Runner satisfies it.
 type Submitter interface {
 	Submit(ev platform.Event)
@@ -33,6 +37,7 @@ type Engine struct {
 	mu       sync.Mutex
 	adapters map[platform.Platform]platform.Adapter
 	joined   map[string]platform.ChannelRef // channelKey → ref, for listing
+	seen     map[string]map[string]struct{} // channelKey → author ids seen this session
 	closed   bool
 
 	wg sync.WaitGroup // adapter event forwarders
@@ -46,6 +51,7 @@ func New(out Submitter, gen id.Generator) *Engine {
 		ids:      newIDMap(defaultIDMapCap),
 		adapters: map[platform.Platform]platform.Adapter{},
 		joined:   map[string]platform.ChannelRef{},
+		seen:     map[string]map[string]struct{}{},
 	}
 }
 
@@ -79,6 +85,7 @@ func (e *Engine) ingest(ev platform.Event) {
 		if t.Message.PlatformMessageID != "" {
 			e.ids.put(idKey(t.Message.Channel, t.Message.PlatformMessageID), t.Message.ID)
 		}
+		e.markFirstTime(&t.Message)
 		e.out.Submit(t)
 	case platform.MessageDeletedEvent:
 		if t.PlatformMessageID != "" {
@@ -87,6 +94,41 @@ func (e *Engine) ingest(ev platform.Event) {
 		e.out.Submit(t)
 	default:
 		e.out.Submit(ev)
+	}
+}
+
+// markFirstTime flags a chatter's first message of the session. An adapter that already set the
+// flag from an authoritative platform tag (e.g. Twitch's first-msg) wins; otherwise we mark the
+// first time we've seen this author in the channel. Bounded per channel.
+func (e *Engine) markFirstTime(m *platform.UnifiedMessage) {
+	if m.Type != platform.TypeChat {
+		return
+	}
+	if m.Annotations != nil && m.Annotations.FirstTime {
+		return
+	}
+	author := m.Author.ID
+	if author == "" {
+		author = m.Author.Login
+	}
+	if author == "" {
+		return
+	}
+	key := channelKey(m.Channel)
+	e.mu.Lock()
+	set := e.seen[key]
+	if set == nil {
+		set = make(map[string]struct{})
+		e.seen[key] = set
+	}
+	_, known := set[author]
+	first := !known && len(set) < seenCapPerChannel
+	if first {
+		set[author] = struct{}{}
+	}
+	e.mu.Unlock()
+	if first {
+		m.Annotate().FirstTime = true
 	}
 }
 

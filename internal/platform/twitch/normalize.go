@@ -61,6 +61,11 @@ func normalizePrivmsg(m ircMessage) platform.UnifiedMessage {
 			TextSnippet:       m.tags["reply-parent-msg-body"],
 		}
 	}
+	// Twitch's authoritative first-message flag (a viewer's first message in this broadcast);
+	// the engine's session heuristic covers platforms without such a tag.
+	if m.tags["first-msg"] == "1" {
+		msg.Annotate().FirstTime = true
+	}
 	return msg
 }
 

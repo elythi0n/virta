@@ -174,9 +174,10 @@ type UnifiedMessage struct {
 // a hidden or highlighted message is still logged and counted in stats; only frontends act on
 // them — so the feed stays consistent across every client.
 type Annotations struct {
-	Hidden    bool   `json:"hidden,omitempty"`    // matched a hide rule; frontends don't render it
-	Highlight string `json:"highlight,omitempty"` // id of the rule that highlighted it ("" = not highlighted)
-	Masked    bool   `json:"masked,omitempty"`    // profanity was masked in Segments
+	Hidden    bool   `json:"hidden,omitempty"`     // matched a hide rule; frontends don't render it
+	Highlight string `json:"highlight,omitempty"`  // id of the rule that highlighted it ("" = not highlighted)
+	Masked    bool   `json:"masked,omitempty"`     // profanity was masked in Segments
+	FirstTime bool   `json:"first_time,omitempty"` // chatter's first message (platform tag, or first seen this session)
 }
 
 // Annotate returns the message's annotations, allocating them on first use, so stages can set
@@ -335,11 +336,33 @@ type ChatSettingsEvent struct {
 	Settings ChatSettings
 }
 
+// StatsSnapshot is a channel's live activity over a rolling window. Frontends combine
+// per-channel snapshots into the cross-platform totals shown in the stats panel.
+type StatsSnapshot struct {
+	WindowSeconds  int          `json:"window_seconds"`
+	MessagesPerSec float64      `json:"messages_per_sec"`
+	UniqueChatters int          `json:"unique_chatters"`
+	TopEmotes      []EmoteCount `json:"top_emotes,omitempty"`
+}
+
+// EmoteCount is one entry in the emote leaderboard.
+type EmoteCount struct {
+	Name  string `json:"name"`
+	Count int    `json:"count"`
+}
+
+// StatsEvent reports a channel's rolling stats, emitted periodically by the stats aggregator.
+type StatsEvent struct {
+	Channel ChannelRef
+	Stats   StatsSnapshot
+}
+
 func (MessageEvent) isEvent()        {}
 func (MessageDeletedEvent) isEvent() {}
 func (ChannelClearEvent) isEvent()   {}
 func (HealthEvent) isEvent()         {}
 func (ChatSettingsEvent) isEvent()   {}
+func (StatsEvent) isEvent()          {}
 
 // ---- The Adapter port ----
 

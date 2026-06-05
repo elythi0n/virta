@@ -26,6 +26,7 @@ import (
 	"github.com/elythi0n/virta/internal/secrets"
 	"github.com/elythi0n/virta/internal/secrets/filevault"
 	"github.com/elythi0n/virta/internal/secrets/keychain"
+	"github.com/elythi0n/virta/internal/stats"
 	"github.com/elythi0n/virta/internal/store"
 	"github.com/elythi0n/virta/internal/store/sqlite"
 )
@@ -69,6 +70,7 @@ type Daemon struct {
 	vault  secrets.Vault
 	runner *pipeline.Runner
 	engine *engine.Engine
+	stats  *stats.Aggregator
 	api    *api.Server
 }
 
@@ -122,10 +124,13 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	// sinks). The filter stage starts with an empty ruleset (no surprise masking); profiles and
 	// settings populate and hot-swap it once they land.
 	filterStage := filter.NewStage(nil)
+	// The stats aggregator is a sink that tallies activity and feeds periodic StatsEvents back
+	// through the pipeline (started after the runner exists, so it has something to submit to).
+	statsAgg := stats.New(clk, 0)
 	runner := pipeline.NewRunner(pipeline.Options{
 		Clock:  clk,
 		Stages: []pipeline.Stage{filterStage, emotes.NewStage(emoteResolver)},
-		Sinks:  []pipeline.Sink{srv.Sink()},
+		Sinks:  []pipeline.Sink{srv.Sink(), statsAgg},
 		Logger: log,
 	})
 
@@ -146,7 +151,7 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	eng.Register(kick.New(kick.Options{Clock: clk, Resolver: kickResolver}))
 	srv.SetChannels(channelControl{eng: eng, emotes: emoteResolver})
 
-	return &Daemon{cfg: cfg, log: log, store: st, vault: vault, runner: runner, engine: eng, api: srv}, nil
+	return &Daemon{cfg: cfg, log: log, store: st, vault: vault, runner: runner, engine: eng, stats: statsAgg, api: srv}, nil
 }
 
 // kickChatroomCache backs the Kick resolver's permanent cache with the channels table: a
@@ -274,6 +279,7 @@ func parsePlatform(s string) (platform.Platform, bool) {
 // Start launches the pipeline and begins serving the local API.
 func (d *Daemon) Start() error {
 	d.runner.Start()
+	d.stats.Start(d.runner) // feed StatsEvents back through the pipeline
 	if err := d.api.Start(); err != nil {
 		_ = d.runner.Close()
 		return err

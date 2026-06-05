@@ -92,6 +92,17 @@ func TestNormalize_Reply(t *testing.T) {
 	}
 }
 
+func TestNormalize_FirstMsgTag(t *testing.T) {
+	m, _ := parseLine(`@first-msg=1;display-name=Newbie;id=x :n!n@n.tmi.twitch.tv PRIVMSG #forsen :hello`)
+	if um := normalizePrivmsg(m); um.Annotations == nil || !um.Annotations.FirstTime {
+		t.Errorf("first-msg=1 not annotated first-time: %+v", um.Annotations)
+	}
+	m2, _ := parseLine(`@display-name=Reg;id=y :r!r@r.tmi.twitch.tv PRIVMSG #forsen :hi`)
+	if normalizePrivmsg(m2).Annotations != nil {
+		t.Error("non-first message wrongly annotated")
+	}
+}
+
 func TestParseEmotes_MultiRange(t *testing.T) {
 	spans := parseEmotes("25:0-4,12-16/1902:6-10")
 	if len(spans) != 3 {

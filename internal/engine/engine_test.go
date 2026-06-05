@@ -175,6 +175,45 @@ func TestEngine_ChannelsListsJoinedWithHealth(t *testing.T) {
 	}
 }
 
+func chatFrom(pid, author string) platform.UnifiedMessage {
+	m := twMsg(pid, "hi")
+	m.Type = platform.TypeChat
+	m.Author = platform.Author{ID: author, Login: author}
+	return m
+}
+
+func TestEngine_FirstTimeChatter(t *testing.T) {
+	eng, out, tw := newTestEngine()
+	t.Cleanup(func() { _ = eng.Close() })
+
+	tw.EmitMessage(chatFrom("p1", "alice")) // alice's first
+	tw.EmitMessage(chatFrom("p2", "alice")) // alice again
+	evs := out.waitForCount(t, 2)
+
+	first := evs[0].(platform.MessageEvent).Message
+	if first.Annotations == nil || !first.Annotations.FirstTime {
+		t.Errorf("first message not flagged first-time: %+v", first.Annotations)
+	}
+	second := evs[1].(platform.MessageEvent).Message
+	if second.Annotations != nil && second.Annotations.FirstTime {
+		t.Error("repeat message wrongly flagged first-time")
+	}
+}
+
+func TestEngine_FirstTimeHonorsAdapterTag(t *testing.T) {
+	eng, out, tw := newTestEngine()
+	t.Cleanup(func() { _ = eng.Close() })
+
+	// A chatter the adapter authoritatively flagged (e.g. Twitch first-msg tag) stays flagged.
+	m := chatFrom("p1", "bob")
+	m.Annotate().FirstTime = true
+	tw.EmitMessage(m)
+	got := out.waitForCount(t, 1)[0].(platform.MessageEvent).Message
+	if got.Annotations == nil || !got.Annotations.FirstTime {
+		t.Error("adapter-set first-time flag was dropped")
+	}
+}
+
 func TestEngine_CloseIsIdempotent(t *testing.T) {
 	eng, _, _ := newTestEngine()
 	if err := eng.Close(); err != nil {

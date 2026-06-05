@@ -37,6 +37,7 @@ type wireEvent struct {
 	TargetUserID      string                   `json:"target_user_id,omitempty"`
 	State             *platform.HealthStatus   `json:"state,omitempty"`
 	Settings          *platform.ChatSettings   `json:"settings,omitempty"`
+	Stats             *platform.StatsSnapshot  `json:"stats,omitempty"`
 }
 
 // replayEntry is one encoded event retained in the resume ring.
@@ -251,6 +252,10 @@ func toWire(ev platform.Event) (we wireEvent, key string, broadcastAll bool) {
 		ch := e.Channel
 		s := e.Settings
 		return wireEvent{Type: "chat_settings", SchemaVersion: schemaVersion, Channel: &ch, Settings: &s}, channelKey(ch), false
+	case platform.StatsEvent:
+		ch := e.Channel
+		st := e.Stats
+		return wireEvent{Type: "stats", SchemaVersion: schemaVersion, Channel: &ch, Stats: &st}, channelKey(ch), false
 	default:
 		return wireEvent{}, "", false
 	}
