@@ -17,6 +17,7 @@ import (
 	"github.com/elythi0n/virta/internal/id"
 	"github.com/elythi0n/virta/internal/pipeline"
 	"github.com/elythi0n/virta/internal/platform"
+	"github.com/elythi0n/virta/internal/platform/kick"
 	"github.com/elythi0n/virta/internal/platform/twitch"
 	"github.com/elythi0n/virta/internal/secrets"
 	"github.com/elythi0n/virta/internal/secrets/filevault"
@@ -112,6 +113,7 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	// anonymous Twitch adapter (no credentials needed); more platforms register here later.
 	eng := engine.New(runner, gen)
 	eng.Register(twitch.New(twitch.Options{Clock: clk}))
+	eng.Register(kick.New(kick.Options{Clock: clk}))
 	srv.SetChannels(channelControl{eng: eng})
 
 	return &Daemon{cfg: cfg, log: log, store: st, vault: vault, runner: runner, engine: eng, api: srv}, nil

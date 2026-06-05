@@ -1,0 +1,466 @@
+[
+  {
+    "id": "",
+    "platform_message_id": "m-plain",
+    "platform": "kick",
+    "channel": {
+      "platform": "kick",
+      "id": "999",
+      "slug": "xqc",
+      "display_name": "xQc"
+    },
+    "type": "chat",
+    "author": {
+      "id": "101",
+      "login": "alice",
+      "display_name": "Alice",
+      "color": "#FF0000"
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "hello world"
+      }
+    ],
+    "sent_at": "2024-06-05T15:06:44Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "m-emote",
+    "platform": "kick",
+    "channel": {
+      "platform": "kick",
+      "id": "999",
+      "slug": "xqc",
+      "display_name": "xQc"
+    },
+    "type": "chat",
+    "author": {
+      "id": "102",
+      "login": "bob",
+      "display_name": "Bob",
+      "color": "",
+      "badges": [
+        {
+          "set": "moderator",
+          "version": "",
+          "title": "Moderator"
+        }
+      ]
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "nice "
+      },
+      {
+        "kind": "emote",
+        "text": "Kappa",
+        "emote": {
+          "provider": "kick",
+          "id": "39000",
+          "name": "Kappa",
+          "url_template": "https://files.kick.com/emotes/39000/fullsize",
+          "animated": false
+        }
+      },
+      {
+        "kind": "text",
+        "text": " play"
+      }
+    ],
+    "sent_at": "2024-06-05T15:06:45Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "m-multi",
+    "platform": "kick",
+    "channel": {
+      "platform": "kick",
+      "id": "999",
+      "slug": "xqc",
+      "display_name": "xQc"
+    },
+    "type": "chat",
+    "author": {
+      "id": "103",
+      "login": "cara",
+      "display_name": "Cara",
+      "color": "#00FF00",
+      "badges": [
+        {
+          "set": "subscriber",
+          "version": "12",
+          "title": "Subscriber"
+        }
+      ]
+    },
+    "segments": [
+      {
+        "kind": "emote",
+        "text": "PogChamp",
+        "emote": {
+          "provider": "kick",
+          "id": "1",
+          "name": "PogChamp",
+          "url_template": "https://files.kick.com/emotes/1/fullsize",
+          "animated": false
+        }
+      },
+      {
+        "kind": "text",
+        "text": " gg "
+      },
+      {
+        "kind": "emote",
+        "text": "LUL",
+        "emote": {
+          "provider": "kick",
+          "id": "2",
+          "name": "LUL",
+          "url_template": "https://files.kick.com/emotes/2/fullsize",
+          "animated": false
+        }
+      }
+    ],
+    "sent_at": "2024-06-05T15:06:46Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "m-emote-start",
+    "platform": "kick",
+    "channel": {
+      "platform": "kick",
+      "id": "999",
+      "slug": "xqc",
+      "display_name": "xQc"
+    },
+    "type": "chat",
+    "author": {
+      "id": "104",
+      "login": "dee",
+      "display_name": "Dee",
+      "color": "",
+      "badges": [
+        {
+          "set": "broadcaster",
+          "version": "",
+          "title": "Broadcaster"
+        }
+      ]
+    },
+    "segments": [
+      {
+        "kind": "emote",
+        "text": "Kreygasm",
+        "emote": {
+          "provider": "kick",
+          "id": "7",
+          "name": "Kreygasm",
+          "url_template": "https://files.kick.com/emotes/7/fullsize",
+          "animated": false
+        }
+      }
+    ],
+    "sent_at": "2024-06-05T15:06:47Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "m-mention",
+    "platform": "kick",
+    "channel": {
+      "platform": "kick",
+      "id": "999",
+      "slug": "xqc",
+      "display_name": "xQc"
+    },
+    "type": "chat",
+    "author": {
+      "id": "105",
+      "login": "eve",
+      "display_name": "Eve",
+      "color": "#1E90FF",
+      "badges": [
+        {
+          "set": "og",
+          "version": "",
+          "title": "OG"
+        }
+      ]
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "yo "
+      },
+      {
+        "kind": "mention",
+        "text": "@someone"
+      },
+      {
+        "kind": "text",
+        "text": " check this"
+      }
+    ],
+    "sent_at": "2024-06-05T15:06:48Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "m-link",
+    "platform": "kick",
+    "channel": {
+      "platform": "kick",
+      "id": "999",
+      "slug": "xqc",
+      "display_name": "xQc"
+    },
+    "type": "chat",
+    "author": {
+      "id": "106",
+      "login": "finn",
+      "display_name": "Finn",
+      "color": ""
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "clip at "
+      },
+      {
+        "kind": "link",
+        "text": "https://kick.com/clip/123"
+      }
+    ],
+    "sent_at": "2024-06-05T15:06:49Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "m-unicode",
+    "platform": "kick",
+    "channel": {
+      "platform": "kick",
+      "id": "999",
+      "slug": "xqc",
+      "display_name": "xQc"
+    },
+    "type": "chat",
+    "author": {
+      "id": "107",
+      "login": "gunther",
+      "display_name": "Günther",
+      "color": "#FFA500",
+      "badges": [
+        {
+          "set": "founder",
+          "version": "",
+          "title": "Founder"
+        }
+      ]
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "привет 🎉 "
+      },
+      {
+        "kind": "emote",
+        "text": "peepoHappy",
+        "emote": {
+          "provider": "kick",
+          "id": "9",
+          "name": "peepoHappy",
+          "url_template": "https://files.kick.com/emotes/9/fullsize",
+          "animated": false
+        }
+      }
+    ],
+    "sent_at": "2024-06-05T15:06:50Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "m-verified",
+    "platform": "kick",
+    "channel": {
+      "platform": "kick",
+      "id": "999",
+      "slug": "xqc",
+      "display_name": "xQc"
+    },
+    "type": "chat",
+    "author": {
+      "id": "108",
+      "login": "helena",
+      "display_name": "Helena",
+      "color": "#9146FF",
+      "badges": [
+        {
+          "set": "verified",
+          "version": "",
+          "title": "Verified"
+        },
+        {
+          "set": "moderator",
+          "version": "",
+          "title": "Moderator"
+        }
+      ]
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "official statement"
+      }
+    ],
+    "sent_at": "2024-06-05T15:06:51Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "m-malformed-emote",
+    "platform": "kick",
+    "channel": {
+      "platform": "kick",
+      "id": "999",
+      "slug": "xqc",
+      "display_name": "xQc"
+    },
+    "type": "chat",
+    "author": {
+      "id": "109",
+      "login": "ivan",
+      "display_name": "Ivan",
+      "color": ""
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "oops "
+      },
+      {
+        "kind": "text",
+        "text": "[emote:broken]"
+      },
+      {
+        "kind": "text",
+        "text": " text"
+      }
+    ],
+    "sent_at": "2024-06-05T15:06:52Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "m-adjacent",
+    "platform": "kick",
+    "channel": {
+      "platform": "kick",
+      "id": "999",
+      "slug": "xqc",
+      "display_name": "xQc"
+    },
+    "type": "chat",
+    "author": {
+      "id": "110",
+      "login": "jo",
+      "display_name": "Jo",
+      "color": "#FF69B4"
+    },
+    "segments": [
+      {
+        "kind": "emote",
+        "text": "A",
+        "emote": {
+          "provider": "kick",
+          "id": "1",
+          "name": "A",
+          "url_template": "https://files.kick.com/emotes/1/fullsize",
+          "animated": false
+        }
+      },
+      {
+        "kind": "emote",
+        "text": "B",
+        "emote": {
+          "provider": "kick",
+          "id": "2",
+          "name": "B",
+          "url_template": "https://files.kick.com/emotes/2/fullsize",
+          "animated": false
+        }
+      }
+    ],
+    "sent_at": "2024-06-05T15:06:53Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "m-sub-mod",
+    "platform": "kick",
+    "channel": {
+      "platform": "kick",
+      "id": "999",
+      "slug": "xqc",
+      "display_name": "xQc"
+    },
+    "type": "chat",
+    "author": {
+      "id": "111",
+      "login": "kim",
+      "display_name": "Kim",
+      "color": "#20B2AA",
+      "badges": [
+        {
+          "set": "subscriber",
+          "version": "3",
+          "title": "Subscriber"
+        },
+        {
+          "set": "moderator",
+          "version": "",
+          "title": "Moderator"
+        }
+      ]
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "keeping it clean"
+      }
+    ],
+    "sent_at": "2024-06-05T15:06:54Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "m-empty-color",
+    "platform": "kick",
+    "channel": {
+      "platform": "kick",
+      "id": "999",
+      "slug": "xqc",
+      "display_name": "xQc"
+    },
+    "type": "chat",
+    "author": {
+      "id": "112",
+      "login": "lee",
+      "display_name": "Lee",
+      "color": ""
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "just text no color"
+      }
+    ],
+    "sent_at": "2024-06-05T15:06:55Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  }
+]

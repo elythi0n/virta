@@ -1,0 +1,15 @@
+# Representative Kick ChatMessageEvent payloads (the inner JSON, already unwrapped from the
+# Pusher frame) for normalization golden tests. Real high-volume (>=50) traffic fixtures are
+# recorded during live work (tracked in docs/live-debt.md). One payload per line.
+{"id":"m-plain","content":"hello world","created_at":"2024-06-05T15:06:44Z","sender":{"id":101,"username":"Alice","slug":"alice","identity":{"color":"#FF0000","badges":[]}}}
+{"id":"m-emote","content":"nice [emote:39000:Kappa] play","created_at":"2024-06-05T15:06:45Z","sender":{"id":102,"username":"Bob","slug":"bob","identity":{"color":"","badges":[{"type":"moderator","text":"Moderator"}]}}}
+{"id":"m-multi","content":"[emote:1:PogChamp] gg [emote:2:LUL]","created_at":"2024-06-05T15:06:46Z","sender":{"id":103,"username":"Cara","slug":"cara","identity":{"color":"#00FF00","badges":[{"type":"subscriber","text":"Subscriber","count":12}]}}}
+{"id":"m-emote-start","content":"[emote:7:Kreygasm]","created_at":"2024-06-05T15:06:47Z","sender":{"id":104,"username":"Dee","slug":"dee","identity":{"color":"","badges":[{"type":"broadcaster","text":"Broadcaster"}]}}}
+{"id":"m-mention","content":"yo @someone check this","created_at":"2024-06-05T15:06:48Z","sender":{"id":105,"username":"Eve","slug":"eve","identity":{"color":"#1E90FF","badges":[{"type":"og","text":"OG"}]}}}
+{"id":"m-link","content":"clip at https://kick.com/clip/123","created_at":"2024-06-05T15:06:49Z","sender":{"id":106,"username":"Finn","slug":"finn","identity":{"color":"","badges":[]}}}
+{"id":"m-unicode","content":"привет 🎉 [emote:9:peepoHappy]","created_at":"2024-06-05T15:06:50Z","sender":{"id":107,"username":"Günther","slug":"gunther","identity":{"color":"#FFA500","badges":[{"type":"founder","text":"Founder"}]}}}
+{"id":"m-verified","content":"official statement","created_at":"2024-06-05T15:06:51Z","sender":{"id":108,"username":"Helena","slug":"helena","identity":{"color":"#9146FF","badges":[{"type":"verified","text":"Verified"},{"type":"moderator","text":"Moderator"}]}}}
+{"id":"m-malformed-emote","content":"oops [emote:broken] text","created_at":"2024-06-05T15:06:52Z","sender":{"id":109,"username":"Ivan","slug":"ivan","identity":{"color":"","badges":[]}}}
+{"id":"m-adjacent","content":"[emote:1:A][emote:2:B]","created_at":"2024-06-05T15:06:53Z","sender":{"id":110,"username":"Jo","slug":"jo","identity":{"color":"#FF69B4","badges":[]}}}
+{"id":"m-sub-mod","content":"keeping it clean","created_at":"2024-06-05T15:06:54Z","sender":{"id":111,"username":"Kim","slug":"kim","identity":{"color":"#20B2AA","badges":[{"type":"subscriber","text":"Subscriber","count":3},{"type":"moderator","text":"Moderator"}]}}}
+{"id":"m-empty-color","content":"just text no color","created_at":"2024-06-05T15:06:55Z","sender":{"id":112,"username":"Lee","slug":"lee","identity":{"color":"","badges":[]}}}
