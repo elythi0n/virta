@@ -64,6 +64,23 @@ func (g *Governor) SetLimit(key string, l Limit) {
 	}
 }
 
+// Penalize empties key's bucket so the next send dispatches no sooner than wait from now
+// (or one refill interval, whichever is longer). Used when the platform signals we're over
+// its limit: queued sends stay queued and pace out, nothing is dropped.
+func (g *Governor) Penalize(key string, wait time.Duration) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	cs := g.state(key)
+	cs.refill(g.clk.Now())
+	floor := 1 - wait.Seconds()*cs.limit.refillPerSec()
+	if floor > 0 {
+		floor = 0
+	}
+	if cs.tokens > floor {
+		cs.tokens = floor
+	}
+}
+
 // Submit queues a send for key, returning a channel that receives its result (nil on success)
 // once the governor dispatches it — nothing is ever dropped silently. Call Drain (or run a
 // drain loop) to make progress.
