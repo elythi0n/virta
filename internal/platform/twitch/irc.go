@@ -3,12 +3,15 @@ package twitch
 import "strings"
 
 // ircMessage is a parsed IRCv3 line: optional tags, an optional prefix (source), the command,
-// and its parameters (the trailing parameter, if any, is the final element).
+// the middle parameters, and the trailing parameter (the ":"-prefixed remainder) kept
+// separate so a command with no message — e.g. "USERNOTICE #chan" — doesn't mistake its
+// channel for a message body.
 type ircMessage struct {
 	tags    map[string]string
 	prefix  string
 	command string
-	params  []string
+	params  []string // middle parameters only (e.g. the channel)
+	tr      string   // trailing parameter text ("" if none)
 }
 
 // nick returns the sender's login from the prefix ("nick!user@host" → "nick"), or "".
@@ -22,13 +25,9 @@ func (m ircMessage) nick() string {
 	return m.prefix
 }
 
-// trailing returns the last parameter (the message body for PRIVMSG/USERNOTICE), or "".
-func (m ircMessage) trailing() string {
-	if len(m.params) == 0 {
-		return ""
-	}
-	return m.params[len(m.params)-1]
-}
+// trailing returns the trailing parameter — the message body for PRIVMSG/USERNOTICE — or ""
+// when the line had none.
+func (m ircMessage) trailing() string { return m.tr }
 
 // parseLine parses one IRCv3 line (without the trailing CRLF). It returns false only for an
 // empty line. Grammar: [ '@' tags SPACE ] [ ':' prefix SPACE ] command *( SPACE param )
@@ -69,10 +68,10 @@ func parseLine(line string) (ircMessage, bool) {
 		return msg, msg.command != ""
 	}
 
-	// Parameters.
+	// Parameters: middle params, then an optional ":"-prefixed trailing param.
 	for len(line) > 0 {
 		if line[0] == ':' {
-			msg.params = append(msg.params, line[1:])
+			msg.tr = line[1:]
 			break
 		}
 		sp := strings.IndexByte(line, ' ')

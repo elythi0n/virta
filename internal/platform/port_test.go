@@ -152,9 +152,11 @@ func TestUnifiedMessage_PlainText(t *testing.T) {
 		{"empty", nil, ""},
 		{"single", []platform.Segment{{Kind: platform.SegText, Text: "hi"}}, "hi"},
 		{
+			// Segments concatenate verbatim — each carries its own surrounding whitespace,
+			// so the leading text run keeps its trailing space before the emote.
 			"text+emote",
 			[]platform.Segment{
-				{Kind: platform.SegText, Text: "nice"},
+				{Kind: platform.SegText, Text: "nice "},
 				{Kind: platform.SegEmote, Text: "PogChamp"},
 			},
 			"nice PogChamp",

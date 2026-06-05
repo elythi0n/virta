@@ -166,15 +166,11 @@ type UnifiedMessage struct {
 
 // PlainText returns the message body with emotes rendered as their names — the form used
 // for logging, search indexing, and TTS. Frontends render Segments directly instead.
+// Segments are concatenated verbatim: each carries its own surrounding whitespace, so the
+// result reconstructs the original text exactly (e.g. "hello " + "Kappa" + " there").
 func (m *UnifiedMessage) PlainText() string {
-	if len(m.Segments) == 0 {
-		return ""
-	}
 	var b []byte
-	for i, s := range m.Segments {
-		if i > 0 {
-			b = append(b, ' ')
-		}
+	for _, s := range m.Segments {
 		b = append(b, s.Text...)
 	}
 	return string(b)
@@ -294,10 +290,29 @@ type HealthEvent struct {
 	Status  HealthStatus
 }
 
+// ChatSettings is a channel's chat-mode configuration (slow mode, followers-only, etc.).
+// A platform may send these incrementally (only the changed setting), so consumers that
+// need the full picture should merge updates per channel rather than replace.
+type ChatSettings struct {
+	EmoteOnly            bool `json:"emote_only"`
+	SubsOnly             bool `json:"subs_only"`
+	UniqueChat           bool `json:"unique_chat"`            // no duplicate messages ("r9k")
+	FollowersOnlyMinutes int  `json:"followers_only_minutes"` // -1 = off, 0 = any follower, >0 = minimum follow age
+	SlowSeconds          int  `json:"slow_seconds"`           // 0 = off
+}
+
+// ChatSettingsEvent reports a channel's chat-mode settings (ROOMSTATE), surfaced so the UI
+// can show and toggle slow mode, followers-only, etc.
+type ChatSettingsEvent struct {
+	Channel  ChannelRef
+	Settings ChatSettings
+}
+
 func (MessageEvent) isEvent()        {}
 func (MessageDeletedEvent) isEvent() {}
 func (ChannelClearEvent) isEvent()   {}
 func (HealthEvent) isEvent()         {}
+func (ChatSettingsEvent) isEvent()   {}
 
 // ---- The Adapter port ----
 

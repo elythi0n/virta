@@ -1,0 +1,9 @@
+# Recorded-shape Twitch USERNOTICE lines (subs, resubs, gifts, raids, announcements) for
+# normalization golden tests. The user login/display come from tags (the prefix is the
+# server). Subs/gifts/raids show the system message; resubs and announcements show the
+# user's own message (with emotes) when present.
+@badges=subscriber/0;color=;display-name=NewSub;emotes=;id=u1;login=newsub;msg-id=sub;msg-param-cumulative-months=1;msg-param-sub-plan=1000;system-msg=NewSub\ssubscribed\swith\sPrime.;tmi-sent-ts=1717600000000;user-id=201 :tmi.twitch.tv USERNOTICE #forsen
+@badges=subscriber/12;color=#FF0000;display-name=Loyal;emotes=25:0-4;id=u2;login=loyal;msg-id=resub;msg-param-cumulative-months=12;system-msg=Loyal\ssubscribed\sat\sTier\s1.;tmi-sent-ts=1717600001000;user-id=202 :tmi.twitch.tv USERNOTICE #forsen :Kappa love this stream
+@badges=;display-name=Gifter;emotes=;id=u3;login=gifter;msg-id=subgift;msg-param-recipient-display-name=Lucky;system-msg=Gifter\sgifted\sa\sTier\s1\ssub\sto\sLucky!;tmi-sent-ts=1717600002000;user-id=203 :tmi.twitch.tv USERNOTICE #forsen
+@badges=;display-name=Raider;emotes=;id=u4;login=raider;msg-id=raid;msg-param-displayName=Raider;msg-param-viewerCount=50;system-msg=50\sraiders\sfrom\sRaider\shave\sjoined!;tmi-sent-ts=1717600003000;user-id=204 :tmi.twitch.tv USERNOTICE #forsen
+@badges=broadcaster/1;color=;display-name=Forsen;emotes=;id=u5;login=forsen;msg-id=announcement;msg-param-color=PRIMARY;system-msg=;tmi-sent-ts=1717600004000;user-id=102 :tmi.twitch.tv USERNOTICE #forsen :big news today

@@ -1,0 +1,156 @@
+[
+  {
+    "id": "",
+    "platform_message_id": "u1",
+    "platform": "twitch",
+    "channel": {
+      "platform": "twitch",
+      "id": "",
+      "slug": "forsen"
+    },
+    "type": "sub",
+    "author": {
+      "id": "201",
+      "login": "newsub",
+      "display_name": "NewSub",
+      "color": "",
+      "badges": [
+        {
+          "set": "subscriber",
+          "version": "0"
+        }
+      ]
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "NewSub subscribed with Prime."
+      }
+    ],
+    "sent_at": "2024-06-05T15:06:40Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "u2",
+    "platform": "twitch",
+    "channel": {
+      "platform": "twitch",
+      "id": "",
+      "slug": "forsen"
+    },
+    "type": "resub",
+    "author": {
+      "id": "202",
+      "login": "loyal",
+      "display_name": "Loyal",
+      "color": "#FF0000",
+      "badges": [
+        {
+          "set": "subscriber",
+          "version": "12"
+        }
+      ]
+    },
+    "segments": [
+      {
+        "kind": "emote",
+        "text": "Kappa",
+        "emote": {
+          "provider": "twitch",
+          "id": "25",
+          "name": "Kappa",
+          "url_template": "https://static-cdn.jtvnw.net/emoticons/v2/25/default/dark/{size}",
+          "animated": false
+        }
+      },
+      {
+        "kind": "text",
+        "text": " love this stream"
+      }
+    ],
+    "sent_at": "2024-06-05T15:06:41Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "u3",
+    "platform": "twitch",
+    "channel": {
+      "platform": "twitch",
+      "id": "",
+      "slug": "forsen"
+    },
+    "type": "giftsub",
+    "author": {
+      "id": "203",
+      "login": "gifter",
+      "display_name": "Gifter",
+      "color": ""
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "Gifter gifted a Tier 1 sub to Lucky!"
+      }
+    ],
+    "sent_at": "2024-06-05T15:06:42Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "u4",
+    "platform": "twitch",
+    "channel": {
+      "platform": "twitch",
+      "id": "",
+      "slug": "forsen"
+    },
+    "type": "raid",
+    "author": {
+      "id": "204",
+      "login": "raider",
+      "display_name": "Raider",
+      "color": ""
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "50 raiders from Raider have joined!"
+      }
+    ],
+    "sent_at": "2024-06-05T15:06:43Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "u5",
+    "platform": "twitch",
+    "channel": {
+      "platform": "twitch",
+      "id": "",
+      "slug": "forsen"
+    },
+    "type": "announcement",
+    "author": {
+      "id": "102",
+      "login": "forsen",
+      "display_name": "Forsen",
+      "color": "",
+      "badges": [
+        {
+          "set": "broadcaster",
+          "version": "1"
+        }
+      ]
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "big news today"
+      }
+    ],
+    "sent_at": "2024-06-05T15:06:44Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  }
+]

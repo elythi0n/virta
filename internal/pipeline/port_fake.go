@@ -118,8 +118,10 @@ func NewTagStage(tag string) *TagStage { return &TagStage{Tag: tag} }
 
 func (s *TagStage) Name() string { return "tag:" + s.Tag }
 
+// Annotate appends the tag as its own text segment, prefixed with a space so the segment
+// carries the word boundary the way real platform segments do (segments concatenate verbatim).
 func (s *TagStage) Annotate(_ context.Context, msg *platform.UnifiedMessage) error {
-	msg.Segments = append(msg.Segments, platform.Segment{Kind: platform.SegText, Text: s.Tag})
+	msg.Segments = append(msg.Segments, platform.Segment{Kind: platform.SegText, Text: " " + s.Tag})
 	return nil
 }
 

@@ -26,6 +26,7 @@ type wireEvent struct {
 	PlatformMessageID string                   `json:"platform_message_id,omitempty"`
 	TargetUserID      string                   `json:"target_user_id,omitempty"`
 	State             *platform.HealthStatus   `json:"state,omitempty"`
+	Settings          *platform.ChatSettings   `json:"settings,omitempty"`
 }
 
 // hub is the set of connected stream clients. It is a pipeline sink: every event the
@@ -184,6 +185,10 @@ func toWire(ev platform.Event) (we wireEvent, key string, broadcastAll bool) {
 			return we, channelKey(*e.Channel), false
 		}
 		return we, "", true // adapter-wide: everyone hears it
+	case platform.ChatSettingsEvent:
+		ch := e.Channel
+		s := e.Settings
+		return wireEvent{Type: "chat_settings", SchemaVersion: schemaVersion, Channel: &ch, Settings: &s}, channelKey(ch), false
 	default:
 		return wireEvent{}, "", false
 	}

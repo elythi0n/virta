@@ -206,14 +206,14 @@ func (a *Adapter) readLoop(conn transport) {
 		if !ok {
 			continue
 		}
-		switch msg.command {
-		case "PRIVMSG":
-			a.emit(platform.MessageEvent{Message: normalizePrivmsg(msg)})
-		case "PING":
-			// Reply so Twitch doesn't drop us. Echo the token it sent.
+		// PING needs a reply rather than an event, so handle it directly; everything else
+		// that maps to an event is emitted.
+		if msg.command == "PING" {
 			_ = conn.WriteLine(a.ctx, "PONG :"+msg.trailing())
-		default:
-			// JOIN/PART/CAP/USERNOTICE/etc. — not handled in the read core.
+			continue
+		}
+		if ev, ok := eventFromLine(msg); ok {
+			a.emit(ev)
 		}
 	}
 }

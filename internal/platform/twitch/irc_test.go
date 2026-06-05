@@ -17,7 +17,7 @@ func TestParseLine_FullPrivmsg(t *testing.T) {
 	if m.tags["display-name"] != "Alice" || m.tags["id"] != "abc-123" || m.tags["color"] != "#FF0000" {
 		t.Errorf("tags = %v", m.tags)
 	}
-	if len(m.params) != 2 || m.params[0] != "#forsen" {
+	if len(m.params) != 1 || m.params[0] != "#forsen" {
 		t.Errorf("params = %v", m.params)
 	}
 	if m.trailing() != "hello world" {
