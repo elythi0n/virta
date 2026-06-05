@@ -21,6 +21,9 @@ type Config struct {
 	RuntimeDir string
 	// DBPath is the SQLite database file (used when StorageDriver is SQLite).
 	DBPath string
+	// DBDSN is the connection string for a server database backend (used when StorageDriver is
+	// Postgres), e.g. "postgres://user:pass@host:5432/virta?sslmode=disable".
+	DBDSN string
 	// StorageDriver selects the storage backend. SQLite is the zero-config default; other
 	// engines are opt-in and chosen here (or, at runtime, in the Storage settings). Changing
 	// it on an existing install requires a data migration, not an instant swap.
@@ -61,6 +64,7 @@ func Load() (Config, error) {
 		CacheDir:      cacheDir,
 		RuntimeDir:    runtimeDir(dataDir),
 		DBPath:        filepath.Join(dataDir, appName+".db"),
+		DBDSN:         os.Getenv("VIRTA_DB_DSN"),
 		StorageDriver: envOr("VIRTA_STORAGE", StorageSQLite),
 		Token:         os.Getenv("VIRTA_TOKEN"),
 	}

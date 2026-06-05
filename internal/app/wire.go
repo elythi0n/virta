@@ -30,6 +30,7 @@ import (
 	"github.com/elythi0n/virta/internal/secrets/keychain"
 	"github.com/elythi0n/virta/internal/stats"
 	"github.com/elythi0n/virta/internal/store"
+	"github.com/elythi0n/virta/internal/store/postgres"
 	"github.com/elythi0n/virta/internal/store/sqlite"
 )
 
@@ -56,7 +57,12 @@ func SelectStore(cfg config.Config, clk clock.Clock, gen id.Generator) (store.St
 	switch cfg.StorageDriver {
 	case "", config.StorageSQLite:
 		return sqlite.Open(cfg.DBPath, clk, gen)
-	case config.StoragePostgres, config.StorageMySQL:
+	case config.StoragePostgres:
+		if cfg.DBDSN == "" {
+			return nil, fmt.Errorf("storage backend %q requires VIRTA_DB_DSN", cfg.StorageDriver)
+		}
+		return postgres.Open(cfg.DBDSN, clk, gen)
+	case config.StorageMySQL:
 		return nil, fmt.Errorf("storage backend %q is not implemented yet (default is %q)", cfg.StorageDriver, config.StorageSQLite)
 	default:
 		return nil, fmt.Errorf("unknown storage backend %q", cfg.StorageDriver)

@@ -30,3 +30,30 @@ jobs:
       - name: go build (windows)
         if: runner.os == 'Windows'
         run: go build ./...
+
+  # The Postgres store backend's full contract suite needs a real server, so it runs here
+  # against a service container rather than in the offline `make ci` (where it skips).
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: virta
+          POSTGRES_DB: virta
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: store contract on Postgres
+        env:
+          VIRTA_TEST_POSTGRES: postgres://postgres:virta@127.0.0.1:5432/virta?sslmode=disable
+        run: go test -race ./internal/store/postgres/...

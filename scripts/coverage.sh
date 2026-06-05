@@ -15,9 +15,11 @@ CORE_FLOOR="${CORE_FLOOR:-90}"
 # branches that need fault injection to reach, so they sit at the general floor.
 CORE=(buildinfo clock id pipeline platform secrets store store/postgres engine intel/usage)
 
-# Packages exempt from the floor because they can only be exercised against a live OS
-# facility absent in headless CI (verified manually per-OS and by on-demand tests instead).
-EXEMPT=(secrets/keychain)
+# Packages exempt from the floor because they can only be exercised against a live facility
+# absent in headless CI (verified by on-demand tests instead): the OS keychain, and the
+# Postgres backend — its full store contract runs against a real PG via VIRTA_TEST_POSTGRES
+# (the CI postgres-service job); offline it can only unit-test the dialect helpers.
+EXEMPT=(secrets/keychain store/postgres)
 
 echo "running tests with coverage…"
 go test -covermode=atomic -coverprofile=coverage.out ./... 2>&1 | tee coverage.txt
