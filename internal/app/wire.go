@@ -6,6 +6,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
@@ -113,10 +114,51 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	// anonymous Twitch adapter (no credentials needed); more platforms register here later.
 	eng := engine.New(runner, gen)
 	eng.Register(twitch.New(twitch.Options{Clock: clk}))
-	eng.Register(kick.New(kick.Options{Clock: clk}))
+	// Kick needs a slug→chatroom-id resolver, cached forever in the channels table. The direct
+	// lookup uses a stock client today (a uTLS Chrome-fingerprint upgrade is tracked); when it's
+	// blocked the resolver falls back to the official API and trips its breaker.
+	kickResolver := kick.NewResolver(
+		kickChatroomCache{repo: st.Channels(), clk: clk},
+		kick.NewDirectFetcher(nil),
+		kick.NewOfficialFetcher(nil),
+		clk,
+	)
+	eng.Register(kick.New(kick.Options{Clock: clk, Resolver: kickResolver}))
 	srv.SetChannels(channelControl{eng: eng})
 
 	return &Daemon{cfg: cfg, log: log, store: st, vault: vault, runner: runner, engine: eng, api: srv}, nil
+}
+
+// kickChatroomCache backs the Kick resolver's permanent cache with the channels table: a
+// resolved chatroom id is stored in the channel's meta JSON and never re-fetched.
+type kickChatroomCache struct {
+	repo store.ChannelRepo
+	clk  clock.Clock
+}
+
+func (c kickChatroomCache) Get(ctx context.Context, slug string) (string, bool) {
+	ch, err := c.repo.GetBySlug(ctx, platform.Kick, slug)
+	if err != nil {
+		return "", false
+	}
+	var meta struct {
+		ChatroomID string `json:"chatroom_id"`
+	}
+	if len(ch.Meta) > 0 {
+		_ = json.Unmarshal(ch.Meta, &meta)
+	}
+	return meta.ChatroomID, meta.ChatroomID != ""
+}
+
+func (c kickChatroomCache) Put(ctx context.Context, slug, chatroomID string) error {
+	meta, _ := json.Marshal(map[string]string{"chatroom_id": chatroomID})
+	_, err := c.repo.Upsert(ctx, store.Channel{
+		Platform:   platform.Kick,
+		Slug:       slug,
+		Meta:       meta,
+		LastSeenAt: c.clk.Now(),
+	})
+	return err
 }
 
 // channelControl adapts the engine to the API's join/leave controller, translating the

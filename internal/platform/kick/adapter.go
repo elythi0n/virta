@@ -47,12 +47,16 @@ type Options struct {
 	Clock       clock.Clock
 	BackoffBase time.Duration
 	BackoffMax  time.Duration
+	// Resolver turns a slug into a subscribable chatroom id when a join doesn't already carry
+	// one. Optional: without it, a join must supply ChannelRef.ID directly.
+	Resolver *Resolver
 }
 
 // Adapter is an anonymous, read-only Kick chat adapter over Pusher.
 type Adapter struct {
-	dial    DialFunc
-	backoff backoff
+	dial     DialFunc
+	backoff  backoff
+	resolver *Resolver
 
 	events chan platform.Event
 
@@ -92,14 +96,15 @@ func New(opts Options) *Adapter {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Adapter{
-		dial:    dial,
-		backoff: bo,
-		events:  make(chan platform.Event, 256),
-		subs:    map[string]platform.ChannelRef{},
-		health:  platform.HealthStatus{State: platform.HealthOK},
-		rng:     uint64(clk.Now().UnixNano()) | 1,
-		ctx:     ctx,
-		cancel:  cancel,
+		dial:     dial,
+		backoff:  bo,
+		resolver: opts.Resolver,
+		events:   make(chan platform.Event, 256),
+		subs:     map[string]platform.ChannelRef{},
+		health:   platform.HealthStatus{State: platform.HealthOK},
+		rng:      uint64(clk.Now().UnixNano()) | 1,
+		ctx:      ctx,
+		cancel:   cancel,
 	}
 }
 
@@ -112,11 +117,19 @@ func (a *Adapter) Capabilities() platform.Capabilities {
 	}
 }
 
-// Join subscribes to a channel's chatroom. The chatroom id must be resolved into ch.ID first
-// (the resolver lands in a later step); without it there is nothing to subscribe to.
+// Join subscribes to a channel's chatroom. When ch.ID is empty the configured resolver turns
+// the slug into a chatroom id (failing with a reason code if the lookup is blocked); without
+// a resolver, ch.ID must be supplied directly.
 func (a *Adapter) Join(ctx context.Context, ch platform.ChannelRef, _ platform.ConnMode) error {
 	if ch.ID == "" {
-		return fmt.Errorf("kick: channel %q has no chatroom id to subscribe to", ch.Slug)
+		if a.resolver == nil {
+			return fmt.Errorf("kick: channel %q has no chatroom id to subscribe to", ch.Slug)
+		}
+		id, err := a.resolver.Resolve(ctx, ch.Slug)
+		if err != nil {
+			return err // carries a reason code (resolver_blocked / channel_not_found)
+		}
+		ch.ID = id
 	}
 	a.mu.Lock()
 	if a.closed {
