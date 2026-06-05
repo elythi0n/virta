@@ -1,0 +1,86 @@
+# golangci-lint v2 config. Enforces the architecture's two hard rules:
+#  - depguard: implementations are imported only from internal/app (ADR-020)
+#  - forbidigo: no time.Now()/rand outside the injected clock (ADR-024 determinism)
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard # errcheck, govet, ineffassign, staticcheck, unused
+  enable:
+    - depguard
+    - forbidigo
+    - bodyclose
+    - misspell
+    - revive
+  settings:
+    depguard:
+      rules:
+        # ADR-020: only internal/app (the wiring) may import implementation packages.
+        # Ports (e.g. internal/platform) stay importable; their impl subpackages do not.
+        implementations-wired-only:
+          list-mode: lax
+          files:
+            - "!**/internal/app/**"
+            - "!**/*_test.go"
+          deny:
+            - pkg: github.com/elythi0n/virta/internal/platform/twitch
+              desc: "import platform implementations only from internal/app (ADR-020)"
+            - pkg: github.com/elythi0n/virta/internal/platform/kick
+              desc: "import platform implementations only from internal/app (ADR-020)"
+            - pkg: github.com/elythi0n/virta/internal/platform/x
+              desc: "import platform implementations only from internal/app (ADR-020)"
+            - pkg: github.com/elythi0n/virta/internal/store/sqlite
+              desc: "import store implementations only from internal/app (ADR-020)"
+            - pkg: github.com/elythi0n/virta/internal/store/postgres
+              desc: "import store implementations only from internal/app (ADR-020)"
+            - pkg: github.com/elythi0n/virta/internal/secrets/keychain
+              desc: "import secrets implementations only from internal/app (ADR-020)"
+            - pkg: github.com/elythi0n/virta/internal/secrets/agevault
+              desc: "import secrets implementations only from internal/app (ADR-020)"
+            - pkg: github.com/elythi0n/virta/internal/search/fts
+              desc: "import search implementations only from internal/app (ADR-020)"
+            - pkg: github.com/elythi0n/virta/internal/search/meilisearch
+              desc: "import search implementations only from internal/app (ADR-020)"
+            - pkg: github.com/elythi0n/virta/internal/llm/anthropic
+              desc: "import llm implementations only from internal/app (ADR-020)"
+            - pkg: github.com/elythi0n/virta/internal/llm/openaicompat
+              desc: "import llm implementations only from internal/app (ADR-020)"
+            - pkg: github.com/elythi0n/virta/internal/translate/libretranslate
+              desc: "import translate implementations only from internal/app (ADR-020)"
+            - pkg: github.com/elythi0n/virta/internal/translate/deepl
+              desc: "import translate implementations only from internal/app (ADR-020)"
+            - pkg: github.com/elythi0n/virta/internal/embed/ollama
+              desc: "import embed implementations only from internal/app (ADR-020)"
+            - pkg: github.com/elythi0n/virta/internal/embed/voyage
+              desc: "import embed implementations only from internal/app (ADR-020)"
+    forbidigo:
+      forbid:
+        - pattern: '^time\.Now$'
+          msg: "use the injected clock (internal/clock) — ADR-024 determinism"
+        - pattern: '^time\.Since$'
+          msg: "use the injected clock (internal/clock) — ADR-024 determinism"
+        - pattern: '^time\.Until$'
+          msg: "use the injected clock (internal/clock) — ADR-024 determinism"
+        - pattern: '^rand\.'
+          msg: "inject randomness; do not call package-level rand — ADR-024 determinism"
+  exclusions:
+    rules:
+      # The clock package is the one place allowed to read the real time.
+      - path: 'internal/clock/'
+        linters:
+          - forbidigo
+      # Tests may use time/rand freely.
+      - path: '_test\.go'
+        linters:
+          - forbidigo
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/elythi0n/virta

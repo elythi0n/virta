@@ -1,0 +1,27 @@
+# Build output
+/dist/
+/bin/
+*.exe
+
+# Test / coverage
+*.test
+coverage.out
+coverage.txt
+
+# Local data / secrets (never commit)
+*.db
+*.db-wal
+*.db-shm
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Node (frontends, added later)
+node_modules/
+dist-ssr/
