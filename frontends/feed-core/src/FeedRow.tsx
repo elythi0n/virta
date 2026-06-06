@@ -71,13 +71,15 @@ type FeedRowProps = {
   background: string;
   /** Show the source-channel attribution tag (for feeds aggregating multiple channels). */
   showSource?: boolean;
+  /** Show the per-row timestamp. */
+  showTimestamps?: boolean;
   density: Density;
 };
 
 // The single most-rendered element. Bespoke and memoized so streaming a new message never
 // re-renders the rows above it. Chat rows carry a platform rail, optional source tag, badges, the
 // author, and segments; non-chat types render as a tinted event band; deletions fade and strike.
-function FeedRow({ message, background, showSource, density }: FeedRowProps) {
+function FeedRow({ message, background, showSource, showTimestamps = true, density }: FeedRowProps) {
   const type = message.type ?? 'chat';
 
   if (isEventType(type)) {
@@ -86,7 +88,7 @@ function FeedRow({ message, background, showSource, density }: FeedRowProps) {
     return (
       <div className={`${styles.event} ${styles[`ev-${type}`]} ${styles[density]} ${big ? styles.big : ''}`}>
         <PlatformGlyph platform={message.platform} className={styles.glyph} />
-        <span className={styles.ts}>{message.ts}</span>
+        {showTimestamps && <span className={styles.ts}>{message.ts}</span>}
         {showSource && <SourceTag message={message} />}
         <span className={styles.eventLabel}>{EVENT_LABEL[type]}</span>
         {count && <span className={styles.eventCount}>{count}</span>}
@@ -103,7 +105,7 @@ function FeedRow({ message, background, showSource, density }: FeedRowProps) {
   return (
     <div className={`${styles.row} ${styles[message.platform]} ${styles[density]} ${message.deleted ? styles.deleted : ''}`}>
       <PlatformGlyph platform={message.platform} className={styles.glyph} />
-      <span className={styles.ts}>{message.ts}</span>
+      {showTimestamps && <span className={styles.ts}>{message.ts}</span>}
       {showSource && <SourceTag message={message} />}
       {badges.length > 0 && (
         <span className={styles.badges}>

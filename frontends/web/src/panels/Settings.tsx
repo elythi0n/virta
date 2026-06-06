@@ -3,6 +3,7 @@ import { Input, Segmented, Select, Text, formatShortcut } from '@virta/ui-kit';
 import type { Density } from '@virta/feed-core';
 import { useActions } from '../actions';
 import { useDensity } from '../density';
+import { useFeedDisplay } from '../feedDisplay';
 import { useTheme } from '../theme';
 import { DENSITIES } from './DensityControl';
 import styles from './Settings.module.css';
@@ -59,6 +60,7 @@ function Placeholder({ children }: { children: ReactNode }) {
 function Appearance() {
   const { theme, setTheme } = useTheme();
   const { density, setDensity } = useDensity();
+  const { showTimestamps, setShowTimestamps } = useFeedDisplay();
   return (
     <>
       <Field label="Theme" hint="Color palette for the whole app.">
@@ -78,6 +80,17 @@ function Appearance() {
           value={density}
           onValueChange={(v) => setDensity(v as Density)}
           options={DENSITIES.map((d) => ({ value: d.value, label: d.label }))}
+        />
+      </Field>
+      <Field label="Timestamps" hint="Show the time on each message.">
+        <Segmented
+          ariaLabel="Timestamps"
+          value={showTimestamps ? 'on' : 'off'}
+          onValueChange={(v) => setShowTimestamps(v === 'on')}
+          options={[
+            { value: 'on', label: 'On' },
+            { value: 'off', label: 'Off' },
+          ]}
         />
       </Field>
     </>

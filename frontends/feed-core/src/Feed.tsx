@@ -20,6 +20,8 @@ type FeedProps = {
   showSource?: boolean;
   /** Row density (type scale + spacing). */
   density?: Density;
+  /** Show the per-row timestamp. */
+  showTimestamps?: boolean;
   /** Show the transient banner when a high-impact event (gift bomb, big raid) arrives live. */
   celebrate?: boolean;
 };
@@ -27,7 +29,7 @@ type FeedProps = {
 // Virtualized chat feed: only the visible window is in the DOM (stable keys by message id), so
 // throughput is bounded by the viewport, not the backlog. Pins to the bottom while the user is
 // there; scrolling up detaches and a pill offers to jump back to the latest.
-export default function Feed({ messages, background, showSource, density = 'cozy', celebrate = true }: FeedProps) {
+export default function Feed({ messages, background, showSource, density = 'cozy', showTimestamps = true, celebrate = true }: FeedProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const stick = useRef(true); // live pin state, read inside the scroll handler
   const prevCount = useRef(0);
@@ -124,7 +126,13 @@ export default function Feed({ messages, background, showSource, density = 'cozy
               className={styles.rowWrap}
               style={{ transform: `translateY(${vi.start}px)` }}
             >
-              <FeedRow message={messages[vi.index]} background={background} showSource={showSource} density={density} />
+              <FeedRow
+                message={messages[vi.index]}
+                background={background}
+                showSource={showSource}
+                density={density}
+                showTimestamps={showTimestamps}
+              />
             </div>
           ))}
         </div>

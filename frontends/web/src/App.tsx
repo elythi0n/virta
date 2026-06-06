@@ -12,6 +12,7 @@ import { PANEL_CATALOG, type ViewId } from './shell/views';
 import { loadLayout, saveLayoutDebounced } from './shell/layout';
 import { ActionsProvider } from './actions';
 import { DensityProvider } from './density';
+import { FeedDisplayProvider } from './feedDisplay';
 import { ThemeProvider } from './theme';
 
 export default function App() {
@@ -19,6 +20,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [theme, setTheme] = useState('graphite-dark');
   const [density, setDensity] = useState<Density>('cozy');
+  const [showTimestamps, setShowTimestamps] = useState(true);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [newFeedOpen, setNewFeedOpen] = useState(false);
@@ -147,6 +149,7 @@ export default function App() {
   return (
     <ThemeProvider value={{ theme, setTheme }}>
       <DensityProvider value={{ density, setDensity }}>
+        <FeedDisplayProvider value={{ showTimestamps, setShowTimestamps }}>
         <ActionsProvider value={actions}>
           <TooltipProvider>
           <div className="app">
@@ -164,6 +167,7 @@ export default function App() {
           <NewFeedDialog open={newFeedOpen} onClose={() => setNewFeedOpen(false)} onSubmit={openFeedSet} />
           </TooltipProvider>
         </ActionsProvider>
+        </FeedDisplayProvider>
       </DensityProvider>
     </ThemeProvider>
   );

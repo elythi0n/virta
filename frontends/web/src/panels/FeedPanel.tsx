@@ -3,6 +3,7 @@ import { Feed, parseSegments, useFeedBuffer, type Density, type FeedMessage, typ
 import { Segmented, StatusDot, Text } from '@virta/ui-kit';
 import { useChannels, useDaemonStream, type ConnectionStatus } from '../daemon';
 import { useDensity } from '../density';
+import { useFeedDisplay } from '../feedDisplay';
 import { useTheme } from '../theme';
 import Composer from './Composer';
 import DensityControl, { DENSITIES } from './DensityControl';
@@ -142,6 +143,7 @@ type Props = {
 export default function FeedPanel({ channels, panelId }: Props) {
   const { theme } = useTheme();
   const { density: defaultDensity } = useDensity();
+  const { showTimestamps } = useFeedDisplay();
   const { channels: joined } = useChannels();
   const { messages, push, markDeleted, clearChannel } = useFeedBuffer({ max: MAX_MESSAGES });
   const status = useDaemonStream({ onMessage: push, onDeleted: markDeleted, onClear: clearChannel }, channels);
@@ -205,7 +207,7 @@ export default function FeedPanel({ channels, panelId }: Props) {
         </div>
       </div>
       <div className={styles.feedWrap}>
-        <Feed messages={messages} background={background} showSource={showSource} density={density} />
+        <Feed messages={messages} background={background} showSource={showSource} density={density} showTimestamps={showTimestamps} />
       </div>
       <Composer targets={targets} />
     </div>
