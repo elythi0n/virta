@@ -95,6 +95,7 @@ func New(cfg Config) (*Server, error) {
 	mux.Handle("GET /v1/diagnostics", s.auth(http.HandlerFunc(s.handleDiagnostics)))
 	mux.Handle("GET /v1/stream", s.auth(http.HandlerFunc(s.handleStream)))
 	mux.Handle("GET /v1/channels", s.auth(http.HandlerFunc(s.handleListChannels)))
+	mux.Handle("GET /v1/capabilities", s.auth(http.HandlerFunc(s.handleCapabilities)))
 	mux.Handle("POST /v1/channels", s.auth(http.HandlerFunc(s.handleJoinChannel)))
 	mux.Handle("DELETE /v1/channels", s.auth(http.HandlerFunc(s.handleLeaveChannel)))
 	mux.Handle("POST /v1/send", s.auth(http.HandlerFunc(s.handleSend)))
@@ -223,8 +224,9 @@ func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 
 func (s *Server) handleDiagnostics(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, map[string]any{
-		"clients": s.hub.clientCount(),
-		"log":     s.ring.snapshot(),
+		"clients":            s.hub.clientCount(),
+		"unforwarded_events": s.hub.unforwardedCount(),
+		"log":                s.ring.snapshot(),
 	})
 }
 

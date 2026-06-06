@@ -18,6 +18,20 @@ type Channels interface {
 	Leave(platform, slug string) error
 	// List returns the currently joined channels and their connection state.
 	List() []ChannelInfo
+	// Capabilities reports each platform's current capabilities, keyed by platform name.
+	Capabilities() map[string]Capabilities
+}
+
+// Capabilities mirrors a platform adapter's current capabilities for the wire, so a frontend can
+// render send/moderation affordances without hardcoding platform knowledge.
+type Capabilities struct {
+	ReadAnonymous bool   `json:"read_anonymous"`
+	ReadAuthed    bool   `json:"read_authed"`
+	Send          bool   `json:"send"`
+	Moderation    bool   `json:"moderation"`
+	Replies       bool   `json:"replies"`
+	HeldQueue     bool   `json:"held_queue"`
+	Stability     string `json:"stability"`
 }
 
 // ChannelInfo is one joined channel's status, as served by GET /v1/channels.
@@ -49,6 +63,18 @@ func (s *Server) handleListChannels(w http.ResponseWriter, _ *http.Request) {
 		list = []ChannelInfo{}
 	}
 	writeJSON(w, map[string]any{"channels": list})
+}
+
+func (s *Server) handleCapabilities(w http.ResponseWriter, _ *http.Request) {
+	if s.channels == nil {
+		http.Error(w, "channel control unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	caps := s.channels.Capabilities()
+	if caps == nil {
+		caps = map[string]Capabilities{}
+	}
+	writeJSON(w, map[string]any{"capabilities": caps})
 }
 
 func (s *Server) handleJoinChannel(w http.ResponseWriter, r *http.Request) {

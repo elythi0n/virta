@@ -425,6 +425,22 @@ func (c profileControl) Activate(ctx context.Context, id string) error {
 	return c.mgr.Activate(ctx, id)
 }
 
+func (c channelControl) Capabilities() map[string]api.Capabilities {
+	out := map[string]api.Capabilities{}
+	for p, caps := range c.eng.Capabilities() {
+		out[string(p)] = api.Capabilities{
+			ReadAnonymous: caps.ReadAnonymous,
+			ReadAuthed:    caps.ReadAuthed,
+			Send:          caps.Send,
+			Moderation:    caps.Moderation,
+			Replies:       caps.Replies,
+			HeldQueue:     caps.HeldQueue,
+			Stability:     string(caps.Stability),
+		}
+	}
+	return out
+}
+
 func (c channelControl) List() []api.ChannelInfo {
 	statuses := c.eng.Channels()
 	out := make([]api.ChannelInfo, 0, len(statuses))

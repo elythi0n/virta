@@ -175,6 +175,21 @@ func TestEngine_ChannelsListsJoinedWithHealth(t *testing.T) {
 	}
 }
 
+func TestEngine_CapabilitiesReflectAdapters(t *testing.T) {
+	eng, _, tw := newTestEngine()
+	t.Cleanup(func() { _ = eng.Close() })
+
+	c, ok := eng.Capabilities()[platform.Twitch]
+	if !ok || !c.ReadAnonymous || c.Send {
+		t.Fatalf("initial capabilities = %+v", eng.Capabilities())
+	}
+	// Capabilities are dynamic: signing in flips Send, and the engine reflects it live.
+	tw.SetCapabilities(platform.Capabilities{ReadAuthed: true, Send: true})
+	if !eng.Capabilities()[platform.Twitch].Send {
+		t.Error("capabilities did not reflect the adapter after a change")
+	}
+}
+
 func chatFrom(pid, author string) platform.UnifiedMessage {
 	m := twMsg(pid, "hi")
 	m.Type = platform.TypeChat

@@ -186,6 +186,19 @@ type ChannelStatus struct {
 	Health  platform.HealthStatus
 }
 
+// Capabilities reports each registered platform's current adapter capabilities (what it can do
+// right now, which changes with auth/mode), so a frontend can render send/moderation affordances
+// without hardcoding platform knowledge.
+func (e *Engine) Capabilities() map[platform.Platform]platform.Capabilities {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	out := make(map[platform.Platform]platform.Capabilities, len(e.adapters))
+	for p, a := range e.adapters {
+		out[p] = a.Capabilities()
+	}
+	return out
+}
+
 // Channels lists every joined channel with its adapter's current health.
 func (e *Engine) Channels() []ChannelStatus {
 	e.mu.Lock()

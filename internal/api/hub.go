@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"sort"
 	"sync"
+	"sync/atomic"
 
 	"github.com/elythi0n/virta/internal/platform"
 )
@@ -61,6 +62,8 @@ type hub struct {
 	seq    uint64        // monotonic event counter (guarded by mu)
 	replay []replayEntry // ring of recent events; replay[rnext] is oldest when full
 	rnext  int
+
+	unforwarded atomic.Int64 // events with no wire mapping; surfaced in diagnostics, never silent
 }
 
 func newHub() *hub {
@@ -76,7 +79,10 @@ func (h *hub) Name() string { return "wsclients" }
 func (h *hub) Consume(_ context.Context, ev platform.Event) error {
 	we, key, broadcastAll := toWire(ev)
 	if we.Type == "" {
-		return nil // event type we don't forward
+		// A sealed Event variant with no wire mapping (a forgotten case once a new event type is
+		// added). Count it so it shows in diagnostics rather than vanishing silently.
+		h.unforwarded.Add(1)
+		return nil
 	}
 	// The pipeline drives one sink with a single worker goroutine, so Consume is never
 	// concurrent with itself — seq and the JSON encode need no lock, keeping the expensive
@@ -177,6 +183,10 @@ func (h *hub) clientCount() int {
 	defer h.mu.Unlock()
 	return len(h.clients)
 }
+
+// unforwardedCount returns how many events had no wire mapping (a diagnostics signal that a new
+// event type was added without a toWire case).
+func (h *hub) unforwardedCount() int64 { return h.unforwarded.Load() }
 
 // client is one connected stream consumer. send carries pre-encoded event bytes to its
 // write pump; sub is the (mutable) subscription.

@@ -17,6 +17,7 @@ type fakeChannels struct {
 	leaves  [][2]string // {platform, slug}
 	joinErr error
 	list    []ChannelInfo
+	caps    map[string]Capabilities
 }
 
 func (f *fakeChannels) Join(_ context.Context, platform, slug, mode string) error {
@@ -37,6 +38,8 @@ func (f *fakeChannels) Leave(platform, slug string) error {
 }
 
 func (f *fakeChannels) List() []ChannelInfo { return f.list }
+
+func (f *fakeChannels) Capabilities() map[string]Capabilities { return f.caps }
 
 func (f *fakeChannels) joinCount() int {
 	f.mu.Lock()
@@ -150,6 +153,27 @@ func TestChannels_ListReturnsJoined(t *testing.T) {
 	}
 	if len(resp.Channels) != 1 || resp.Channels[0].Slug != "forsen" {
 		t.Errorf("channels = %+v", resp.Channels)
+	}
+}
+
+func TestCapabilities_ReturnsPerPlatform(t *testing.T) {
+	s := start(t)
+	s.SetChannels(&fakeChannels{caps: map[string]Capabilities{
+		"twitch": {ReadAnonymous: true, Send: true, Moderation: true, Stability: "official"},
+		"x":      {Stability: "besteffort"},
+	}})
+	code, body := authedReq(t, http.MethodGet, "http://"+s.Addr()+"/v1/capabilities?token="+s.Token(), nil)
+	if code != http.StatusOK {
+		t.Fatalf("capabilities status = %d, want 200", code)
+	}
+	var resp struct {
+		Capabilities map[string]Capabilities `json:"capabilities"`
+	}
+	if err := json.Unmarshal(body, &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if !resp.Capabilities["twitch"].Send || resp.Capabilities["x"].Stability != "besteffort" {
+		t.Errorf("capabilities = %+v", resp.Capabilities)
 	}
 }
 
