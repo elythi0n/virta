@@ -1,5 +1,5 @@
 import type { DeletionRef, FeedMessage } from '@virta/feed-core';
-import type { ChatSettings, Discovery, StatsSnapshot, WireEvent } from './wire.gen';
+import type { ChatSettings, Discovery, HeldMessage, StatsSnapshot, WireEvent } from './wire.gen';
 import { discover as discoverDaemon } from './discovery';
 import { channelKey, toFeedMessage } from './normalize';
 
@@ -20,6 +20,10 @@ export interface DaemonClientOptions {
   onStats?: (channelKey: string, snapshot: StatsSnapshot) => void;
   /** A channel's chat settings (slow/followers/emote-only/unique) on join and when they change. */
   onChatSettings?: (channelKey: string, settings: ChatSettings) => void;
+  /** A message was held by AutoMod for moderator review. */
+  onHeld?: (held: HeldMessage) => void;
+  /** A held message was resolved (approved or denied) and should leave the queue. */
+  onHeldResolved?: (channelKey: string, id: string, approved: boolean) => void;
   onStatus: (status: ConnectionStatus) => void;
   /** Channel keys ("platform:slug") to receive; empty = all. */
   channels?: string[];
@@ -82,6 +86,10 @@ export function createDaemonClient(opts: DaemonClientOptions): DaemonClient {
         opts.onStats?.(channelKey(event.channel.platform, event.channel.slug), event.stats);
       } else if (event.type === 'chat_settings' && event.channel && event.settings) {
         opts.onChatSettings?.(channelKey(event.channel.platform, event.channel.slug), event.settings);
+      } else if (event.type === 'held' && event.held) {
+        opts.onHeld?.(event.held);
+      } else if (event.type === 'held_resolved' && event.channel) {
+        opts.onHeldResolved?.(channelKey(event.channel.platform, event.channel.slug), event.held_id ?? '', !!event.approved);
       }
     };
     ws.onerror = () => ws.close();

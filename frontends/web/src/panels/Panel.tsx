@@ -1,6 +1,7 @@
 import CelebrationsPane from './CelebrationsPane';
 import FeedPanel from './FeedPanel';
 import FiltersPanel from './FiltersPanel';
+import HeldQueuePanel from './HeldQueuePanel';
 import MentionInbox from './MentionInbox';
 import StreamPane from './StreamPane';
 import styles from './Panel.module.css';
@@ -22,6 +23,9 @@ export default function Panel({ kind, channels, panelId }: { kind: string; chann
   }
   if (kind === 'celebrations') {
     return <CelebrationsPane panelId={panelId} />;
+  }
+  if (kind === 'mods') {
+    return <HeldQueuePanel />;
   }
   return (
     <div className={styles.placeholder}>
