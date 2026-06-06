@@ -1,28 +1,17 @@
 import { useState } from 'react';
-import { Button, Popover, StatusDot, Text, Tooltip, type DotStatus } from '@virta/ui-kit';
-import type { Density } from '@virta/feed-core';
+import { Button, Popover, StatusDot, Text, type DotStatus } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { useChannels, useProfiles } from '../daemon';
-import { useDensity } from '../density';
 import styles from './Titlebar.module.css';
 
 type Props = {
   onOpenPalette: () => void;
 };
 
-const DENSITIES: Density[] = ['compact', 'cozy', 'comfortable'];
-
 export default function Titlebar({ onOpenPalette }: Props) {
   const { profiles, active, status: profilesStatus, activate } = useProfiles();
   const { channels, status: channelsStatus } = useChannels();
-  const { density, setDensity } = useDensity();
   const [menuOpen, setMenuOpen] = useState(false);
-
-  const densityIndex = DENSITIES.indexOf(density);
-  const stepDensity = (delta: number) => {
-    const next = DENSITIES[densityIndex + delta];
-    if (next) setDensity(next);
-  };
 
   const connected = channels.some((c) => c.state === 'connected');
   const dot: DotStatus = channelsStatus === 'offline' ? 'offline' : connected ? 'live' : 'idle';
@@ -91,30 +80,6 @@ export default function Titlebar({ onOpenPalette }: Props) {
       </div>
 
       <div className={styles.right}>
-        <span className={styles.density} role="group" aria-label="Chat text size">
-          <Tooltip content="Smaller chat text" side="bottom">
-            <button
-              type="button"
-              className={styles.zoom}
-              aria-label="Smaller chat text"
-              disabled={densityIndex <= 0}
-              onClick={() => stepDensity(-1)}
-            >
-              A&minus;
-            </button>
-          </Tooltip>
-          <Tooltip content="Larger chat text" side="bottom">
-            <button
-              type="button"
-              className={styles.zoom}
-              aria-label="Larger chat text"
-              disabled={densityIndex >= DENSITIES.length - 1}
-              onClick={() => stepDensity(1)}
-            >
-              A+
-            </button>
-          </Tooltip>
-        </span>
         <span className={styles.live}>
           <StatusDot status={dot} label={liveLabel} />
           <Text variant="meta" tone="subtle">

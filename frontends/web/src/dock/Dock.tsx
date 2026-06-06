@@ -11,7 +11,7 @@ import Tab from './Tab';
 // is its own panel.
 const components = {
   panel: (props: IDockviewPanelProps<{ kind: string; channels?: string[] }>) => (
-    <Panel kind={props.params.kind} channels={props.params.channels} />
+    <Panel kind={props.params.kind} channels={props.params.channels} panelId={props.api.id} />
   ),
   settings: () => <Settings />,
 };

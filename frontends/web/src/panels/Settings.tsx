@@ -4,6 +4,7 @@ import type { Density } from '@virta/feed-core';
 import { useActions } from '../actions';
 import { useDensity } from '../density';
 import { useTheme } from '../theme';
+import { DENSITIES } from './DensityControl';
 import styles from './Settings.module.css';
 
 type CategoryId =
@@ -71,16 +72,12 @@ function Appearance() {
           ]}
         />
       </Field>
-      <Field label="Feed density" hint="Row spacing in the message feed.">
+      <Field label="Default text size" hint="Starting size for new feeds; each chat tab can override it.">
         <Select
-          ariaLabel="Feed density"
+          ariaLabel="Default feed text size"
           value={density}
           onValueChange={(v) => setDensity(v as Density)}
-          options={[
-            { value: 'compact', label: 'Compact' },
-            { value: 'cozy', label: 'Cozy' },
-            { value: 'comfortable', label: 'Comfortable' },
-          ]}
+          options={DENSITIES.map((d) => ({ value: d.value, label: d.label }))}
         />
       </Field>
     </>

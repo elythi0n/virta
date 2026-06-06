@@ -127,40 +127,6 @@
   color: var(--virta-text-2);
 }
 
-.density {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  -webkit-app-region: no-drag;
-}
-.zoom {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 26px;
-  height: 24px;
-  padding: 0 var(--virta-space-4);
-  border: 1px solid var(--virta-line);
-  border-radius: var(--virta-radius-sm);
-  background: var(--virta-bg-0);
-  color: var(--virta-text-1);
-  font-family: var(--virta-font-ui);
-  font-size: var(--virta-type-meta-size);
-  cursor: pointer;
-  transition:
-    border-color var(--virta-motion-fast) ease,
-    background var(--virta-motion-fast) ease;
-}
-.zoom:hover:not(:disabled) {
-  border-color: var(--virta-text-2);
-  background: var(--virta-bg-2);
-  color: var(--virta-text-0);
-}
-.zoom:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
 .live {
   display: inline-flex;
   align-items: center;

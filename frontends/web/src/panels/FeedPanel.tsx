@@ -1,11 +1,34 @@
 import { useEffect, useState } from 'react';
-import { Feed, parseSegments, useFeedBuffer, type FeedMessage, type Platform } from '@virta/feed-core';
+import { Feed, parseSegments, useFeedBuffer, type Density, type FeedMessage, type Platform } from '@virta/feed-core';
 import { Segmented, StatusDot, Text } from '@virta/ui-kit';
 import { useChannels, useDaemonStream, type ConnectionStatus } from '../daemon';
 import { useDensity } from '../density';
 import { useTheme } from '../theme';
 import Composer from './Composer';
+import DensityControl, { DENSITIES } from './DensityControl';
 import styles from './FeedPanel.module.css';
+
+// Each chat tab keeps its own text size, persisted by panel id; the global setting is only the
+// default for new tabs.
+const VALID_DENSITY = new Set<string>(DENSITIES.map((d) => d.value));
+const densityKey = (id: string) => `virta.feed.density.${id}`;
+function loadDensity(id?: string): Density | null {
+  if (!id) return null;
+  try {
+    const v = localStorage.getItem(densityKey(id));
+    return v && VALID_DENSITY.has(v) ? (v as Density) : null;
+  } catch {
+    return null;
+  }
+}
+function saveDensity(id: string | undefined, d: Density) {
+  if (!id) return;
+  try {
+    localStorage.setItem(densityKey(id), d);
+  } catch {
+    // storage unavailable (private mode); density just won't persist across reloads
+  }
+}
 
 // Build a hex string from channels so no raw hex literal lives in the source (token-lint).
 const hex = (r: number, g: number, b: number) =>
@@ -112,14 +135,23 @@ const STATUS_LABEL: Record<ConnectionStatus, string> = {
 type Props = {
   /** The channel set this feed shows ("platform:slug"); undefined = all (the unified feed). */
   channels?: string[];
+  /** Dock panel id; scopes this tab's persisted text size. */
+  panelId?: string;
 };
 
-export default function FeedPanel({ channels }: Props) {
+export default function FeedPanel({ channels, panelId }: Props) {
   const { theme } = useTheme();
-  const { density } = useDensity();
+  const { density: defaultDensity } = useDensity();
   const { channels: joined } = useChannels();
   const { messages, push } = useFeedBuffer({ max: MAX_MESSAGES });
   const status = useDaemonStream(push, channels);
+
+  // Per-tab text size: the panel's saved choice, else the global default.
+  const [density, setDensity] = useState<Density>(() => loadDensity(panelId) ?? defaultDensity);
+  const changeDensity = (d: Density) => {
+    setDensity(d);
+    saveDensity(panelId, d);
+  };
 
   // The composer posts to this feed's channels — the set, or every joined channel for the unified
   // feed.
@@ -156,18 +188,21 @@ export default function FeedPanel({ channels }: Props) {
             {STATUS_LABEL[status]}
           </Text>
         </span>
-        {status === 'offline' && (
-          <Segmented
-            ariaLabel="Stream rate"
-            value={rate}
-            onValueChange={(v) => setRate(v as Rate)}
-            options={[
-              { value: 'off', label: 'Off' },
-              { value: 'live', label: 'Live' },
-              { value: 'stress', label: '200/s' },
-            ]}
-          />
-        )}
+        <div className={styles.controls}>
+          {status === 'offline' && (
+            <Segmented
+              ariaLabel="Stream rate"
+              value={rate}
+              onValueChange={(v) => setRate(v as Rate)}
+              options={[
+                { value: 'off', label: 'Off' },
+                { value: 'live', label: 'Live' },
+                { value: 'stress', label: '200/s' },
+              ]}
+            />
+          )}
+          <DensityControl value={density} onChange={changeDensity} />
+        </div>
       </div>
       <div className={styles.feedWrap}>
         <Feed messages={messages} background={background} showSource={showSource} density={density} />

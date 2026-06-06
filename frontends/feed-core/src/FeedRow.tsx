@@ -5,7 +5,7 @@ import type { Segment } from './segments';
 import type { FeedMessage, MessageType } from './types';
 import styles from './FeedRow.module.css';
 
-export type Density = 'compact' | 'cozy' | 'comfortable';
+export type Density = 'tiny' | 'compact' | 'cozy' | 'comfortable' | 'large';
 
 // Known badge sets get a short label + a semantic color; others fall back to the set's initials.
 const BADGE: Record<string, { label: string; color: string }> = {

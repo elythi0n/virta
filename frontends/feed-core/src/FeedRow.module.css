@@ -7,7 +7,13 @@
   font-family: var(--virta-font-ui);
 }
 
-/* Density sets the row's type scale and vertical rhythm. */
+/* Density sets the row's type scale and vertical rhythm; five steps from XS to XL. */
+.tiny {
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: var(--virta-type-chat-tiny-size);
+  line-height: var(--virta-type-chat-tiny-line);
+}
 .compact {
   padding-top: 1px;
   padding-bottom: 1px;
@@ -25,6 +31,12 @@
   padding-bottom: var(--virta-space-4);
   font-size: var(--virta-type-chat-comfortable-size);
   line-height: var(--virta-type-chat-comfortable-line);
+}
+.large {
+  padding-top: var(--virta-space-4);
+  padding-bottom: var(--virta-space-4);
+  font-size: var(--virta-type-chat-large-size);
+  line-height: var(--virta-type-chat-large-line);
 }
 .row:hover {
   background: var(--virta-bg-1);
