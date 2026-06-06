@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Feed, parseSegments, PlatformGlyph, useFeedBuffer, type Density, type FeedMessage, type Platform } from '@virta/feed-core';
-import { Input, Segmented, Text } from '@virta/ui-kit';
+import { Input, Segmented, Text, Tooltip } from '@virta/ui-kit';
+import Icon from '../Icon';
 import { filterFeed, QUICK_FILTERS, type QuickFilter } from './quickFilter';
 import { useChannels, useDaemonStream } from '../daemon';
 import { useDensity } from '../density';
@@ -155,6 +156,7 @@ export default function FeedPanel({ channels, panelId }: Props) {
   const [rate, setRate] = useState<Rate>('live');
   const [quick, setQuick] = useState<QuickFilter>('all');
   const [query, setQuery] = useState('');
+  const [hud, setHud] = useState(true); // false = preview only (hide the filter bar + composer)
   const [background, setBackground] = useState(() => hex(14, 15, 18));
 
   // Client-side view filter over the buffered feed; the full buffer keeps streaming underneath.
@@ -210,9 +212,21 @@ export default function FeedPanel({ channels, panelId }: Props) {
               ]}
             />
           )}
+          <Tooltip content={hud ? 'Preview only' : 'Show controls'} side="bottom">
+            <button
+              type="button"
+              className={styles.iconBtn}
+              aria-label={hud ? 'Hide chat controls' : 'Show chat controls'}
+              aria-pressed={!hud}
+              onClick={() => setHud((v) => !v)}
+            >
+              <Icon name={hud ? 'eye' : 'eye-off'} size={16} />
+            </button>
+          </Tooltip>
           <DensityControl value={density} onChange={changeDensity} />
         </div>
       </div>
+      {hud && (
       <div className={styles.filterbar}>
         <Input
           className={styles.search}
@@ -238,10 +252,11 @@ export default function FeedPanel({ channels, panelId }: Props) {
           ))}
         </div>
       </div>
+      )}
       <div className={styles.feedWrap}>
         <Feed messages={visible} background={background} showSource={showSource} density={density} showTimestamps={showTimestamps} />
       </div>
-      <Composer targets={targets} />
+      {hud && <Composer targets={targets} />}
     </div>
   );
 }

@@ -24,7 +24,7 @@ export interface PanelDef {
 }
 
 export const PANEL_CATALOG: PanelDef[] = [
-  { kind: 'feed', title: 'Unified feed', icon: 'chat' },
+  { kind: 'feed', title: 'Chat', icon: 'chat' },
   { kind: 'mentions', title: 'Mentions', icon: 'mentions' },
   { kind: 'celebrations', title: 'Celebrations', icon: 'gift' },
   { kind: 'filters', title: 'Filters', icon: 'filter' },

@@ -55,6 +55,32 @@
   align-items: center;
   gap: var(--virta-space-8);
 }
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 26px;
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-sm);
+  background: var(--virta-bg-0);
+  color: var(--virta-text-2);
+  cursor: pointer;
+  transition:
+    border-color var(--virta-motion-fast) ease,
+    background var(--virta-motion-fast) ease,
+    color var(--virta-motion-fast) ease;
+}
+.iconBtn:hover {
+  border-color: var(--virta-text-2);
+  background: var(--virta-bg-2);
+  color: var(--virta-text-0);
+}
+.iconBtn[aria-pressed='true'] {
+  border-color: transparent;
+  background: var(--virta-accent);
+  color: var(--virta-bg-0);
+}
 
 .filterbar {
   flex: none;

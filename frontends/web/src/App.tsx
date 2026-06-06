@@ -66,7 +66,7 @@ export default function App() {
       const add = (id: string, kind: string, title: string, position?: Parameters<DockviewApi['addPanel']>[0]['position']) =>
         api.addPanel({ id, component: 'panel', params: { kind }, title, position });
       // A representative default workspace: feed + mod queue as tabs, stats over stream beside it.
-      add('feed', 'feed', 'Unified feed');
+      add('feed', 'feed', 'Chat');
       add('mods', 'mods', 'Mod queue', { referencePanel: 'feed', direction: 'within' });
       add('stats', 'stats', 'Stats', { referencePanel: 'feed', direction: 'right' });
       add('stream', 'stream', 'Stream', { referencePanel: 'stats', direction: 'below' });
