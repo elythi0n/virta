@@ -15,6 +15,16 @@
   display: flex;
   align-items: center;
   gap: var(--virta-space-8);
+  flex: 1 1 0;
+  min-width: 0;
+}
+.right {
+  justify-content: flex-end;
+}
+.center {
+  flex: none;
+  display: flex;
+  justify-content: center;
 }
 
 .brand {
@@ -75,31 +85,45 @@
 .search {
   display: inline-flex;
   align-items: center;
-  gap: var(--virta-space-8);
-  height: 26px;
-  padding: 0 var(--virta-space-8);
+  justify-content: space-between;
+  gap: var(--virta-space-16);
+  width: min(380px, 42vw);
+  height: 28px;
+  padding: 0 var(--virta-space-4) 0 var(--virta-space-12);
   border: 1px solid var(--virta-line);
-  border-radius: var(--virta-radius-sm);
+  border-radius: var(--virta-radius-md);
   background: var(--virta-bg-0);
   color: var(--virta-text-2);
   font-family: var(--virta-font-ui);
-  font-size: var(--virta-type-meta-size);
+  font-size: var(--virta-type-ui-size);
   cursor: pointer;
+  transition:
+    border-color var(--virta-motion-fast) ease,
+    background var(--virta-motion-fast) ease;
 }
 .search:hover {
   border-color: var(--virta-text-2);
-  color: var(--virta-text-1);
+  background: var(--virta-bg-2);
+}
+.search:focus-visible {
+  outline: 2px solid var(--virta-accent);
+  outline-offset: 1px;
+}
+.searchLeft {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--virta-space-8);
 }
 .searchText {
   color: var(--virta-text-2);
 }
 .kbd {
-  padding: 1px var(--virta-space-4);
+  padding: 2px var(--virta-space-4);
   border: 1px solid var(--virta-line);
   border-radius: var(--virta-radius-sm);
   background: var(--virta-bg-1);
   font-family: var(--virta-font-mono);
-  font-size: 10px;
+  font-size: var(--virta-type-meta-size);
   color: var(--virta-text-2);
 }
 

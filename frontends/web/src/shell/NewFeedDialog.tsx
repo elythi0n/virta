@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button, Dialog, Input, Text } from '@virta/ui-kit';
 import { useChannels } from '../daemon';
 import styles from './NewFeedDialog.module.css';
@@ -6,25 +6,44 @@ import styles from './NewFeedDialog.module.css';
 type Props = {
   open: boolean;
   onClose: () => void;
-  onCreate: (title: string, channels: string[]) => void;
+  onSubmit: (title: string, channels: string[]) => void;
+  /** Pre-fill when editing an existing feed. */
+  initialName?: string;
+  initialChannels?: string[];
+  dialogTitle?: string;
+  submitLabel?: string;
 };
 
-// Build a feed scoped to a chosen set of joined channels — the basis for several unified feeds at
-// once. An empty selection isn't allowed (that's just the default unified feed).
-export default function NewFeedDialog({ open, onClose, onCreate }: Props) {
+// Build or edit a feed scoped to a chosen set of joined channels — the basis for several unified
+// feeds at once. An empty selection isn't allowed (that's just the default unified feed).
+export default function NewFeedDialog({
+  open,
+  onClose,
+  onSubmit,
+  initialName,
+  initialChannels,
+  dialogTitle = 'New feed',
+  submitLabel = 'Create feed',
+}: Props) {
   const { channels } = useChannels();
   const [name, setName] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
 
+  // Seed the form from the initial values each time the dialog opens.
+  useEffect(() => {
+    if (open) {
+      setName(initialName ?? '');
+      setSelected(initialChannels ?? []);
+    }
+  }, [open, initialName, initialChannels]);
+
   const toggle = (key: string) =>
     setSelected((s) => (s.includes(key) ? s.filter((k) => k !== key) : [...s, key]));
 
-  const create = () => {
+  const submit = () => {
     if (selected.length === 0) return;
     const fallback = selected.length === 1 ? (selected[0].split(':')[1] ?? 'Feed') : `${selected.length} channels`;
-    onCreate(name.trim() || fallback, selected);
-    setName('');
-    setSelected([]);
+    onSubmit(name.trim() || fallback, selected);
     onClose();
   };
 
@@ -32,7 +51,7 @@ export default function NewFeedDialog({ open, onClose, onCreate }: Props) {
     <Dialog
       open={open}
       onOpenChange={(o) => !o && onClose()}
-      title="New feed"
+      title={dialogTitle}
       description="A unified feed scoped to the channels you pick."
     >
       <div className={styles.body}>
@@ -69,8 +88,8 @@ export default function NewFeedDialog({ open, onClose, onCreate }: Props) {
           </ul>
         )}
         <div className={styles.actions}>
-          <Button variant="solid" size="sm" disabled={selected.length === 0} onClick={create}>
-            Create feed
+          <Button variant="solid" size="sm" disabled={selected.length === 0} onClick={submit}>
+            {submitLabel}
           </Button>
         </div>
       </div>

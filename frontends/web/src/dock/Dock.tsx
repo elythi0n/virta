@@ -2,6 +2,7 @@ import { DockviewReact, type DockviewReadyEvent, type IDockviewPanelProps } from
 import Panel from '../panels/Panel';
 import Settings from '../panels/Settings';
 import HeaderActions from './HeaderActions';
+import Tab from './Tab';
 
 // This module is the only place that imports dockview. The rest of the app receives the api
 // through onReady and never depends on vendor shapes directly, so the engine stays swappable.
@@ -23,6 +24,7 @@ export default function Dock({ onReady }: { onReady: (event: DockviewReadyEvent)
     <DockviewReact
       className="dockview-theme-virta"
       components={components}
+      defaultTabComponent={Tab}
       rightHeaderActionsComponent={HeaderActions}
       onReady={onReady}
     />

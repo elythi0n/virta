@@ -91,17 +91,12 @@ export default function App() {
     api.addPanel({ id: 'settings', component: 'settings', title: 'Settings' });
   }, []);
 
-  // Open (or focus) a feed scoped to a channel set. The id is the sorted set, so reopening the
-  // same combination focuses the existing panel rather than duplicating it.
+  // Open a feed scoped to a channel set as a new panel. The id is stable and unique (not derived
+  // from the set) so the feed stays the same panel when its channels are later edited from the tab.
   const openFeedSet = useCallback((title: string, channels: string[]) => {
     const api = apiRef.current;
     if (!api || channels.length === 0) return;
-    const id = `feed:${[...channels].sort().join('|')}`;
-    const existing = api.getPanel(id);
-    if (existing) {
-      existing.api.setActive();
-      return;
-    }
+    const id = `feedset-${crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)}`;
     api.addPanel({ id, component: 'panel', params: { kind: 'feed', channels, title }, title });
   }, []);
 
@@ -162,7 +157,7 @@ export default function App() {
         </div>
           <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} actions={actions} placeholder="Search commands…" />
           <ShortcutHelp open={helpOpen} onOpenChange={setHelpOpen} actions={actions} />
-          <NewFeedDialog open={newFeedOpen} onClose={() => setNewFeedOpen(false)} onCreate={openFeedSet} />
+          <NewFeedDialog open={newFeedOpen} onClose={() => setNewFeedOpen(false)} onSubmit={openFeedSet} />
         </TooltipProvider>
       </ActionsProvider>
     </ThemeProvider>

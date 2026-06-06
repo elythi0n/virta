@@ -69,12 +69,17 @@ export default function Titlebar({ onOpenPalette }: Props) {
         </Popover>
       </div>
 
-      <div className={styles.right}>
+      <div className={styles.center}>
         <button type="button" className={styles.search} onClick={onOpenPalette} aria-label="Search commands">
-          <Icon name="search" size={14} />
-          <span className={styles.searchText}>Search</span>
+          <span className={styles.searchLeft}>
+            <Icon name="search" size={14} />
+            <span className={styles.searchText}>Search commands…</span>
+          </span>
           <kbd className={styles.kbd}>⌃⇧P</kbd>
         </button>
+      </div>
+
+      <div className={styles.right}>
         <span className={styles.live}>
           <StatusDot status={dot} label={liveLabel} />
           <Text variant="meta" tone="subtle">

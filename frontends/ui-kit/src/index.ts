@@ -28,6 +28,9 @@ export { default as Dialog } from './Dialog';
 
 export { default as Popover } from './Popover';
 
+export { default as ContextMenu } from './ContextMenu';
+export type { ContextMenuEntry } from './ContextMenu';
+
 // Brand mark (a glow-on-dark raster, designed for dark surfaces). Reach for the
 // 256px variant in app chrome and the 512px variant where it renders larger or
 // on high-DPI displays; the unscaled master lives beside these.
