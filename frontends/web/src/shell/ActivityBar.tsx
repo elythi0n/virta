@@ -24,7 +24,7 @@ export default function ActivityBar({ activeView, sidebarOpen, onSelect, onOpenS
           aria-pressed={active}
           onClick={() => onSelect(v.id)}
         >
-          <Icon name={v.icon} />
+          <Icon name={v.icon} size={23} />
         </button>
       </Tooltip>
     );
@@ -37,12 +37,12 @@ export default function ActivityBar({ activeView, sidebarOpen, onSelect, onOpenS
         {/* Plugins and Settings are actions, not views: each opens a dock panel, not the side bar. */}
         <Tooltip content="Plugins" side="right">
           <button className={styles.item} aria-label="Plugins" onClick={onOpenPlugins}>
-            <Icon name="plugins" />
+            <Icon name="plugins" size={23} />
           </button>
         </Tooltip>
         <Tooltip content="Settings" side="right">
           <button className={styles.item} aria-label="Settings" onClick={onOpenSettings}>
-            <Icon name="settings" />
+            <Icon name="settings" size={23} />
           </button>
         </Tooltip>
       </div>

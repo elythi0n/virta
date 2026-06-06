@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Button, Input, Popover, Text } from '@virta/ui-kit';
-import { PlatformGlyph, type Platform } from '@virta/feed-core';
 import { previewSend, sendMessage } from '../daemon';
 import SignInDialog, { type SignInPlatform } from '../shell/SignInDialog';
 import type { SendTarget } from '../daemon/wire.gen';
@@ -8,7 +7,6 @@ import styles from './Composer.module.css';
 
 const SIGNABLE = new Set(['twitch', 'kick']);
 const platformOf = (channel: string) => channel.split(':')[0];
-const label = (channel: string) => channel.split(':')[1] ?? channel;
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 type Props = {
@@ -16,14 +14,16 @@ type Props = {
   targets: string[];
 };
 
-// Compose and cross-post to the feed's channels. Reachable targets show as chips; unreachable ones
-// (platforms you're not signed in to) are dimmed, and a "Sign in to chat" action opens the auth
-// modal for those platforms. Messages only ever go to platforms you're signed in to.
+// Compose and cross-post to the feed's channels. The input and Send button are always present;
+// pressing Send when you're not signed in to any of the feed's platforms opens the sign-in
+// options instead of sending (a dialog for one platform, a dropdown for several). Messages only
+// ever go to platforms you're signed in to.
 export default function Composer({ targets }: Props) {
   const [text, setText] = useState('');
   const [preview, setPreview] = useState<SendTarget[] | null>([]); // null = daemon unreachable
   const [sending, setSending] = useState(false);
   const [signIn, setSignIn] = useState<SignInPlatform | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [reload, setReload] = useState(0);
   const key = [...targets].sort().join(',');
 
@@ -45,10 +45,12 @@ export default function Composer({ targets }: Props) {
   const unreachable = (preview ?? []).filter((t) => !t.can_send);
   const offline = preview === null;
   const signable = [...new Set(unreachable.map((t) => platformOf(t.channel)).filter((p) => SIGNABLE.has(p)))] as SignInPlatform[];
-  const canSend = reachable.length > 0 && text.trim() !== '' && !sending;
 
-  const submit = async () => {
-    if (!canSend) return;
+  const hasText = text.trim() !== '';
+  // Send is actionable when there's text to send somewhere, or text plus a way to sign in.
+  const canAct = hasText && !sending && (reachable.length > 0 || signable.length > 0);
+
+  const send = async () => {
     setSending(true);
     try {
       await sendMessage(reachable.map((r) => r.channel), text.trim());
@@ -60,82 +62,75 @@ export default function Composer({ targets }: Props) {
     }
   };
 
-  function signInControl() {
-    if (signable.length === 0) return null;
-    const primary = reachable.length === 0;
-    // Sign-in is a secondary affordance, not the primary action — keep it muted graphite (the
-    // accent-blue solid read as too loud), so the Send button stays the one bright control.
-    const variant = primary ? 'subtle' : 'ghost';
-    if (signable.length === 1) {
-      return (
-        <Button variant={variant} size="md" onClick={() => setSignIn(signable[0])}>
-          {primary ? 'Sign in to chat' : `Sign in to ${cap(signable[0])}`}
-        </Button>
-      );
+  // Pressing Send (or Enter): send if signed in somewhere, otherwise surface the sign-in options.
+  const act = () => {
+    if (!canAct) return;
+    if (reachable.length > 0) {
+      void send();
+    } else if (signable.length === 1) {
+      setSignIn(signable[0]);
+    } else if (signable.length > 1) {
+      setMenuOpen(true);
     }
-    return (
-      <Popover
-        align="end"
-        trigger={
-          <Button variant={variant} size="md">
-            {primary ? 'Sign in to chat' : 'Sign in'}
-          </Button>
+  };
+
+  const input = (
+    <Input
+      placeholder={offline ? 'Not connected' : 'Send a message'}
+      aria-label="Message"
+      disabled={offline}
+      value={text}
+      onChange={(e) => setText(e.currentTarget.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          act();
         }
-      >
-        <div className={styles.signinMenu}>
-          {signable.map((p) => (
-            <button key={p} type="button" className={styles.signinItem} onClick={() => setSignIn(p)}>
-              Sign in to {cap(p)}
-            </button>
-          ))}
-        </div>
-      </Popover>
-    );
-  }
+      }}
+    />
+  );
+
+  const sendButton = (
+    <Button variant="solid" size="md" disabled={!canAct} onClick={act}>
+      Send
+    </Button>
+  );
 
   return (
     <div className={styles.composer}>
-      {preview && preview.length > 0 && (
-        <div className={styles.chips}>
-          {reachable.map((t) => (
-            <span key={t.channel} className={styles.chip}>
-              <PlatformGlyph platform={platformOf(t.channel) as Platform} className={styles.chipGlyph} />
-              {label(t.channel)}
-            </span>
-          ))}
-          {unreachable.map((t) => (
-            <span key={t.channel} className={`${styles.chip} ${styles.off}`} title="Sign in to send here">
-              <PlatformGlyph platform={platformOf(t.channel) as Platform} className={styles.chipGlyph} />
-              {label(t.channel)}
-            </span>
-          ))}
-        </div>
-      )}
-
       <div className={styles.row}>
-        {reachable.length === 0 ? (
-          (signInControl() ?? (
-            <Input disabled placeholder={offline ? 'Not connected' : 'Sign in to chat'} aria-label="Message" />
-          ))
+        {input}
+        {reachable.length === 0 && signable.length > 1 ? (
+          // No account yet for any platform: Send opens a dropdown of sign-in options.
+          <Popover
+            open={menuOpen}
+            onOpenChange={setMenuOpen}
+            align="end"
+            side="top"
+            trigger={
+              <Button variant="solid" size="md" disabled={!canAct}>
+                Send
+              </Button>
+            }
+          >
+            <div className={styles.signinMenu} role="menu" aria-label="Sign in to send">
+              {signable.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  className={styles.signinItem}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setSignIn(p);
+                  }}
+                >
+                  Sign in to {cap(p)}
+                </button>
+              ))}
+            </div>
+          </Popover>
         ) : (
-          <>
-            <Input
-              placeholder="Send a message"
-              aria-label="Message"
-              value={text}
-              onChange={(e) => setText(e.currentTarget.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  void submit();
-                }
-              }}
-            />
-            <Button variant="solid" size="md" disabled={!canSend} onClick={() => void submit()}>
-              Send
-            </Button>
-            {signInControl()}
-          </>
+          sendButton
         )}
       </div>
 

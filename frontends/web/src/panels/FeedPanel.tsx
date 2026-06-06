@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Feed, parseSegments, useFeedBuffer, type Density, type FeedMessage, type Platform } from '@virta/feed-core';
-import { Input, Segmented, StatusDot, Text } from '@virta/ui-kit';
+import { Feed, parseSegments, PlatformGlyph, useFeedBuffer, type Density, type FeedMessage, type Platform } from '@virta/feed-core';
+import { Input, Segmented, Text } from '@virta/ui-kit';
 import { filterFeed, QUICK_FILTERS, type QuickFilter } from './quickFilter';
-import { useChannels, useDaemonStream, type ConnectionStatus } from '../daemon';
+import { useChannels, useDaemonStream } from '../daemon';
 import { useDensity } from '../density';
 import { useFeedDisplay } from '../feedDisplay';
 import { useTheme } from '../theme';
@@ -127,13 +127,6 @@ const RATES: Record<Rate, number> = { off: 0, live: 12, stress: 200 }; // messag
 const MAX_MESSAGES = 8000; // bound memory; oldest drop once exceeded
 const TICK_MS = 50;
 
-const STATUS_LABEL: Record<ConnectionStatus, string> = {
-  offline: 'Demo data',
-  connecting: 'Connecting…',
-  connected: 'Live',
-  reconnecting: 'Reconnecting…',
-};
-
 type Props = {
   /** The channel set this feed shows ("platform:slug"); undefined = all (the unified feed). */
   channels?: string[];
@@ -190,12 +183,20 @@ export default function FeedPanel({ channels, panelId }: Props) {
   return (
     <div className={styles.panel}>
       <div className={styles.toolbar}>
-        <span className={styles.status}>
-          <StatusDot status={status === 'connected' ? 'live' : status === 'offline' ? 'offline' : 'idle'} label={STATUS_LABEL[status]} />
-          <Text variant="meta" tone="subtle">
-            {STATUS_LABEL[status]}
-          </Text>
-        </span>
+        <div className={styles.streamers}>
+          {targets.length === 0 ? (
+            <Text variant="meta" tone="subtle">
+              No channels
+            </Text>
+          ) : (
+            targets.map((t) => (
+              <span key={t} className={styles.streamer}>
+                <PlatformGlyph platform={t.split(':')[0] as Platform} className={styles.streamerGlyph} />
+                {t.split(':')[1] ?? t}
+              </span>
+            ))
+          )}
+        </div>
         <div className={styles.controls}>
           {status === 'offline' && (
             <Segmented

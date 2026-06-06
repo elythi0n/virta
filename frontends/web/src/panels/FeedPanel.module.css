@@ -16,10 +16,38 @@
   border-bottom: 1px solid var(--virta-line);
 }
 
-.status {
+.streamers {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-4);
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.streamers::-webkit-scrollbar {
+  display: none;
+}
+.streamer {
+  flex: none;
   display: inline-flex;
   align-items: center;
-  gap: var(--virta-space-8);
+  gap: var(--virta-space-4);
+  height: 22px;
+  padding: 0 var(--virta-space-8);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-sm);
+  background: var(--virta-bg-0);
+  color: var(--virta-text-1);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.streamerGlyph {
+  width: 12px;
+  height: 12px;
+  flex: none;
 }
 
 .controls {
