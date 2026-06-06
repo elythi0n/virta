@@ -1,36 +1,12 @@
-import CelebrationsPane from './CelebrationsPane';
-import FeedPanel from './FeedPanel';
-import FiltersPanel from './FiltersPanel';
-import HeldQueuePanel from './HeldQueuePanel';
-import MentionInbox from './MentionInbox';
-import SearchPanel from './SearchPanel';
-import StreamPane from './StreamPane';
+import { panelByKind } from './registry';
 import styles from './Panel.module.css';
 
-// Routes a dock panel kind to its content. Feed-like kinds render the live feed (optionally scoped
-// to a channel set); 'watch' embeds a stream's player; the rest are placeholders until built.
+// Routes a dock panel kind to its content by looking it up in the contribution registry — no
+// hardcoded per-kind switch, so our panels and (later) plugin panels open the same way. An unknown
+// kind (e.g. a removed plugin) renders a graceful placeholder rather than a blank pane.
 export default function Panel({ kind, channels, panelId }: { kind: string; channels?: string[]; panelId?: string }) {
-  if (kind === 'feed' || kind === 'x-chat') {
-    return <FeedPanel channels={channels} panelId={panelId} />;
-  }
-  if (kind === 'watch') {
-    return <StreamPane channel={channels?.[0]} />;
-  }
-  if (kind === 'mentions') {
-    return <MentionInbox />;
-  }
-  if (kind === 'filters') {
-    return <FiltersPanel />;
-  }
-  if (kind === 'celebrations') {
-    return <CelebrationsPane panelId={panelId} />;
-  }
-  if (kind === 'mods') {
-    return <HeldQueuePanel />;
-  }
-  if (kind === 'search') {
-    return <SearchPanel />;
-  }
+  const contribution = panelByKind(kind);
+  if (contribution) return <>{contribution.render({ channels, panelId })}</>;
   return (
     <div className={styles.placeholder}>
       <span className={styles.label}>{kind}</span>

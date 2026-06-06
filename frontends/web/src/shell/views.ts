@@ -17,21 +17,6 @@ export const PRIMARY_VIEWS: ViewDef[] = [
   { id: 'streams', label: 'Streams', icon: 'stream' },
 ];
 
-// Catalog of panels the user can open into the dock from the Panels view.
-export interface PanelDef {
-  kind: string;
-  title: string;
-  icon: IconName;
-}
-
-export const PANEL_CATALOG: PanelDef[] = [
-  { kind: 'feed', title: 'Chat', icon: 'chat' },
-  { kind: 'mentions', title: 'Mentions', icon: 'mentions' },
-  { kind: 'celebrations', title: 'Celebrations', icon: 'gift' },
-  { kind: 'filters', title: 'Filters', icon: 'filter' },
-  { kind: 'x-chat', title: 'X chat', icon: 'x' },
-  { kind: 'stream', title: 'Stream', icon: 'stream' },
-  { kind: 'mods', title: 'Mod queue', icon: 'mods' },
-  { kind: 'search', title: 'Search', icon: 'search' },
-  { kind: 'stats', title: 'Stats', icon: 'stats' },
-];
+// The Panels catalog is the panel contribution registry's catalog-listed entries — one source of
+// truth for both the sidebar list and how the dock renders each kind (panels/registry).
+export { PANEL_CATALOG, type PanelContribution } from '../panels/registry';
