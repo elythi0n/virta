@@ -170,6 +170,11 @@ Each surface is a full client of the same engine, with no feature locked to one 
 Windows, macOS, and Linux are equal targets; OS-specific capabilities ship with declared
 fallbacks.
 
+## Install
+
+Pre-built installers will be on [virta.lol](https://virta.lol) once the first release is tagged.
+Until then, build from source.
+
 ## Build & run
 
 Requires **Go 1.26+**.
