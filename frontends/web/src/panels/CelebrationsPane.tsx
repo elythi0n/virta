@@ -8,7 +8,7 @@ import {
   type FeedMessage,
   type Platform,
 } from '@virta/feed-core';
-import { ContextMenu, Dialog, Text } from '@virta/ui-kit';
+import { Button, ContextMenu, Dialog, Text } from '@virta/ui-kit';
 import { channelKey, useChannels, useDaemonStream } from '../daemon';
 import styles from './CelebrationsPane.module.css';
 
@@ -137,6 +137,18 @@ export default function CelebrationsPane({ panelId }: Props) {
         onOpenChange={setFilterOpen}
         title="Celebration filters"
         description="Choose which celebrations this pane shows. Saved to this pane."
+        footer={
+          <>
+            {filtered && (
+              <Button variant="ghost" size="md" onClick={() => update(EMPTY)}>
+                Reset to all
+              </Button>
+            )}
+            <Button variant="solid" size="md" onClick={() => setFilterOpen(false)}>
+              Done
+            </Button>
+          </>
+        }
       >
         <div className={styles.filterBody}>
           <section>
@@ -183,11 +195,6 @@ export default function CelebrationsPane({ panelId }: Props) {
             )}
           </section>
 
-          {filtered && (
-            <button type="button" className={styles.clear} onClick={() => update(EMPTY)}>
-              Reset to all
-            </button>
-          )}
         </div>
       </Dialog>
     </>

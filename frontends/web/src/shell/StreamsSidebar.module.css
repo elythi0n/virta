@@ -95,6 +95,15 @@
   border-radius: 50%;
   background: var(--virta-danger);
 }
+/* Marks the viewer count as the combined total across a streamer's live platforms. */
+.viewersAll {
+  margin-left: 1px;
+  color: var(--virta-text-2);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 
 .row {
   display: flex;

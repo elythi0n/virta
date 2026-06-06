@@ -18,7 +18,7 @@ export interface StreamGroup {
   variants: StreamVariant[]; // primary first
   primary: StreamVariant;
   live: boolean; // any variant live
-  viewers: number; // max live viewer count across variants (sort key)
+  viewers: number; // combined live viewer count across all variants (shown on the card + sort key)
 }
 
 // Platforms with working thumbnails/metadata rank higher, so a streamer on both Twitch and Kick
@@ -51,7 +51,9 @@ export function groupStreams(channels: ChannelInfo[], streams: Record<string, St
     const sorted = [...variants].sort((a, b) => score(b) - score(a));
     const primary = sorted[0];
     const live = variants.some((v) => v.info?.live);
-    const viewers = variants.reduce((max, v) => (v.info?.live ? Math.max(max, v.info.viewer_count) : max), 0);
+    // Combined audience across every platform the streamer is live on (e.g. Twitch + Kick), so the
+    // card reflects their whole reach rather than one source.
+    const viewers = variants.reduce((sum, v) => (v.info?.live ? sum + v.info.viewer_count : sum), 0);
     groups.push({ name, display: primary.slug, variants: sorted, primary, live, viewers });
   }
 

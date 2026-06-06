@@ -49,8 +49,3 @@
   height: 14px;
   flex: none;
 }
-
-.actions {
-  display: flex;
-  justify-content: flex-end;
-}

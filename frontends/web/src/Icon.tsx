@@ -1,4 +1,4 @@
-export type IconName = 'sources' | 'panels' | 'settings' | 'chat' | 'stream' | 'mods' | 'stats' | 'x' | 'popout' | 'search' | 'chevron-down' | 'plus' | 'text-size' | 'plugins' | 'mentions' | 'filter' | 'gift' | 'eye' | 'eye-off' | 'collapse' | 'trash' | 'clock' | 'ban' | 'reply' | 'zap';
+export type IconName = 'sources' | 'panels' | 'settings' | 'chat' | 'stream' | 'mods' | 'stats' | 'x' | 'popout' | 'search' | 'chevron-down' | 'plus' | 'text-size' | 'plugins' | 'mentions' | 'filter' | 'gift' | 'eye' | 'eye-off' | 'collapse' | 'trash' | 'clock' | 'ban' | 'reply' | 'zap' | 'check';
 
 // Stroke icons on a 24px grid (Lucide geometry). Inner markup only; the wrapper sets sizing,
 // stroke, and currentColor so a single icon adapts to any context.
@@ -28,6 +28,7 @@ const PATHS: Record<IconName, string> = {
   trash: '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
   reply: '<polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/>',
   zap: '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
   clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
   ban: '<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',
   eye: '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
@@ -37,7 +38,7 @@ const PATHS: Record<IconName, string> = {
     '<path d="M19.439 7.85c-.049.322.059.648.289.878l1.568 1.568c.47.47.706 1.087.706 1.704s-.235 1.233-.706 1.704l-1.611 1.611a.98.98 0 0 1-.837.276c-.47-.07-.802-.48-.968-.925a2.501 2.501 0 1 0-3.214 3.214c.446.166.855.497.925.968a.979.979 0 0 1-.276.837l-1.61 1.61a2.404 2.404 0 0 1-1.705.707 2.402 2.402 0 0 1-1.704-.706l-1.568-1.568a1.026 1.026 0 0 0-.877-.29c-.493.074-.84.504-1.02.968a2.5 2.5 0 1 1-3.237-3.237c.464-.18.894-.527.967-1.02a1.026 1.026 0 0 0-.289-.877l-1.568-1.568A2.402 2.402 0 0 1 1.998 12c0-.617.236-1.234.706-1.704L4.23 8.77c.24-.24.581-.353.917-.303.515.077.877.528 1.073 1.01a2.5 2.5 0 1 0 3.259-3.259c-.482-.196-.933-.558-1.01-1.073-.05-.336.062-.676.303-.917l1.525-1.525A2.402 2.402 0 0 1 12 1.998c.617 0 1.234.236 1.704.706l1.568 1.568c.23.23.556.338.877.29.493-.074.84-.504 1.02-.968a2.5 2.5 0 1 1 3.237 3.237c-.464.18-.894.527-.967 1.02Z"/>',
 };
 
-export default function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
+export default function Icon({ name, size = 20, className }: { name: IconName; size?: number; className?: string }) {
   return (
     <svg
       width={size}
@@ -49,6 +50,7 @@ export default function Icon({ name, size = 20 }: { name: IconName; size?: numbe
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
+      className={className}
       dangerouslySetInnerHTML={{ __html: PATHS[name] }}
     />
   );

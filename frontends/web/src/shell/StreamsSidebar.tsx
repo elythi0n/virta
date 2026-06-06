@@ -93,8 +93,9 @@ function StreamCard({
   feeds: { id: string; title: string }[];
   mergeChannelIntoFeed: (panelId: string, channelKey: string) => void;
 }) {
-  const { primary, display, variants, live } = group;
+  const { primary, display, variants, live, viewers } = group;
   const info = primary.info;
+  const liveCount = variants.filter((v) => v.info?.live).length;
 
   const menuItems: ContextMenuEntry[] = [
     { kind: 'item', label: 'Open stream', onSelect: () => openStream(primary.key, display) },
@@ -135,10 +136,11 @@ function StreamCard({
                   <span className={styles.thumbFallback} aria-hidden />
                 )}
                 <span className={styles.liveBadge}>LIVE</span>
-                {info && info.viewer_count > 0 && (
-                  <span className={styles.viewers}>
+                {viewers > 0 && (
+                  <span className={styles.viewers} title={liveCount > 1 ? `${fmt(viewers)} across ${liveCount} platforms` : undefined}>
                     <i className={styles.vdot} aria-hidden />
-                    {fmt(info.viewer_count)}
+                    {fmt(viewers)}
+                    {liveCount > 1 && <span className={styles.viewersAll} aria-hidden> all</span>}
                   </span>
                 )}
               </button>

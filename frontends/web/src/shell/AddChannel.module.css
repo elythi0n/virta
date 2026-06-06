@@ -23,39 +23,73 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: var(--virta-space-8);
-  min-width: 240px;
+  gap: var(--virta-space-16);
 }
+
+/* Two large platform cards; the glyph carries the platform color, selection uses the app accent
+   (platform color never becomes a background, per the design system). */
 .platforms {
-  display: inline-flex;
-  gap: var(--virta-space-4);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--virta-space-8);
 }
-.chip {
-  flex: 1 1 0;
-  height: 26px;
+.platform {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--virta-space-8);
+  padding: var(--virta-space-16) var(--virta-space-12);
   border: 1px solid var(--virta-line);
-  border-radius: var(--virta-radius-sm);
+  border-radius: var(--virta-radius-md);
   background: var(--virta-bg-0);
-  color: var(--virta-text-2);
+  color: var(--virta-text-1);
+  cursor: pointer;
+  transition:
+    border-color var(--virta-motion-fast) ease,
+    background var(--virta-motion-fast) ease,
+    color var(--virta-motion-fast) ease;
+}
+.platform:hover {
+  border-color: var(--virta-text-2);
+  background: var(--virta-bg-2);
+  color: var(--virta-text-0);
+}
+.platformOn {
+  border-color: var(--virta-accent);
+  background: color-mix(in srgb, var(--virta-accent) 10%, var(--virta-bg-0));
+  color: var(--virta-text-0);
+  box-shadow: 0 0 0 1px var(--virta-accent) inset;
+}
+.platformGlyph {
+  width: 24px;
+  height: 24px;
+}
+.platformName {
   font-family: var(--virta-font-ui);
   font-size: var(--virta-type-ui-size);
   font-weight: 600;
-  cursor: pointer;
 }
-.chip:hover {
-  border-color: var(--virta-text-2);
-  color: var(--virta-text-0);
+.platformCheck {
+  position: absolute;
+  top: var(--virta-space-8);
+  right: var(--virta-space-8);
+  color: var(--virta-accent);
 }
-.chipOn {
-  border-color: transparent;
-  background: var(--virta-accent);
-  color: var(--virta-bg-0);
-}
-.entry {
+
+.field {
   display: flex;
-  gap: var(--virta-space-8);
-  align-items: center;
+  flex-direction: column;
+  gap: var(--virta-space-4);
 }
+.label {
+  color: var(--virta-text-1);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 600;
+}
+
 .error {
   color: var(--virta-danger);
   font-family: var(--virta-font-ui);

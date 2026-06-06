@@ -54,6 +54,16 @@ export default function NewFeedDialog({
       onOpenChange={(o) => !o && onClose()}
       title={dialogTitle}
       description="A unified feed scoped to the channels you pick."
+      footer={
+        <>
+          <Button variant="ghost" size="md" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="solid" size="md" disabled={selected.length === 0} onClick={submit}>
+            {submitLabel}
+          </Button>
+        </>
+      }
     >
       <div className={styles.body}>
         <Input
@@ -88,11 +98,6 @@ export default function NewFeedDialog({
             })}
           </ul>
         )}
-        <div className={styles.actions}>
-          <Button variant="solid" size="sm" disabled={selected.length === 0} onClick={submit}>
-            {submitLabel}
-          </Button>
-        </div>
       </div>
     </Dialog>
   );

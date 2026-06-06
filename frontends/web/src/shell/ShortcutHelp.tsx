@@ -11,7 +11,7 @@ type Props = {
 export default function ShortcutHelp({ open, onOpenChange, actions }: Props) {
   const bound = actions.filter((a) => a.shortcut);
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} title="Keyboard shortcuts">
+    <Dialog open={open} onOpenChange={onOpenChange} title="Keyboard shortcuts" size="lg">
       <ul className={styles.list}>
         {bound.map((a) => (
           <li key={a.id} className={styles.row}>

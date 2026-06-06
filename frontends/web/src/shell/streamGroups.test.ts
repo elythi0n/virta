@@ -48,8 +48,14 @@ describe('groupStreams', () => {
     expect(groups.map((g) => g.name)).toEqual(['zed', 'alice', 'bob']);
   });
 
-  it('reports the max live viewer count across a group', () => {
+  it('combines live viewer counts across a group (Twitch + Kick)', () => {
     const streams = { ...live('twitch', 'forsen', 3000), ...live('kick', 'forsen', 800) };
+    const groups = groupStreams([ch('twitch', 'forsen'), ch('kick', 'forsen')], streams);
+    expect(groups[0].viewers).toBe(3800);
+  });
+
+  it('counts only live variants toward the combined total', () => {
+    const streams = live('twitch', 'forsen', 3000); // kick offline (no entry)
     const groups = groupStreams([ch('twitch', 'forsen'), ch('kick', 'forsen')], streams);
     expect(groups[0].viewers).toBe(3000);
   });

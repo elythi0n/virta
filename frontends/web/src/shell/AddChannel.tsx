@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button, Dialog, Input, Tooltip } from '@virta/ui-kit';
+import { PlatformGlyph, type Platform } from '@virta/feed-core';
 import Icon from '../Icon';
 import { useChannels } from '../daemon';
 import styles from './AddChannel.module.css';
@@ -24,6 +25,11 @@ export default function AddChannel() {
     setBusy(false);
   };
 
+  const close = () => {
+    setOpen(false);
+    reset();
+  };
+
   const onJoin = async () => {
     const name = slug.trim().toLowerCase();
     if (!name) return;
@@ -31,10 +37,9 @@ export default function AddChannel() {
     setError(null);
     try {
       await join(platform, name);
-      setOpen(false);
-      reset();
+      close();
     } catch {
-      setError(`Couldn’t add ${cap(platform)}/${name}.`);
+      setError(`Couldn’t add ${cap(platform)}/${name}. Check the channel name and try again.`);
       setBusy(false);
     }
   };
@@ -48,31 +53,49 @@ export default function AddChannel() {
       </Tooltip>
       <Dialog
         open={open}
-        onOpenChange={(o) => {
-          setOpen(o);
-          if (!o) reset();
-        }}
+        onOpenChange={(o) => (o ? setOpen(true) : close())}
         title="Add a stream"
-        description="Join a channel by platform and name."
+        description="Choose a platform and enter the channel name to join."
+        footer={
+          <>
+            <Button variant="ghost" size="md" onClick={close}>
+              Cancel
+            </Button>
+            <Button variant="solid" size="md" disabled={busy || slug.trim() === ''} onClick={() => void onJoin()}>
+              Add stream
+            </Button>
+          </>
+        }
       >
         <div className={styles.form}>
-          <div className={styles.platforms} role="group" aria-label="Platform">
-            {PLATFORMS.map((p) => (
-              <button
-                key={p}
-                type="button"
-                className={`${styles.chip} ${platform === p ? styles.chipOn : ''}`}
-                aria-pressed={platform === p}
-                onClick={() => setPlatform(p)}
-              >
-                {cap(p)}
-              </button>
-            ))}
+          <div className={styles.platforms} role="radiogroup" aria-label="Platform">
+            {PLATFORMS.map((p) => {
+              const on = platform === p;
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  className={`${styles.platform} ${on ? styles.platformOn : ''}`}
+                  onClick={() => setPlatform(p)}
+                >
+                  <PlatformGlyph platform={p as Platform} className={styles.platformGlyph} />
+                  <span className={styles.platformName}>{cap(p)}</span>
+                  {on && <Icon name="check" size={14} className={styles.platformCheck} />}
+                </button>
+              );
+            })}
           </div>
-          <div className={styles.entry}>
+
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="add-channel-name">
+              Channel name
+            </label>
             <Input
+              id="add-channel-name"
               aria-label="Channel name"
-              placeholder="channel"
+              placeholder={platform === 'kick' ? 'kick.com/channel' : 'twitch.tv/channel'}
               value={slug}
               autoFocus
               onChange={(e) => setSlug(e.currentTarget.value)}
@@ -80,10 +103,8 @@ export default function AddChannel() {
                 if (e.key === 'Enter') void onJoin();
               }}
             />
-            <Button variant="solid" size="md" disabled={busy || slug.trim() === ''} onClick={() => void onJoin()}>
-              Add
-            </Button>
           </div>
+
           {error && <span className={styles.error}>{error}</span>}
         </div>
       </Dialog>

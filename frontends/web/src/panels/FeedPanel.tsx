@@ -401,22 +401,27 @@ export default function FeedPanel({ channels, panelId }: Props) {
         onOpenChange={(o) => !o && setPendingBan(null)}
         title="Ban user"
         description={pendingBan ? `Ban ${pendingBan.author} from ${pendingBan.channel?.split(':')[1] ?? 'this channel'}?` : ''}
+        footer={
+          <>
+            <Button variant="ghost" size="md" onClick={() => setPendingBan(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="solid"
+              size="md"
+              onClick={() => {
+                if (pendingBan?.channel) void sendMessage([pendingBan.channel], `/ban ${pendingBan.authorId || pendingBan.author}`).catch(() => {});
+                setPendingBan(null);
+              }}
+            >
+              Ban
+            </Button>
+          </>
+        }
       >
-        <div className={styles.banActions}>
-          <Button
-            variant="solid"
-            size="md"
-            onClick={() => {
-              if (pendingBan?.channel) void sendMessage([pendingBan.channel], `/ban ${pendingBan.authorId || pendingBan.author}`).catch(() => {});
-              setPendingBan(null);
-            }}
-          >
-            Ban
-          </Button>
-          <Button variant="ghost" size="md" onClick={() => setPendingBan(null)}>
-            Cancel
-          </Button>
-        </div>
+        <Text variant="ui" tone="subtle" as="p">
+          They won’t be able to chat until you unban them.
+        </Text>
       </Dialog>
     </div>
   );

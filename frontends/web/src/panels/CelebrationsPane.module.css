@@ -46,21 +46,6 @@
   background: var(--virta-accent);
   color: var(--virta-bg-0);
 }
-.clear {
-  align-self: flex-start;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--virta-accent);
-  font-family: var(--virta-font-ui);
-  font-size: var(--virta-type-meta-size);
-  font-weight: 600;
-  cursor: pointer;
-}
-.clear:hover {
-  text-decoration: underline;
-}
-
 .pane {
   height: 100%;
   overflow-y: auto;
