@@ -17,6 +17,11 @@ const (
 // credentials holds the per-platform OAuth app credentials the auth clients read on each call.
 // Values live in the secret vault (keychain when available) so they're set once via the UI and
 // persist; the in-memory atomics keep reads cheap and lock-free on the auth paths.
+//
+// This bring-your-own-app model is for the local/desktop install. A future hosted deployment must
+// instead source these only from server env (our registered apps) and disable the runtime setters
+// plus the credential-config API, so one tenant can't change the shared app credentials and the
+// supported platforms are exactly those the server is configured for.
 type credentials struct {
 	vault      secrets.Vault
 	twitchID   atomic.Pointer[string]
