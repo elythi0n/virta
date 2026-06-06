@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "created_at": "2026-06-06T00:00:00Z",
+  "selectors": {
+    "chatRow":      "[data-testid='tweet']",
+    "authorHandle": "[data-testid='User-Name'] [tabindex='-1'] span",
+    "messageText":  "[data-testid='tweetText']",
+    "verifiedBadge": "[data-testid='icon-verified']",
+    "broadcastEnded": "[data-testid='broadcast-ended']"
+  },
+  "observer": "observer.js"
+}
