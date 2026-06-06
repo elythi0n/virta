@@ -1,10 +1,11 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { Input, Segmented, Select, Text, formatShortcut } from '@virta/ui-kit';
+import { Badge, Input, Segmented, Select, Text, formatShortcut } from '@virta/ui-kit';
 import type { Density } from '@virta/feed-core';
 import { useA11y } from '../a11y';
 import { useActions } from '../actions';
 import { useDensity } from '../density';
 import { useFeedDisplay } from '../feedDisplay';
+import { useIntegration } from '../daemon';
 import { useTheme, type ThemeMode } from '../theme';
 import { DENSITIES } from './DensityControl';
 import Connections from './Connections';
@@ -18,6 +19,7 @@ type CategoryId =
   | 'filters'
   | 'notifications'
   | 'shortcuts'
+  | 'integration'
   | 'storage'
   | 'advanced'
   | 'about';
@@ -32,6 +34,7 @@ const CATEGORIES: Category[] = [
   { id: 'filters', label: 'Filters', keywords: 'rules block hide highlight keywords' },
   { id: 'notifications', label: 'Notifications', keywords: 'alerts sounds mentions' },
   { id: 'shortcuts', label: 'Shortcuts', keywords: 'keyboard keymap hotkeys bindings' },
+  { id: 'integration', label: 'Platform integration', keywords: 'native tray hotkeys notifications sounds wayland os desktop' },
   { id: 'storage', label: 'Storage', keywords: 'database sqlite postgres logging retention' },
   { id: 'advanced', label: 'Advanced', keywords: 'relay daemon address experimental' },
   { id: 'about', label: 'About', keywords: 'version license credits' },
@@ -215,6 +218,68 @@ function About() {
   );
 }
 
+// User-facing copy for each feature and the rung it's running on (the machine code → language
+// mapping lives here per the disclosure rules; the raw code stays visible as a quiet tag). Falls
+// back to the bare code for any rung not spelled out, so a new rung never renders blank.
+const FEATURE_LABEL: Record<string, string> = {
+  window: 'Window',
+  theme: 'System theme',
+  quicklaunch: 'Profile quick-launch',
+  hotkeys: 'Global hotkeys',
+  notifications: 'Notifications',
+  tray: 'System tray',
+  sounds: 'Alert sounds',
+};
+const RUNG: Record<string, { label: string; tone: 'ok' | 'warn' | 'neutral' }> = {
+  'window:native': { label: 'Native window', tone: 'ok' },
+  'window:browser': { label: 'Browser tab', tone: 'neutral' },
+  'theme:native': { label: 'Follows the system', tone: 'ok' },
+  'quicklaunch:in_app': { label: 'In-app switcher (Ctrl+K)', tone: 'ok' },
+  'hotkeys:native': { label: 'Native global hotkeys', tone: 'ok' },
+  'hotkeys:portal': { label: 'Via desktop portal', tone: 'ok' },
+  'hotkeys:in_app': { label: 'In-app shortcuts only', tone: 'neutral' },
+  'notifications:native': { label: 'Native notifications', tone: 'ok' },
+  'notifications:in_app': { label: 'In-app banner', tone: 'neutral' },
+  'tray:native': { label: 'Native tray', tone: 'ok' },
+  'tray:none': { label: 'Not available · close-to-quit', tone: 'warn' },
+  'sounds:native': { label: 'Native sound', tone: 'ok' },
+  'sounds:visual': { label: 'Visual flash only', tone: 'warn' },
+};
+const DETAIL_NOTE: Record<string, string> = {
+  wayland_restricted: 'Wayland restricts global hotkeys',
+  wayland_no_self_position: 'Wayland places windows; size is remembered',
+  not_implemented: 'native path not wired yet',
+  browser: 'running in a browser',
+};
+
+function PlatformIntegration() {
+  const report = useIntegration();
+  return (
+    <>
+      <Text variant="meta" tone="subtle" as="p" className={styles.introNote}>
+        How Virta integrates with this {report.os === 'web' ? 'browser' : report.os}
+        {report.session ? ` (${report.session})` : ''}. The lowest rung is always a working in-app
+        fallback, never a missing feature.
+      </Text>
+      {report.features.map((f) => {
+        const copy = RUNG[`${f.id}:${f.rung}`] ?? { label: f.rung, tone: 'neutral' as const };
+        const note = f.detail ? DETAIL_NOTE[f.detail] ?? f.detail : '';
+        return (
+          <Field key={f.id} label={FEATURE_LABEL[f.id] ?? f.id} hint={note}>
+            <span className={styles.integrationRung}>
+              <Badge tone={copy.tone}>{copy.label}</Badge>
+              <code className={styles.rawCode}>
+                {f.rung}
+                {f.detail ? `·${f.detail}` : ''}
+              </code>
+            </span>
+          </Field>
+        );
+      })}
+    </>
+  );
+}
+
 function CategoryBody({ id }: { id: CategoryId }) {
   switch (id) {
     case 'appearance':
@@ -225,6 +290,8 @@ function CategoryBody({ id }: { id: CategoryId }) {
       return <ChatSettings />;
     case 'shortcuts':
       return <Shortcuts />;
+    case 'integration':
+      return <PlatformIntegration />;
     case 'about':
       return <About />;
     case 'connections':

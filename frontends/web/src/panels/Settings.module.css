@@ -152,3 +152,17 @@
   outline-offset: 1px;
   border-color: var(--virta-accent);
 }
+
+.introNote {
+  margin: 0 0 var(--virta-space-4);
+}
+.integrationRung {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+}
+.rawCode {
+  color: var(--virta-text-2);
+  font-family: var(--virta-font-mono);
+  font-size: var(--virta-type-meta-size);
+}

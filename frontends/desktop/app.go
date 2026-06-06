@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"runtime"
 	"time"
 
 	"github.com/elythi0n/virta/internal/api"
@@ -18,9 +19,10 @@ const startupTimeout = 15 * time.Second
 // App is the shell's lifecycle owner: it finds or launches the daemon and tells the web UI how to
 // reach it.
 type App struct {
-	ctx       context.Context
-	discovery api.Discovery
-	daemon    *daemonProcess
+	ctx         context.Context
+	discovery   api.Discovery
+	integration IntegrationReport
+	daemon      *daemonProcess
 }
 
 func newApp() *App { return &App{} }
@@ -29,6 +31,7 @@ func newApp() *App { return &App{} }
 // token so the UI can open an authenticated connection.
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	a.integration = resolveIntegration(runtime.GOOS, currentSession())
 	cfg, err := config.Load()
 	if err != nil {
 		return // Discovery() returns an empty address; the UI shows "not connected"
@@ -53,6 +56,11 @@ func (a *App) assetHandler() http.Handler {
 		if r.URL.Path == "/__discovery" {
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(a.discovery)
+			return
+		}
+		if r.URL.Path == "/__integration" {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(a.integration)
 			return
 		}
 		http.NotFound(w, r)
