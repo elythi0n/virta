@@ -43,6 +43,45 @@ describe('collapseCombos', () => {
     const out = collapseCombos([msg('1', '  '), msg('2', '  ')]);
     expect(out).toHaveLength(2);
   });
+
+  it('folds an emote wall of differing emotes into one combo', () => {
+    const emote = (id: string, code: string): FeedMessage => ({
+      ...msg(id, code),
+      segments: [{ type: 'emote', code, url: `/${code}.png` }],
+    });
+    const out = collapseCombos([emote('1', 'KEKW'), emote('2', 'LUL'), emote('3', 'Pog')]);
+    expect(out).toHaveLength(1);
+    expect(out[0].id).toBe('1'); // first emote-only message represents the wall
+    expect(out[0].combo).toBe(3);
+  });
+
+  it('does not fold an emote message into a text message', () => {
+    const emote: FeedMessage = { ...msg('1', 'KEKW'), segments: [{ type: 'emote', code: 'KEKW', url: '/k.png' }] };
+    const text = msg('2', 'hello');
+    const out = collapseCombos([emote, text]);
+    expect(out).toHaveLength(2);
+  });
+
+  it('folds emote-with-whitespace as emote-only but not emote-with-words', () => {
+    const wall1: FeedMessage = {
+      ...msg('1', 'KEKW '),
+      segments: [
+        { type: 'emote', code: 'KEKW', url: '/k.png' },
+        { type: 'text', text: ' ' },
+      ],
+    };
+    const wall2: FeedMessage = { ...msg('2', 'LUL'), segments: [{ type: 'emote', code: 'LUL', url: '/l.png' }] };
+    const worded: FeedMessage = {
+      ...msg('3', 'lol KEKW'),
+      segments: [
+        { type: 'text', text: 'lol ' },
+        { type: 'emote', code: 'KEKW', url: '/k.png' },
+      ],
+    };
+    const out = collapseCombos([wall1, wall2, worded]);
+    expect(out.map((m) => m.id)).toEqual(['1', '3']); // wall1+wall2 fold; worded stays separate
+    expect(out[0].combo).toBe(2);
+  });
 });
 
 describe('applyCalm', () => {
