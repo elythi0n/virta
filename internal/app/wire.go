@@ -41,6 +41,7 @@ import (
 	"github.com/elythi0n/virta/internal/store"
 	"github.com/elythi0n/virta/internal/store/postgres"
 	"github.com/elythi0n/virta/internal/store/sqlite"
+	"github.com/elythi0n/virta/internal/intel"
 	"github.com/elythi0n/virta/internal/streams"
 	"github.com/elythi0n/virta/internal/velocity"
 	"github.com/elythi0n/virta/internal/webui"
@@ -98,6 +99,7 @@ type Daemon struct {
 	twitchAuth *twitchauth.Manager
 	kickAuth   *kickauth.Manager
 	api        *api.Server
+	toolBelt   *intel.ToolBelt
 }
 
 // authControl adapts the auth managers to the API's auth controller.
@@ -326,6 +328,12 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	srv.SetPortability(portabilityControl{profiles: st.Profiles(), accounts: st.Accounts()})
 	srv.SetThemes(newThemeControl(st.Settings()))
 	srv.SetWebhooks(newWebhookControl(webhookMgr, st.Settings()))
+	// MCP server: bind the intel tool belt to /mcp so any MCP client (Claude Desktop,
+	// Continue.dev, etc.) can query logged chat data. Read-only; never sends platform messages.
+	toolBelt := intel.New(st)
+	srv.SetMCPHandler(toolBelt.MCPHandler())
+	// Store for the virtad mcp subcommand.
+	_ = toolBelt // accessed via d.ToolBelt() below
 
 	// OAuth app credentials are read through providers so they can be set at runtime via the UI
 	// (stored in the vault), seeded from the env vars on first run.
@@ -383,7 +391,7 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 		}
 	}
 
-	return &Daemon{cfg: cfg, log: log, store: st, vault: vault, runner: runner, engine: eng, stats: statsAgg, logSink: logSink, sweeper: sweeper, profiles: mgr, twitchAuth: twitchAuth, kickAuth: kickAuth, api: srv}, nil
+	return &Daemon{cfg: cfg, log: log, store: st, vault: vault, runner: runner, engine: eng, stats: statsAgg, logSink: logSink, sweeper: sweeper, profiles: mgr, twitchAuth: twitchAuth, kickAuth: kickAuth, api: srv, toolBelt: toolBelt}, nil
 }
 
 // kickChatroomCache backs the Kick resolver's permanent cache with the channels table: a
@@ -1104,6 +1112,9 @@ func (d *Daemon) Start() error {
 
 // Submit feeds an event into the pipeline (the entry point adapters will use).
 func (d *Daemon) Submit(ev platform.Event) { d.runner.Submit(ev) }
+
+// ToolBelt exposes the intel tool belt so the virtad mcp stdio subcommand can serve it.
+func (d *Daemon) ToolBelt() *intel.ToolBelt { return d.toolBelt }
 
 // Store, Vault, and Pipeline expose the assembled components for the parts of the daemon
 // that build on them.

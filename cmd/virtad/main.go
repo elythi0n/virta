@@ -26,6 +26,24 @@ func main() {
 		fmt.Printf("virtad %s\n", buildinfo.String())
 		return
 	}
+	if len(os.Args) > 1 && os.Args[1] == "mcp" {
+		// Stdio MCP server — for Claude Desktop and other MCP clients that spawn a subprocess.
+		// Add to claude_desktop_config.json:
+		//   { "mcpServers": { "virta": { "command": "virtad", "args": ["mcp"] } } }
+		cfg, err := config.Load()
+		if err != nil {
+			fatal("load config", err)
+		}
+		d, err := app.NewDaemon(cfg)
+		if err != nil {
+			fatal("start daemon", err)
+		}
+		if err := d.Start(); err != nil {
+			fatal("listen", err)
+		}
+		d.ToolBelt().ServeStdio(os.Stdin, os.Stdout)
+		return
+	}
 
 	cfg, err := config.Load()
 	if err != nil {

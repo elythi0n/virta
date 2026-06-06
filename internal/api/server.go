@@ -60,6 +60,7 @@ type Server struct {
 	portability       Portability       // profile import/export controller, installed via SetPortability
 	themes            Themes            // custom theme management, installed via SetThemes
 	webhooks          Webhooks          // outbound webhook management, installed via SetWebhooks
+	mcpHandler        http.Handler      // MCP server, installed via SetMCPHandler (nil = not available)
 	webui             http.Handler      // embedded web UI, installed via SetWebUI (nil = not served)
 	corsOrigins       []string          // opt-in CORS allowlist for local web tools (empty = CORS off)
 	integrationReport any               // native-integration report forwarded from the desktop shell
@@ -110,6 +111,10 @@ func New(cfg Config) (*Server, error) {
 	mux.HandleFunc("GET /v1/openapi.json", s.handleOpenAPI)
 	mux.HandleFunc("GET /v1/asyncapi.json", s.handleAsyncAPI)
 	mux.HandleFunc("GET /docs", s.handleDocs)
+	// MCP server (Model Context Protocol): bearer-token gated, served at /mcp.
+	// Mounted outside the declarative route table so it can accept any HTTP method.
+	mux.Handle("/mcp", s.scoped(ScopeRead, http.HandlerFunc(s.handleMCP)))
+	mux.Handle("/mcp/", s.scoped(ScopeRead, http.HandlerFunc(s.handleMCP)))
 	// Every authenticated endpoint is declared once in routes(), with the scope a non-root token
 	// needs; the same table drives the generated OpenAPI doc, so the contract can't drift.
 	for _, rt := range s.routes() {
@@ -146,6 +151,17 @@ func (s *Server) Token() string { return s.token }
 // SetIntegrationReport installs the native-integration report (resolved by the desktop shell) so
 // the web UI can read the active rungs from /__integration without coupling to the shell.
 func (s *Server) SetIntegrationReport(report any) { s.integrationReport = report }
+
+// SetMCPHandler installs the MCP server handler at /mcp. Until called, /mcp returns 503.
+func (s *Server) SetMCPHandler(h http.Handler) { s.mcpHandler = h }
+
+func (s *Server) handleMCP(w http.ResponseWriter, r *http.Request) {
+	if s.mcpHandler == nil {
+		http.Error(w, "MCP server unavailable (enable logging to use intelligence tools)", http.StatusServiceUnavailable)
+		return
+	}
+	s.mcpHandler.ServeHTTP(w, r)
+}
 
 // SetWebUI installs the embedded web UI handler so the daemon serves the app itself. Passing nil
 // (no UI compiled into the binary) leaves the SPA route answering "not built".
