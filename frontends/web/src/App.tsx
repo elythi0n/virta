@@ -3,6 +3,7 @@ import type { DockviewApi, DockviewReadyEvent } from 'dockview';
 import Dock from './dock/Dock';
 import ActivityBar from './shell/ActivityBar';
 import SideBar from './shell/SideBar';
+import { TooltipProvider } from '@virta/ui-kit';
 import type { ViewId } from './shell/views';
 import { ThemeProvider } from './theme';
 
@@ -72,13 +73,15 @@ export default function App() {
 
   return (
     <ThemeProvider value={{ theme, setTheme }}>
-      <div className="shell">
-        <ActivityBar activeView={activeView} sidebarOpen={sidebarOpen} onSelect={selectView} onOpenSettings={openSettings} />
-        {sidebarOpen && <SideBar view={activeView} openPanel={openPanel} />}
-        <div className="dock-host">
-          <Dock onReady={onReady} />
+      <TooltipProvider>
+        <div className="shell">
+          <ActivityBar activeView={activeView} sidebarOpen={sidebarOpen} onSelect={selectView} onOpenSettings={openSettings} />
+          {sidebarOpen && <SideBar view={activeView} openPanel={openPanel} />}
+          <div className="dock-host">
+            <Dock onReady={onReady} />
+          </div>
         </div>
-      </div>
+      </TooltipProvider>
     </ThemeProvider>
   );
 }

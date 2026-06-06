@@ -17,3 +17,5 @@ export type { SegmentedOption } from './Segmented';
 
 export { default as Select } from './Select';
 export type { SelectOption, SelectGroup } from './Select';
+
+export { default as Tooltip, TooltipProvider } from './Tooltip';

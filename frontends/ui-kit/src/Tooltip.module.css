@@ -1,0 +1,30 @@
+.content {
+  z-index: 60;
+  padding: var(--virta-space-4) var(--virta-space-8);
+  background: var(--virta-bg-2);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-sm);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.4);
+  color: var(--virta-text-0);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  line-height: var(--virta-type-meta-line);
+  user-select: none;
+  transform-origin: var(--radix-tooltip-content-transform-origin);
+  animation: tooltip-in var(--virta-motion-fast) ease;
+}
+
+.arrow {
+  fill: var(--virta-bg-2);
+}
+
+@keyframes tooltip-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
