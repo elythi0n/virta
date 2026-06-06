@@ -242,7 +242,8 @@ export default function FeedPanel({ channels, panelId }: Props) {
   const runMod = useCallback((action: ModAction, m: FeedMessage) => {
     if (!m.channel) return;
     if (action === 'delete') void sendMessage([m.channel], `/delete ${m.platformMessageId}`).catch(() => {});
-    else if (action === 'timeout') void sendMessage([m.channel], `/timeout ${m.author} 600`).catch(() => {});
+    // Target by numeric author id when we have it (exact, no login lookup); fall back to the name.
+    else if (action === 'timeout') void sendMessage([m.channel], `/timeout ${m.authorId || m.author} 600`).catch(() => {});
     else setPendingBan(m);
   }, []);
   const [replyTo, setReplyTo] = useState<{ channel: string; parentId: string; author: string } | null>(null);
@@ -406,7 +407,7 @@ export default function FeedPanel({ channels, panelId }: Props) {
             variant="solid"
             size="md"
             onClick={() => {
-              if (pendingBan?.channel) void sendMessage([pendingBan.channel], `/ban ${pendingBan.author}`).catch(() => {});
+              if (pendingBan?.channel) void sendMessage([pendingBan.channel], `/ban ${pendingBan.authorId || pendingBan.author}`).catch(() => {});
               setPendingBan(null);
             }}
           >
