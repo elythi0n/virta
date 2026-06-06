@@ -1,11 +1,16 @@
-import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import FeedRow, { type Density } from './FeedRow';
-import type { FeedMessage } from './types';
+import { eventHeadline, eventImpact, isCelebration } from './events';
+import type { FeedMessage, MessageType } from './types';
 import styles from './Feed.module.css';
 
 // Within this many px of the bottom counts as "pinned"; new messages keep the view at the latest.
 const STICK_THRESHOLD = 48;
+// How long a celebration banner stays up before fading out.
+const BANNER_MS = 4500;
+
+type Banner = { id: string; text: string; type: MessageType };
 
 type FeedProps = {
   messages: FeedMessage[];
@@ -15,17 +20,21 @@ type FeedProps = {
   showSource?: boolean;
   /** Row density (type scale + spacing). */
   density?: Density;
+  /** Show the transient banner when a high-impact event (gift bomb, big raid) arrives live. */
+  celebrate?: boolean;
 };
 
 // Virtualized chat feed: only the visible window is in the DOM (stable keys by message id), so
 // throughput is bounded by the viewport, not the backlog. Pins to the bottom while the user is
 // there; scrolling up detaches and a pill offers to jump back to the latest.
-export default function Feed({ messages, background, showSource, density = 'cozy' }: FeedProps) {
+export default function Feed({ messages, background, showSource, density = 'cozy', celebrate = true }: FeedProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const stick = useRef(true); // live pin state, read inside the scroll handler
   const prevCount = useRef(0);
+  const lastSeenId = useRef<string | null>(null); // newest id already considered for a banner
   const [atBottom, setAtBottom] = useState(true);
   const [unseen, setUnseen] = useState(0);
+  const [banner, setBanner] = useState<Banner | null>(null);
 
   const virtualizer = useVirtualizer({
     count: messages.length,
@@ -52,6 +61,37 @@ export default function Feed({ messages, background, showSource, density = 'cozy
       setUnseen((u) => u + delta);
     }
   }, [messages.length, scrollToBottom]);
+
+  // Fire a celebration banner once, when a high-impact event ARRIVES (is appended at the tail) —
+  // not when its row scrolls into the virtualized viewport. The freshly-appended tail is the run
+  // of messages after the last id we saw; we walk back from the newest until we hit it (bounded,
+  // so a churned ring buffer never rescans deep history). The first pass only records the tail,
+  // so backfilled history never celebrates on load.
+  useEffect(() => {
+    if (!celebrate || messages.length === 0) return;
+    const prev = lastSeenId.current;
+    const newest = messages[messages.length - 1].id;
+    if (prev === null) {
+      lastSeenId.current = newest;
+      return;
+    }
+    if (newest === prev) return;
+    lastSeenId.current = newest;
+    const floor = Math.max(0, messages.length - 64);
+    let top: FeedMessage | null = null;
+    for (let i = messages.length - 1; i >= floor && messages[i].id !== prev; i--) {
+      const m = messages[i];
+      if (isCelebration(m) && (!top || eventImpact(m) > eventImpact(top))) top = m;
+    }
+    if (top) setBanner({ id: top.id, text: eventHeadline(top), type: top.type ?? 'system' });
+  }, [messages, celebrate]);
+
+  // Auto-dismiss the banner; a newer celebration replaces it and resets the timer.
+  useEffect(() => {
+    if (!banner) return;
+    const t = setTimeout(() => setBanner(null), BANNER_MS);
+    return () => clearTimeout(t);
+  }, [banner]);
 
   const onScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -89,6 +129,14 @@ export default function Feed({ messages, background, showSource, density = 'cozy
           ))}
         </div>
       </div>
+      {banner && (
+        <div className={`${styles.banner} ${!atBottom ? styles.bannerRaised : ''}`} data-type={banner.type} role="status">
+          <span className={styles.bannerGlyph} aria-hidden>
+            ✦
+          </span>
+          <span className={styles.bannerText}>{banner.text}</span>
+        </div>
+      )}
       {!atBottom && (
         <button className={styles.pill} onClick={resume}>
           {unseen > 0 ? `${unseen} new message${unseen === 1 ? '' : 's'}` : 'Jump to latest'} ↓

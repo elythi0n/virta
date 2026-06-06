@@ -51,12 +51,13 @@ function sampleBadges(i: number): { set: string }[] | undefined {
   return undefined;
 }
 
-// Occasional synthetic events so the tinted event bands are visible offline.
-const SAMPLE_EVENTS: { type: FeedMessage['type']; author: string; text: string }[] = [
+// Occasional synthetic events so the tinted event bands (and the celebration banner) are visible
+// offline. `event` carries the magnitude that drives the big-band tier and the live banner.
+const SAMPLE_EVENTS: { type: FeedMessage['type']; author: string; text: string; event?: FeedMessage['event'] }[] = [
   { type: 'sub', author: 'nightbot_fan', text: 'subscribed at Tier 1! 3 months in a row' },
-  { type: 'resub', author: 'longtime_viewer', text: 'resubscribed for 24 months' },
-  { type: 'giftsub', author: 'generous_one', text: 'gifted 5 subs to the community' },
-  { type: 'raid', author: 'partnered_streamer', text: 'is raiding with 1,240 viewers' },
+  { type: 'resub', author: 'longtime_viewer', text: 'resubscribed for 24 months', event: { months: 24 } },
+  { type: 'giftsub', author: 'generous_one', text: 'gifted 10 subs to the community', event: { count: 10 } },
+  { type: 'raid', author: 'partnered_streamer', text: 'is raiding with 1,240 viewers', event: { viewers: 1240 } },
   { type: 'announcement', author: 'moderator_x', text: 'Tournament starts in 10 minutes' },
 ];
 
@@ -72,6 +73,7 @@ function makeMessage(): FeedMessage {
       ts: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
       platform: src.platform,
       type: e.type,
+      event: e.event,
       author: e.author,
       source: { slug: src.slug, label: src.label },
       body: e.text,

@@ -167,13 +167,23 @@
 }
 .eventLabel {
   flex: none;
-  padding: 0 var(--virta-space-4);
-  border: 1px solid currentColor;
+  align-self: center;
+  padding: 1px var(--virta-space-4);
   border-radius: var(--virta-radius-sm);
-  color: var(--ev, var(--virta-accent));
+  background: var(--ev, var(--virta-accent));
+  color: var(--virta-bg-0);
   font-size: 9px;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.06em;
+}
+.eventCount {
+  flex: none;
+  align-self: center;
+  color: var(--ev, var(--virta-accent));
+  font-family: var(--virta-font-mono);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 .eventAuthor {
   color: var(--virta-text-0);
@@ -184,4 +194,14 @@
   min-width: 0;
   color: var(--virta-text-1);
   overflow-wrap: anywhere;
+}
+
+/* High-impact events (gift bombs, big raids) get a heavier band so they stand out on scrollback. */
+.big {
+  border-left-width: 3px;
+  background: color-mix(in srgb, var(--ev, var(--virta-accent)) 18%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ev, var(--virta-accent)) 28%, transparent);
+}
+.big .eventText {
+  color: var(--virta-text-0);
 }

@@ -40,6 +40,9 @@ export interface FeedMessage {
   /** Author badges (broadcaster, moderator, subscriber, …); up to 3 shown, then "+N". `url` is
    *  the resolved artwork; without it the row shows a text chip. */
   badges?: { set: string; title?: string; url?: string }[];
+  /** Magnitude for event-type rows: gift-sub count, raid/host viewer count, resub months, sub
+   *  tier. Drives the tiered event band and the live celebration banner; absent → ordinary band. */
+  event?: { count?: number; viewers?: number; months?: number; tier?: string };
   body: string;
   segments: Segment[];
 }

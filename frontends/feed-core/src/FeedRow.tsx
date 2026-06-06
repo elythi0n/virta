@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { clampForContrast } from './contrast';
+import { eventCountLabel, isBigEvent } from './events';
 import type { Segment } from './segments';
 import type { FeedMessage, MessageType } from './types';
 import styles from './FeedRow.module.css';
@@ -79,11 +80,14 @@ function FeedRow({ message, background, showSource, density }: FeedRowProps) {
   const type = message.type ?? 'chat';
 
   if (isEventType(type)) {
+    const big = isBigEvent(message);
+    const count = eventCountLabel(message);
     return (
-      <div className={`${styles.event} ${styles[`ev-${type}`]} ${styles[density]}`}>
+      <div className={`${styles.event} ${styles[`ev-${type}`]} ${styles[density]} ${big ? styles.big : ''}`}>
         <span className={styles.ts}>{message.ts}</span>
         {showSource && <SourceTag message={message} />}
         <span className={styles.eventLabel}>{EVENT_LABEL[type]}</span>
+        {count && <span className={styles.eventCount}>{count}</span>}
         <span className={styles.eventText}>
           {message.author && <strong className={styles.eventAuthor}>{message.author} </strong>}
           {message.segments.map(renderSegment)}
