@@ -1,4 +1,4 @@
-import type { IconName } from '../Icon.svelte';
+import type { IconName } from '../Icon';
 
 // The primary activity-bar views. `settings` lives in the footer group, the rest at the top.
 export type ViewId = 'sources' | 'panels' | 'settings';
