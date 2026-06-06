@@ -7,15 +7,18 @@ import Titlebar from './shell/Titlebar';
 import ShortcutHelp from './shell/ShortcutHelp';
 import NewFeedDialog from './shell/NewFeedDialog';
 import { CommandPalette, TooltipProvider, matchesShortcut, type CommandAction } from '@virta/ui-kit';
+import type { Density } from '@virta/feed-core';
 import { PANEL_CATALOG, type ViewId } from './shell/views';
 import { loadLayout, saveLayoutDebounced } from './shell/layout';
 import { ActionsProvider } from './actions';
+import { DensityProvider } from './density';
 import { ThemeProvider } from './theme';
 
 export default function App() {
   const [activeView, setActiveView] = useState<ViewId>('panels');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [theme, setTheme] = useState('graphite-dark');
+  const [density, setDensity] = useState<Density>('cozy');
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [newFeedOpen, setNewFeedOpen] = useState(false);
@@ -143,8 +146,9 @@ export default function App() {
 
   return (
     <ThemeProvider value={{ theme, setTheme }}>
-      <ActionsProvider value={actions}>
-        <TooltipProvider>
+      <DensityProvider value={{ density, setDensity }}>
+        <ActionsProvider value={actions}>
+          <TooltipProvider>
           <div className="app">
           <Titlebar onOpenPalette={() => setPaletteOpen(true)} />
           <div className="shell">
@@ -158,8 +162,9 @@ export default function App() {
           <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} actions={actions} placeholder="Search commands…" />
           <ShortcutHelp open={helpOpen} onOpenChange={setHelpOpen} actions={actions} />
           <NewFeedDialog open={newFeedOpen} onClose={() => setNewFeedOpen(false)} onSubmit={openFeedSet} />
-        </TooltipProvider>
-      </ActionsProvider>
+          </TooltipProvider>
+        </ActionsProvider>
+      </DensityProvider>
     </ThemeProvider>
   );
 }

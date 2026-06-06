@@ -2,11 +2,29 @@
   display: flex;
   align-items: baseline;
   gap: var(--virta-space-8);
-  padding: var(--virta-space-2) var(--virta-space-12);
+  padding: 0 var(--virta-space-12);
   border-left: 2px solid transparent;
   font-family: var(--virta-font-ui);
+}
+
+/* Density sets the row's type scale and vertical rhythm. */
+.compact {
+  padding-top: 1px;
+  padding-bottom: 1px;
   font-size: var(--virta-type-chat-compact-size);
   line-height: var(--virta-type-chat-compact-line);
+}
+.cozy {
+  padding-top: var(--virta-space-2);
+  padding-bottom: var(--virta-space-2);
+  font-size: var(--virta-type-chat-cozy-size);
+  line-height: var(--virta-type-chat-cozy-line);
+}
+.comfortable {
+  padding-top: var(--virta-space-4);
+  padding-bottom: var(--virta-space-4);
+  font-size: var(--virta-type-chat-comfortable-size);
+  line-height: var(--virta-type-chat-comfortable-line);
 }
 .row:hover {
   background: var(--virta-bg-1);
@@ -50,6 +68,26 @@
 .source[data-platform='x'] {
   color: var(--virta-plat-x);
 }
+.badges {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.badge {
+  padding: 0 var(--virta-space-4);
+  border: 1px solid currentColor;
+  border-radius: var(--virta-radius-sm);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  opacity: 0.95;
+}
+.badgeMore {
+  color: var(--virta-text-2);
+  font-size: var(--virta-type-meta-size);
+}
+
 .author {
   flex: none;
   color: var(--virta-text-1);

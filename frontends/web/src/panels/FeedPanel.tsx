@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Feed, parseSegments, useFeedBuffer, type FeedMessage, type Platform } from '@virta/feed-core';
 import { Segmented, StatusDot, Text } from '@virta/ui-kit';
 import { useDaemonStream, type ConnectionStatus } from '../daemon';
+import { useDensity } from '../density';
 import { useTheme } from '../theme';
 import styles from './FeedPanel.module.css';
 
@@ -39,6 +40,16 @@ const SAMPLE = [
   'how is he this consistent',
 ];
 
+const SAMPLE_BADGES = ['broadcaster', 'moderator', 'subscriber', 'vip', 'founder'];
+
+// A few synthetic badges so the badge row is visible offline.
+function sampleBadges(i: number): { set: string }[] | undefined {
+  if (i % 7 === 0) return [{ set: 'broadcaster' }];
+  if (i % 3 === 0) return [{ set: SAMPLE_BADGES[i % SAMPLE_BADGES.length] }, { set: 'subscriber' }];
+  if (i % 5 === 0) return [{ set: 'subscriber' }];
+  return undefined;
+}
+
 let seq = 0;
 function makeMessage(): FeedMessage {
   const i = seq++;
@@ -53,6 +64,7 @@ function makeMessage(): FeedMessage {
     author: `viewer_${Math.floor(Math.random() * 900)}`,
     authorColor: AUTHOR_COLORS[i % AUTHOR_COLORS.length],
     source: { slug: src.slug, label: src.label },
+    badges: sampleBadges(i),
     body,
     segments: parseSegments(body, EMOTES),
   };
@@ -77,6 +89,7 @@ type Props = {
 
 export default function FeedPanel({ channels }: Props) {
   const { theme } = useTheme();
+  const { density } = useDensity();
   const { messages, push } = useFeedBuffer({ max: MAX_MESSAGES });
   const status = useDaemonStream(push, channels);
   const [rate, setRate] = useState<Rate>('live');
@@ -125,7 +138,7 @@ export default function FeedPanel({ channels }: Props) {
         )}
       </div>
       <div className={styles.feedWrap}>
-        <Feed messages={messages} background={background} showSource={showSource} />
+        <Feed messages={messages} background={background} showSource={showSource} density={density} />
       </div>
     </div>
   );

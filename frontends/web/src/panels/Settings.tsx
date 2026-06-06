@@ -1,6 +1,8 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Input, Segmented, Select, Text, formatShortcut } from '@virta/ui-kit';
+import type { Density } from '@virta/feed-core';
 import { useActions } from '../actions';
+import { useDensity } from '../density';
 import { useTheme } from '../theme';
 import styles from './Settings.module.css';
 
@@ -55,7 +57,7 @@ function Placeholder({ children }: { children: ReactNode }) {
 
 function Appearance() {
   const { theme, setTheme } = useTheme();
-  const [density, setDensity] = useState('cozy');
+  const { density, setDensity } = useDensity();
   return (
     <>
       <Field label="Theme" hint="Color palette for the whole app.">
@@ -73,7 +75,7 @@ function Appearance() {
         <Select
           ariaLabel="Feed density"
           value={density}
-          onValueChange={setDensity}
+          onValueChange={(v) => setDensity(v as Density)}
           options={[
             { value: 'compact', label: 'Compact' },
             { value: 'cozy', label: 'Cozy' },

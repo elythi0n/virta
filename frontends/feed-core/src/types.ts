@@ -15,6 +15,8 @@ export interface FeedMessage {
   authorColor?: string;
   /** Source channel, shown as an attribution tag when a feed aggregates several channels. */
   source?: { slug: string; label: string };
+  /** Author badges (broadcaster, moderator, subscriber, …); up to 3 shown, then "+N". */
+  badges?: { set: string; title?: string }[];
   body: string;
   segments: Segment[];
 }

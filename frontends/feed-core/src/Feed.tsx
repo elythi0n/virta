@@ -1,6 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import FeedRow from './FeedRow';
+import FeedRow, { type Density } from './FeedRow';
 import type { FeedMessage } from './types';
 import styles from './Feed.module.css';
 
@@ -13,12 +13,14 @@ type FeedProps = {
   background: string;
   /** Show the per-row source-channel tag (for feeds aggregating multiple channels). */
   showSource?: boolean;
+  /** Row density (type scale + spacing). */
+  density?: Density;
 };
 
 // Virtualized chat feed: only the visible window is in the DOM (stable keys by message id), so
 // throughput is bounded by the viewport, not the backlog. Pins to the bottom while the user is
 // there; scrolling up detaches and a pill offers to jump back to the latest.
-export default function Feed({ messages, background, showSource }: FeedProps) {
+export default function Feed({ messages, background, showSource, density = 'cozy' }: FeedProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const stick = useRef(true); // live pin state, read inside the scroll handler
   const prevCount = useRef(0);
@@ -82,7 +84,7 @@ export default function Feed({ messages, background, showSource }: FeedProps) {
               className={styles.rowWrap}
               style={{ transform: `translateY(${vi.start}px)` }}
             >
-              <FeedRow message={messages[vi.index]} background={background} showSource={showSource} />
+              <FeedRow message={messages[vi.index]} background={background} showSource={showSource} density={density} />
             </div>
           ))}
         </div>
