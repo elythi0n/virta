@@ -23,7 +23,8 @@ function devDaemonBridge(): PluginOption {
           return;
         }
         res.setHeader('content-type', 'application/json');
-        res.end(JSON.stringify({ addr: req.headers.host, token: DEV_TOKEN }));
+        // Empty addr → the SPA uses this same origin, where the /v1 proxy below fronts the daemon.
+        res.end(JSON.stringify({ addr: '', token: DEV_TOKEN }));
       });
     },
   };

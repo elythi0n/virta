@@ -35,12 +35,16 @@ export function createDaemonClient(opts: DaemonClientOptions): DaemonClient {
   async function connect() {
     if (stopped) return;
     const d = await discover();
-    if (!d || !d.addr) {
+    if (!d) {
       opts.onStatus('offline'); // no daemon to reach (e.g. running the SPA without one)
       return;
     }
     opts.onStatus(attempt === 0 ? 'connecting' : 'reconnecting');
-    const ws = new WebSocket(`ws://${d.addr}/v1/stream?token=${encodeURIComponent(d.token)}`);
+    // Empty addr = same origin (the daemon serves this page, or a dev proxy fronts it).
+    const wsBase = d.addr
+      ? `ws://${d.addr}`
+      : `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`;
+    const ws = new WebSocket(`${wsBase}/v1/stream?token=${encodeURIComponent(d.token)}`);
     socket = ws;
 
     ws.onopen = () => {

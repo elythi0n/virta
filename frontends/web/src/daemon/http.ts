@@ -17,7 +17,10 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   headers.set('Authorization', `Bearer ${d.token}`);
   if (init?.body) headers.set('Content-Type', 'application/json');
 
-  const res = await fetch(`http://${d.addr}${path}`, { ...init, headers });
+  // An empty addr means the daemon serves this origin (it serves the SPA, or a dev proxy fronts
+  // it), so call it with a same-origin relative URL.
+  const base = d.addr ? `http://${d.addr}` : '';
+  const res = await fetch(`${base}${path}`, { ...init, headers });
   if (res.status === 401) {
     resetDiscovery();
     throw new Error('unauthorized');

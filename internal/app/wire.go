@@ -37,6 +37,7 @@ import (
 	"github.com/elythi0n/virta/internal/store"
 	"github.com/elythi0n/virta/internal/store/postgres"
 	"github.com/elythi0n/virta/internal/store/sqlite"
+	"github.com/elythi0n/virta/internal/webui"
 )
 
 // SelectVault chooses where credentials are stored: the OS credential store when one is
@@ -190,6 +191,7 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	if err != nil {
 		return nil, fmt.Errorf("build api: %w", err)
 	}
+	srv.SetWebUI(webui.Handler()) // serve the embedded SPA itself, if one was built in
 	log := srv.Logger()
 
 	clk := clock.System{}

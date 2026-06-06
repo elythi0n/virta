@@ -49,6 +49,7 @@ type Server struct {
 	profiles Profiles // profile controller, installed via SetProfiles
 	authCtl  Auth     // account-auth controller, installed via SetAuth
 	send     Send     // cross-posting controller, installed via SetSend
+	webui    http.Handler // embedded web UI, installed via SetWebUI (nil = not served)
 
 	token         string
 	runtimeDir    string
@@ -109,6 +110,12 @@ func New(cfg Config) (*Server, error) {
 	mux.Handle("POST /v1/auth/kick/start", s.auth(http.HandlerFunc(s.handleKickAuthStart)))
 	mux.Handle("GET /v1/auth/kick/{id}", s.auth(http.HandlerFunc(s.handleKickAuthStatus)))
 	mux.Handle("GET /dev", s.auth(http.HandlerFunc(s.handleDev)))
+	// Bootstrap for a same-machine browser: hand a loopback client the token so a virtad-served
+	// SPA can authenticate. Empty addr means "this origin". Remote clients are refused; serving a
+	// UI beyond loopback needs the hosted auth layer (ADR-031, deferred).
+	mux.HandleFunc("GET /__discovery", s.handleDiscovery)
+	// SPA fallback: anything not matched above is served from the embedded web UI (if present).
+	mux.HandleFunc("/", s.handleWebUI)
 
 	s.httpSrv = &http.Server{
 		Handler:           mux,
@@ -125,6 +132,40 @@ func (s *Server) Sink() pipeline.Sink { return s.hub }
 
 // Token returns the bearer token clients must present.
 func (s *Server) Token() string { return s.token }
+
+// SetWebUI installs the embedded web UI handler so the daemon serves the app itself. Passing nil
+// (no UI compiled into the binary) leaves the SPA route answering "not built".
+func (s *Server) SetWebUI(h http.Handler) { s.webui = h }
+
+// handleDiscovery hands a loopback client the token (and an empty address meaning "this origin"),
+// so a browser on this machine can authenticate to a virtad-served SPA with no configuration.
+// Remote clients are refused: serving the UI beyond loopback needs the hosted auth layer (ADR-031).
+func (s *Server) handleDiscovery(w http.ResponseWriter, r *http.Request) {
+	if !isLoopback(r.RemoteAddr) {
+		http.NotFound(w, r)
+		return
+	}
+	writeJSON(w, Discovery{Addr: "", Token: s.token})
+}
+
+// handleWebUI serves the embedded SPA (with its own fallback), or a short notice if this binary
+// was built without a UI.
+func (s *Server) handleWebUI(w http.ResponseWriter, r *http.Request) {
+	if s.webui == nil {
+		http.Error(w, "web UI not built into this binary (run `make web`)", http.StatusNotFound)
+		return
+	}
+	s.webui.ServeHTTP(w, r)
+}
+
+func isLoopback(remoteAddr string) bool {
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		host = remoteAddr
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
+}
 
 // Logger returns the server's logger (with diagnostics capture), so the rest of the daemon
 // can log through the same ring buffer.

@@ -42,3 +42,7 @@ frontends/desktop/bin/*
 !frontends/desktop/bin/.gitkeep
 frontends/desktop/frontend/
 frontends/desktop/desktop
+
+# Web UI staged into the daemon for embedding; the .gitkeep placeholder is kept.
+internal/webui/dist/*
+!internal/webui/dist/.gitkeep

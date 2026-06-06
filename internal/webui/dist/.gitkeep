@@ -1,0 +1,1 @@
+The built web UI (frontends/web/dist) is staged here by 'make web' and embedded into virtad.

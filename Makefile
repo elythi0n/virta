@@ -13,7 +13,7 @@ LDFLAGS     := -s -w \
 # Cross-compile matrix (the 6 shipped OS/arch targets).
 PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64
 
-.PHONY: all ci build run lint fmt fmt-check vet test test-race cover cross app daemon fixtures \
+.PHONY: all ci build run lint fmt fmt-check vet test test-race cover cross app daemon web serve fixtures \
         tokens tokens-check apigen apigen-check test-live-twitch test-live-kick test-live-x test-live-llm soak docker clean tidy
 
 all: ci
@@ -90,11 +90,21 @@ cross:
 	done
 	@echo "✓ cross-compiled $(words $(PLATFORMS)) targets"
 
-## daemon: build just the virtad binary artifact (no GUI; always available offline).
+## web: build the web UI and stage it where virtad embeds it, so the daemon serves the app itself.
+web:
+	cd frontends/web && npm install && npm run build
+	@find internal/webui/dist -mindepth 1 ! -name .gitkeep -delete
+	@cp -r frontends/web/dist/. internal/webui/dist/
+
+## daemon: build the virtad binary. Run `make web` first to embed the UI (so `virtad` serves it).
 daemon:
 	@mkdir -p dist
 	go build -ldflags '$(LDFLAGS)' -o dist/virtad ./cmd/virtad
 	@echo "✓ artifact: dist/virtad"
+
+## serve: build the UI into the daemon and run it; open the printed URL in any browser. One process.
+serve: web daemon
+	./dist/virtad
 
 ## app: the one-click desktop bundle (ADR-022): the web UI + an embedded virtad in one native
 ## artifact. Requires the Wails CLI and the WebKit dev libraries for this OS (not part of make ci).
@@ -104,6 +114,8 @@ app:
 	cd frontends/web && npm install && npm run build
 	@find frontends/desktop/assets -mindepth 1 ! -name .gitkeep -delete
 	cp -r frontends/web/dist/. frontends/desktop/assets/
+	@find internal/webui/dist -mindepth 1 ! -name .gitkeep -delete
+	@cp -r frontends/web/dist/. internal/webui/dist/
 	@ext=""; [ "$$(go env GOOS)" = "windows" ] && ext=".exe"; \
 		CGO_ENABLED=0 go build -ldflags '$(LDFLAGS)' -o frontends/desktop/bin/virtad$$ext ./cmd/virtad
 	@mkdir -p frontends/desktop/build && cp frontends/ui-kit/src/assets/virta-logo-512.png frontends/desktop/build/appicon.png

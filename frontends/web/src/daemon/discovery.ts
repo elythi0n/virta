@@ -18,7 +18,8 @@ async function fetchDiscovery(): Promise<Discovery | null> {
     const res = await fetch('/__discovery');
     if (!res.ok) return null;
     const d = (await res.json()) as Discovery;
-    return d.addr ? d : null;
+    // A same-origin daemon reports an empty addr but still a token; a missing daemon yields neither.
+    return d.addr || d.token ? d : null;
   } catch {
     return null;
   }
