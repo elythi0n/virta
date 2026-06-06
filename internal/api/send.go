@@ -14,6 +14,8 @@ type Send interface {
 	Preview(targets []string) ([]SendTarget, error)
 	// Send cross-posts text to the targets, returning each target's disposition.
 	Send(ctx context.Context, targets []string, text string) ([]SendResult, error)
+	// Queue reports each target's send-queue depth and next-send countdown.
+	Queue(targets []string) ([]QueueState, error)
 }
 
 // SendTarget is one channel's pre-send reachability, served by POST /v1/send/preview.
@@ -28,6 +30,13 @@ type SendResult struct {
 	Channel string `json:"channel"`          // "platform:slug"
 	Status  string `json:"status"`           // queued | sent | dropped | excluded
 	Reason  string `json:"reason,omitempty"` // why excluded/dropped (machine reason code)
+}
+
+// QueueState is one channel's outbound send-queue state, served by POST /v1/send/queue.
+type QueueState struct {
+	Channel  string `json:"channel"` // "platform:slug"
+	Queued   int    `json:"queued"`
+	NextInMs int    `json:"next_in_ms"` // time until the next send is permitted; 0 means now
 }
 
 // Send statuses.
@@ -87,4 +96,22 @@ func (s *Server) handleSendPreview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, map[string]any{"targets": targets})
+}
+
+func (s *Server) handleSendQueue(w http.ResponseWriter, r *http.Request) {
+	if s.send == nil {
+		http.Error(w, "send unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	var req previewRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.Channels) == 0 {
+		http.Error(w, "expected JSON body with channels", http.StatusBadRequest)
+		return
+	}
+	queue, err := s.send.Queue(req.Channels)
+	if err != nil {
+		s.channelError(w, err)
+		return
+	}
+	writeJSON(w, map[string]any{"queue": queue})
 }

@@ -518,6 +518,23 @@ func (c sendControl) Send(ctx context.Context, targets []string, text string) ([
 	return out, nil
 }
 
+func (c sendControl) Queue(targets []string) ([]api.QueueState, error) {
+	refs, err := parseTargets(targets)
+	if err != nil {
+		return nil, err
+	}
+	infos := c.sender.QueueState(refs)
+	out := make([]api.QueueState, 0, len(infos))
+	for _, qi := range infos {
+		out = append(out, api.QueueState{
+			Channel:  qi.Channel.Key(),
+			Queued:   qi.Queued,
+			NextInMs: int(qi.NextIn / time.Millisecond),
+		})
+	}
+	return out, nil
+}
+
 // parsePlatform validates a platform string against the known platforms, so an unknown one is
 // the caller's 400 rather than a connection error.
 func parsePlatform(s string) (platform.Platform, bool) {

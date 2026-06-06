@@ -198,6 +198,22 @@ func TestTargets_PreSendReachability(t *testing.T) {
 	}
 }
 
+// TestQueueState_ReportsDepthAndCountdown: a send beyond the per-channel burst is queued, and
+// QueueState surfaces the depth and a positive countdown for it.
+func TestQueueState_ReportsDepthAndCountdown(t *testing.T) {
+	a := &fakeAdapter{caps: platform.Capabilities{Send: true}}
+	gov := ratelimit.New(clock.NewFake(time.Unix(0, 0)), ratelimit.Limit{Burst: 1, Window: time.Second})
+	s := dispatch.New(map[platform.Platform]dispatch.Adapter{platform.Twitch: a}, gov, "help")
+
+	s.SendMany(context.Background(), []platform.ChannelRef{twitchCh}, "one") // uses the one token
+	s.SendMany(context.Background(), []platform.ChannelRef{twitchCh}, "two") // queued: no token left
+
+	st := s.QueueState([]platform.ChannelRef{twitchCh})
+	if len(st) != 1 || st[0].Queued != 1 || st[0].NextIn <= 0 {
+		t.Errorf("queue state = %+v, want one queued send with a positive countdown", st)
+	}
+}
+
 // TestSendMany_UnknownPlatformExcluded: a target on a platform with no adapter is excluded, not
 // errored.
 func TestSendMany_UnknownPlatformExcluded(t *testing.T) {

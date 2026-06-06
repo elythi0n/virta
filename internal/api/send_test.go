@@ -11,9 +11,18 @@ import (
 type fakeSend struct {
 	targets     []SendTarget
 	results     []SendResult
+	queue       []QueueState
 	err         error
 	gotChannels []string
 	gotText     string
+}
+
+func (f *fakeSend) Queue(targets []string) ([]QueueState, error) {
+	f.gotChannels = targets
+	if f.err != nil {
+		return nil, f.err
+	}
+	return f.queue, nil
 }
 
 func (f *fakeSend) Preview(targets []string) ([]SendTarget, error) {
@@ -76,6 +85,26 @@ func TestSend_PreviewReportsReachability(t *testing.T) {
 	_ = json.Unmarshal(resp, &got)
 	if len(got.Targets) != 2 || !got.Targets[0].CanSend || got.Targets[1].CanSend || got.Targets[1].Reason != "auth_required" {
 		t.Errorf("targets = %+v", got.Targets)
+	}
+}
+
+func TestSend_QueueReportsDepthAndCountdown(t *testing.T) {
+	s := start(t)
+	s.SetSend(&fakeSend{queue: []QueueState{
+		{Channel: "twitch:forsen", Queued: 0, NextInMs: 0},
+		{Channel: "kick:xqc", Queued: 2, NextInMs: 1200},
+	}})
+	body, _ := json.Marshal(previewRequest{Channels: []string{"twitch:forsen", "kick:xqc"}})
+	code, resp := authedReq(t, http.MethodPost, "http://"+s.Addr()+"/v1/send/queue?token="+s.Token(), body)
+	if code != http.StatusOK {
+		t.Fatalf("queue status = %d, want 200", code)
+	}
+	var got struct {
+		Queue []QueueState `json:"queue"`
+	}
+	_ = json.Unmarshal(resp, &got)
+	if len(got.Queue) != 2 || got.Queue[1].Queued != 2 || got.Queue[1].NextInMs != 1200 {
+		t.Errorf("queue = %+v", got.Queue)
 	}
 }
 
