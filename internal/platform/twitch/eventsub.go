@@ -2,6 +2,7 @@ package twitch
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/elythi0n/virta/internal/platform"
@@ -29,6 +30,8 @@ const (
 	subChatClear    = "channel.chat.clear"
 	subChatDelete   = "channel.chat.message_delete"
 	subChatSettings = "channel.chat_settings.update"
+	subAutomodHold  = "automod.message.hold"
+	subAutomodUpd   = "automod.message.update"
 )
 
 // esEnvelope is the outer EventSub WS frame.
@@ -102,6 +105,10 @@ func eventFromNotification(subType string, payload json.RawMessage, sentAt time.
 		return clearFromEvent(p.Event)
 	case subChatSettings:
 		return settingsFromEvent(p.Event)
+	case subAutomodHold:
+		return heldFromEvent(p.Event, sentAt)
+	case subAutomodUpd:
+		return heldResolvedFromEvent(p.Event)
 	default:
 		return nil, false, nil
 	}
@@ -340,5 +347,54 @@ func settingsFromEvent(raw json.RawMessage) (platform.Event, bool, error) {
 	return platform.ChatSettingsEvent{
 		Channel:  platform.ChannelRef{Platform: platform.Twitch, Slug: e.BroadcasterLogin},
 		Settings: s,
+	}, true, nil
+}
+
+// heldFromEvent converts an automod.message.hold event into a MessageHeldEvent for the hold queue.
+// held_at carries the platform's hold timestamp; we fall back to the frame time when it's absent.
+func heldFromEvent(raw json.RawMessage, sentAt time.Time) (platform.Event, bool, error) {
+	var e struct {
+		BroadcasterLogin string        `json:"broadcaster_user_login"`
+		UserID           string        `json:"user_id"`
+		UserLogin        string        `json:"user_login"`
+		UserName         string        `json:"user_name"`
+		MessageID        string        `json:"message_id"`
+		Message          esMessageBody `json:"message"`
+		Category         string        `json:"category"`
+		HeldAt           string        `json:"held_at"`
+	}
+	if err := json.Unmarshal(raw, &e); err != nil {
+		return nil, false, err
+	}
+	heldAt := parseESTimestamp(e.HeldAt)
+	if heldAt.IsZero() {
+		heldAt = sentAt
+	}
+	return platform.MessageHeldEvent{Held: platform.HeldMessage{
+		ID:      e.MessageID,
+		Channel: platform.ChannelRef{Platform: platform.Twitch, Slug: e.BroadcasterLogin},
+		Author:  platform.Author{ID: e.UserID, Login: e.UserLogin, DisplayName: e.UserName},
+		Text:    e.Message.Text,
+		Reason:  e.Category,
+		HeldAt:  heldAt,
+	}}, true, nil
+}
+
+// heldResolvedFromEvent converts an automod.message.update event into a HeldResolvedEvent, so the
+// queue clears whether a moderator acted from elsewhere or the hold expired. Any status other than
+// "approved" (denied, expired) leaves the message unposted.
+func heldResolvedFromEvent(raw json.RawMessage) (platform.Event, bool, error) {
+	var e struct {
+		BroadcasterLogin string `json:"broadcaster_user_login"`
+		MessageID        string `json:"message_id"`
+		Status           string `json:"status"`
+	}
+	if err := json.Unmarshal(raw, &e); err != nil {
+		return nil, false, err
+	}
+	return platform.HeldResolvedEvent{
+		Channel:  platform.ChannelRef{Platform: platform.Twitch, Slug: e.BroadcasterLogin},
+		ID:       e.MessageID,
+		Approved: strings.EqualFold(e.Status, "approved"),
 	}, true, nil
 }

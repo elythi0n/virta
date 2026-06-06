@@ -151,6 +151,40 @@ func TestEventSub_DeleteClearSettings(t *testing.T) {
 	}
 }
 
+func TestEventSub_AutomodHoldAndUpdate(t *testing.T) {
+	held, ok, err := eventFromNotification(subAutomodHold, json.RawMessage(`{"event":{
+		"broadcaster_user_login":"forsen","user_id":"42","user_login":"baddie","user_name":"Baddie",
+		"message_id":"h1","message":{"text":"sus message"},"category":"harassment","held_at":"2026-06-06T12:00:00Z"
+	}}`), time.Unix(100, 0))
+	h, isHeld := held.(platform.MessageHeldEvent)
+	if !ok || err != nil || !isHeld {
+		t.Fatalf("hold dispatch: ok=%v err=%v ev=%T", ok, err, held)
+	}
+	if h.Held.ID != "h1" || h.Held.Channel.Slug != "forsen" || h.Held.Author.Login != "baddie" ||
+		h.Held.Text != "sus message" || h.Held.Reason != "harassment" {
+		t.Errorf("held = %#v", h.Held)
+	}
+	if h.Held.HeldAt.IsZero() {
+		t.Error("held_at should parse, not fall back")
+	}
+
+	// held_at absent → falls back to the frame time.
+	noTS, _, _ := eventFromNotification(subAutomodHold, json.RawMessage(`{"event":{"broadcaster_user_login":"forsen","message_id":"h2","message":{"text":"x"}}}`), time.Unix(100, 0))
+	if hh := noTS.(platform.MessageHeldEvent); !hh.Held.HeldAt.Equal(time.Unix(100, 0)) {
+		t.Errorf("missing held_at fallback = %v, want frame time", hh.Held.HeldAt)
+	}
+
+	approved, ok, _ := eventFromNotification(subAutomodUpd, json.RawMessage(`{"event":{"broadcaster_user_login":"forsen","message_id":"h1","status":"approved"}}`), time.Time{})
+	if r, _ := approved.(platform.HeldResolvedEvent); !ok || r.ID != "h1" || !r.Approved || r.Channel.Slug != "forsen" {
+		t.Errorf("approved resolve = %#v", approved)
+	}
+
+	denied, _, _ := eventFromNotification(subAutomodUpd, json.RawMessage(`{"event":{"broadcaster_user_login":"forsen","message_id":"h1","status":"denied"}}`), time.Time{})
+	if r := denied.(platform.HeldResolvedEvent); r.Approved {
+		t.Errorf("denied status should not be Approved")
+	}
+}
+
 func TestEventSub_EnvelopeAndSession(t *testing.T) {
 	env, err := parseEnvelope([]byte(`{"metadata":{"message_type":"session_welcome"},"payload":{"session":{"id":"sess-1","keepalive_timeout_seconds":10,"status":"connected"}}}`))
 	if err != nil || env.Metadata.MessageType != esWelcome {
