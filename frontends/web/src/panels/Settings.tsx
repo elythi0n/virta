@@ -4,7 +4,7 @@ import type { Density } from '@virta/feed-core';
 import { useActions } from '../actions';
 import { useDensity } from '../density';
 import { useFeedDisplay } from '../feedDisplay';
-import { useTheme } from '../theme';
+import { useTheme, type ThemeMode } from '../theme';
 import { DENSITIES } from './DensityControl';
 import Connections from './Connections';
 import styles from './Settings.module.css';
@@ -59,19 +59,20 @@ function Placeholder({ children }: { children: ReactNode }) {
 }
 
 function Appearance() {
-  const { theme, setTheme } = useTheme();
+  const { mode, setMode } = useTheme();
   const { density, setDensity } = useDensity();
   const { showTimestamps, setShowTimestamps, mentionNames, setMentionNames } = useFeedDisplay();
   return (
     <>
-      <Field label="Theme" hint="Color palette for the whole app.">
+      <Field label="Appearance" hint="Follow the system, or pin light or dark.">
         <Segmented
-          ariaLabel="Theme"
-          value={theme}
-          onValueChange={setTheme}
+          ariaLabel="Appearance"
+          value={mode}
+          onValueChange={(v) => setMode(v as ThemeMode)}
           options={[
-            { value: 'graphite-dark', label: 'Graphite' },
+            { value: 'system', label: 'System' },
             { value: 'light', label: 'Light' },
+            { value: 'dark', label: 'Dark' },
           ]}
         />
       </Field>

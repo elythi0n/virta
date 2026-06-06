@@ -14,12 +14,34 @@ import { loadLayout, saveLayoutDebounced } from './shell/layout';
 import { ActionsProvider } from './actions';
 import { DensityProvider } from './density';
 import { FeedDisplayProvider } from './feedDisplay';
-import { ThemeProvider } from './theme';
+import { ThemeProvider, DARK_THEME, LIGHT_THEME, type ThemeMode } from './theme';
+
+const prefersDark = () => typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches;
+function loadMode(): ThemeMode {
+  try {
+    const v = localStorage.getItem('virta.appearance');
+    if (v === 'system' || v === 'light' || v === 'dark') return v;
+  } catch {
+    // ignore
+  }
+  return 'system';
+}
 
 export default function App() {
   const [activeView, setActiveView] = useState<ViewId>('panels');
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [theme, setTheme] = useState('graphite-dark');
+  const [mode, setModeState] = useState<ThemeMode>(loadMode);
+  const [systemDark, setSystemDark] = useState(prefersDark);
+  // Resolve the appearance mode to a concrete token theme; system follows the OS preference.
+  const theme = mode === 'dark' ? DARK_THEME : mode === 'light' ? LIGHT_THEME : systemDark ? DARK_THEME : LIGHT_THEME;
+  const setMode = useCallback((m: ThemeMode) => {
+    setModeState(m);
+    try {
+      localStorage.setItem('virta.appearance', m);
+    } catch {
+      // storage unavailable; appearance just won't persist across reloads
+    }
+  }, []);
   const [density, setDensity] = useState<Density>('cozy');
   const [showTimestamps, setShowTimestamps] = useState(true);
   const [mentionNames, setMentionNamesState] = useState<string[]>(() => {
@@ -42,7 +64,16 @@ export default function App() {
   const [newFeedOpen, setNewFeedOpen] = useState(false);
   const apiRef = useRef<DockviewApi | null>(null);
 
-  // Reflect the chosen theme onto the document so the token theme blocks switch.
+  // Track the OS color-scheme so "system" mode flips live when the OS theme changes.
+  useEffect(() => {
+    if (typeof matchMedia !== 'function') return;
+    const mq = matchMedia('(prefers-color-scheme: dark)');
+    const onChange = (e: MediaQueryListEvent) => setSystemDark(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  // Reflect the resolved theme onto the document so the token theme blocks switch.
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
@@ -193,8 +224,9 @@ export default function App() {
       { id: 'view-panels', title: 'Show Panels', group: 'View', perform: () => { setActiveView('panels'); setSidebarOpen(true); } },
       { id: 'view-sources', title: 'Show Sources', group: 'View', perform: () => { setActiveView('sources'); setSidebarOpen(true); } },
       { id: 'toggle-sidebar', title: 'Toggle Side Bar', group: 'View', keywords: ['hide', 'show'], shortcut: 'mod+b', perform: () => setSidebarOpen((o) => !o) },
-      { id: 'theme-graphite', title: 'Theme: Graphite (Dark)', group: 'Preferences', perform: () => setTheme('graphite-dark') },
-      { id: 'theme-light', title: 'Theme: Light', group: 'Preferences', perform: () => setTheme('light') },
+      { id: 'theme-system', title: 'Appearance: Follow system', group: 'Preferences', perform: () => setMode('system') },
+      { id: 'theme-dark', title: 'Appearance: Dark', group: 'Preferences', perform: () => setMode('dark') },
+      { id: 'theme-light', title: 'Appearance: Light', group: 'Preferences', perform: () => setMode('light') },
     ];
   }, [openPanel, openSettings]);
 
@@ -216,7 +248,7 @@ export default function App() {
   }, [actions]);
 
   return (
-    <ThemeProvider value={{ theme, setTheme }}>
+    <ThemeProvider value={{ mode, setMode, theme }}>
       <DensityProvider value={{ density, setDensity }}>
         <FeedDisplayProvider value={{ showTimestamps, setShowTimestamps, mentionNames, setMentionNames }}>
         <ActionsProvider value={actions}>
