@@ -2,26 +2,62 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  border: 0;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--virta-line);
   border-radius: var(--virta-radius-sm);
-  background: none;
-  color: var(--virta-text-2);
+  background: var(--virta-bg-0);
+  color: var(--virta-text-1);
   cursor: pointer;
   transition:
     background var(--virta-motion-fast) ease,
+    border-color var(--virta-motion-fast) ease,
     color var(--virta-motion-fast) ease;
 }
 .add:hover {
   background: var(--virta-bg-2);
+  border-color: var(--virta-text-2);
   color: var(--virta-text-0);
 }
 
 .form {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-8);
+  min-width: 240px;
+}
+.platforms {
+  display: inline-flex;
+  gap: var(--virta-space-4);
+}
+.chip {
+  flex: 1 1 0;
+  height: 26px;
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-sm);
+  background: var(--virta-bg-0);
+  color: var(--virta-text-2);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  font-weight: 600;
+  cursor: pointer;
+}
+.chip:hover {
+  border-color: var(--virta-text-2);
+  color: var(--virta-text-0);
+}
+.chipOn {
+  border-color: transparent;
+  background: var(--virta-accent);
+  color: var(--virta-bg-0);
+}
+.entry {
+  display: flex;
   gap: var(--virta-space-8);
   align-items: center;
-  min-width: 260px;
+}
+.error {
+  color: var(--virta-danger);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
 }
