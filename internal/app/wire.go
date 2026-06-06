@@ -33,6 +33,7 @@ import (
 	"github.com/elythi0n/virta/internal/platform/twitch"
 	"github.com/elythi0n/virta/internal/profiles"
 	"github.com/elythi0n/virta/internal/ratelimit"
+	"github.com/elythi0n/virta/internal/scrollback"
 	"github.com/elythi0n/virta/internal/secrets"
 	"github.com/elythi0n/virta/internal/secrets/filevault"
 	"github.com/elythi0n/virta/internal/secrets/keychain"
@@ -254,10 +255,13 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	// channel; it runs after badges so subscriber/mod badges (priority lanes) are resolved. It only
 	// annotates, so the logger and other sinks still receive every message.
 	velocityStage := velocity.NewStage(velocity.DefaultThreshold)
+	// The scrollback ring retains a bounded per-channel tail in memory, so history/search work even
+	// when persistent logging is off (session-scoped); it's unused for reads when logging is on.
+	scrollbackRing := scrollback.New()
 	runner := pipeline.NewRunner(pipeline.Options{
 		Clock:  clk,
 		Stages: []pipeline.Stage{filterStage, emotes.NewStage(emoteResolver), badges.NewStage(badgeResolver), velocityStage},
-		Sinks:  []pipeline.Sink{srv.Sink(), statsAgg, logSink, heldQueue},
+		Sinks:  []pipeline.Sink{srv.Sink(), statsAgg, logSink, heldQueue, scrollbackRing},
 		Logger: log,
 	})
 
@@ -309,7 +313,7 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	}, gov, sendHelpText)
 	srv.SetSend(sendControl{sender: sender})
 	srv.SetHeld(heldControl{queue: heldQueue, sender: sender, emitter: runner})
-	srv.SetHistory(historyControl{store: st})
+	srv.SetHistory(historyControl{store: st, ring: scrollbackRing, loggingOn: logSink.Enabled})
 
 	// OAuth app credentials are read through providers so they can be set at runtime via the UI
 	// (stored in the vault), seeded from the env vars on first run.
@@ -773,14 +777,20 @@ func (c heldControl) List() []api.HeldMessage {
 func (c heldControl) Approve(ctx context.Context, id string) error { return c.resolve(ctx, id, true) }
 func (c heldControl) Deny(ctx context.Context, id string) error    { return c.resolve(ctx, id, false) }
 
-// historyControl adapts the store's message log to the API's search/scrollback controller. It
-// resolves "platform:slug" filters to channel ids and maps stored rows back to "platform:slug" for
-// display, so the API stays in channel-key terms while the store stays in ids.
+// historyControl adapts the message log to the API's search/scrollback controller. When persistent
+// logging is on it reads the durable store (resolving "platform:slug" filters to channel ids and
+// mapping rows back to channel keys); when off it falls back to the in-memory scrollback ring, so
+// the feature works in the default logging-off mode (just session-scoped). loggingOn selects which.
 type historyControl struct {
-	store store.Store
+	store     store.Store
+	ring      *scrollback.Ring
+	loggingOn func() bool
 }
 
 func (c historyControl) Search(ctx context.Context, p api.SearchParams) ([]api.LoggedMessage, error) {
+	if !c.loggingOn() {
+		return ringToLogged(c.ring.Search(p.Channel, p.Text, p.Author, p.Before, p.Limit)), nil
+	}
 	q := store.SearchQuery{Text: p.Text, Author: p.Author, Before: p.Before, Limit: p.Limit}
 	if p.Channel != "" {
 		id, ok, err := c.channelID(ctx, p.Channel)
@@ -800,6 +810,9 @@ func (c historyControl) Search(ctx context.Context, p api.SearchParams) ([]api.L
 }
 
 func (c historyControl) History(ctx context.Context, p api.HistoryParams) ([]api.LoggedMessage, error) {
+	if !c.loggingOn() {
+		return ringToLogged(c.ring.History(p.Channel, p.Before, p.Limit)), nil
+	}
 	id, ok, err := c.channelID(ctx, p.Channel)
 	if err != nil {
 		return nil, err
@@ -812,6 +825,23 @@ func (c historyControl) History(ctx context.Context, p api.HistoryParams) ([]api
 		return nil, err
 	}
 	return c.toLogged(ctx, msgs)
+}
+
+// ringToLogged maps in-memory scrollback rows to the wire form (they already carry the channel ref).
+func ringToLogged(rows []scrollback.Msg) []api.LoggedMessage {
+	out := make([]api.LoggedMessage, 0, len(rows))
+	for _, m := range rows {
+		out = append(out, api.LoggedMessage{
+			ID:       m.ID,
+			Channel:  m.Channel.Key(),
+			Platform: string(m.Channel.Platform),
+			Author:   m.Author,
+			Body:     m.Body,
+			SentAtMs: m.SentAt,
+			Deleted:  m.Deleted,
+		})
+	}
+	return out
 }
 
 // channelID resolves a "platform:slug" key to the channel's stored id; ok is false when no such

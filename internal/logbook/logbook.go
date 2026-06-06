@@ -77,6 +77,10 @@ func (s *Sink) SetEnabled(on bool) {
 	}
 }
 
+// Enabled reports whether persistent logging is currently on, so callers (e.g. the history API) can
+// choose the durable store over the in-memory scrollback ring.
+func (s *Sink) Enabled() bool { return s.enabled.Load() }
+
 // Consume buffers a chat message for persistence (when logging is on and it isn't ephemeral)
 // and applies deletions. Other events are ignored.
 func (s *Sink) Consume(_ context.Context, ev platform.Event) error {
