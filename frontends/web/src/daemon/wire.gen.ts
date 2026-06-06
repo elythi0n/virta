@@ -22,6 +22,23 @@ export interface Badge {
   title?: string;
 }
 
+export interface Capabilities {
+  read_anonymous: boolean;
+  read_authed: boolean;
+  send: boolean;
+  moderation: boolean;
+  replies: boolean;
+  held_queue: boolean;
+  stability: string;
+}
+
+export interface ChannelInfo {
+  platform: string;
+  slug: string;
+  state: string;
+  reason?: string;
+}
+
 export interface ChannelRef {
   platform: Platform;
   id: string;

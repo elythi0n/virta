@@ -25,6 +25,8 @@ func roots() []reflect.Type {
 	return []reflect.Type{
 		reflect.TypeOf(api.WireEvent{}),
 		reflect.TypeOf(api.Discovery{}),
+		reflect.TypeOf(api.ChannelInfo{}),
+		reflect.TypeOf(api.Capabilities{}),
 	}
 }
 

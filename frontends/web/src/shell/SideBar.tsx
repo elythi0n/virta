@@ -1,6 +1,7 @@
-import { Badge, Button, StatusDot, Text } from '@virta/ui-kit';
+import { Button, Text } from '@virta/ui-kit';
 import Icon from '../Icon';
-import { PANEL_CATALOG, SOURCES, type ViewId } from './views';
+import { PANEL_CATALOG, type ViewId } from './views';
+import Sources from './Sources';
 import styles from './SideBar.module.css';
 
 type Props = {
@@ -37,27 +38,7 @@ export default function SideBar({ view, openPanel }: Props) {
           </ul>
         )}
 
-        {view === 'sources' && (
-          <>
-            <ul className={styles.rows}>
-              {SOURCES.map((s) => (
-                <li key={s.id}>
-                  <div className={styles.sourceRow}>
-                    <span className={styles.rail} style={{ background: s.accent }} />
-                    <StatusDot status="offline" label={`${s.label}: not connected`} />
-                    <Text variant="ui" tone="muted" className={styles.label}>
-                      {s.label}
-                    </Text>
-                    <Badge tone="neutral">Not connected</Badge>
-                  </div>
-                </li>
-              ))}
-            </ul>
-            <Text as="p" variant="meta" tone="subtle" className={styles.note}>
-              Connecting accounts wires to the daemon in a later step.
-            </Text>
-          </>
-        )}
+        {view === 'sources' && <Sources />}
       </div>
     </aside>
   );

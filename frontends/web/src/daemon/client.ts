@@ -1,5 +1,6 @@
 import type { FeedMessage } from '@virta/feed-core';
 import type { Discovery, WireEvent } from './wire.gen';
+import { discover as discoverDaemon } from './discovery';
 import { toFeedMessage } from './normalize';
 
 export type ConnectionStatus = 'offline' | 'connecting' | 'connected' | 'reconnecting';
@@ -24,7 +25,7 @@ const BACKOFF_MS = [500, 1000, 2000, 5000];
 // The address and token come from discovery; the server replays buffered events past `since` on
 // reconnect (at-least-once), so we dedupe by the monotonic seq.
 export function createDaemonClient(opts: DaemonClientOptions): DaemonClient {
-  const discover = opts.discover ?? defaultDiscover;
+  const discover = opts.discover ?? discoverDaemon;
   let socket: WebSocket | null = null;
   let stopped = false;
   let lastSeq = 0;
@@ -92,15 +93,4 @@ export function createDaemonClient(opts: DaemonClientOptions): DaemonClient {
       }
     },
   };
-}
-
-async function defaultDiscover(): Promise<Discovery | null> {
-  try {
-    const res = await fetch('/__discovery');
-    if (!res.ok) return null;
-    const d = (await res.json()) as Discovery;
-    return d.addr ? d : null;
-  } catch {
-    return null;
-  }
 }

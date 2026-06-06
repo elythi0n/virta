@@ -1,0 +1,97 @@
+import { useState } from 'react';
+import { Button, Input, Select, StatusDot, Text, type DotStatus } from '@virta/ui-kit';
+import { useChannels } from '../daemon';
+import styles from './Sources.module.css';
+
+const PLATFORMS = [
+  { value: 'twitch', label: 'Twitch' },
+  { value: 'kick', label: 'Kick' },
+];
+
+function stateDot(state: string): DotStatus {
+  if (state === 'connected') return 'live';
+  if (state === 'error') return 'offline';
+  return 'idle';
+}
+
+export default function Sources() {
+  const { channels, status, error, join, leave } = useChannels();
+  const [platform, setPlatform] = useState('twitch');
+  const [slug, setSlug] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const onJoin = async () => {
+    const name = slug.trim().toLowerCase();
+    if (!name) return;
+    setBusy(true);
+    try {
+      await join(platform, name);
+      setSlug('');
+    } catch {
+      // surfaced via the hook's error on the next refresh
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (status === 'offline') {
+    return (
+      <Text variant="ui" tone="subtle" as="p" className={styles.offline}>
+        Not connected to a daemon. Launch the app (or run virtad) to add channels.
+      </Text>
+    );
+  }
+
+  return (
+    <div className={styles.sources}>
+      <div className={styles.add}>
+        <Select ariaLabel="Platform" value={platform} onValueChange={setPlatform} options={PLATFORMS} />
+        <Input
+          aria-label="Channel name"
+          placeholder="channel"
+          value={slug}
+          onChange={(e) => setSlug(e.currentTarget.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') void onJoin();
+          }}
+        />
+        <Button variant="solid" size="sm" disabled={busy || slug.trim() === ''} onClick={() => void onJoin()}>
+          Join
+        </Button>
+      </div>
+
+      {error && <p className={styles.error}>{error}</p>}
+
+      <ul className={styles.list}>
+        {channels.length === 0 ? (
+          <li>
+            <Text variant="meta" tone="subtle">
+              No channels joined yet.
+            </Text>
+          </li>
+        ) : (
+          channels.map((c) => (
+            <li key={`${c.platform}:${c.slug}`} className={styles.row}>
+              <StatusDot status={stateDot(c.state)} label={c.state} />
+              <Text variant="ui" tone="muted" className={styles.slug}>
+                {c.platform}/{c.slug}
+              </Text>
+              <button
+                type="button"
+                className={styles.remove}
+                aria-label={`Leave ${c.platform}/${c.slug}`}
+                onClick={() => void leave(c.platform, c.slug)}
+              >
+                ×
+              </button>
+            </li>
+          ))
+        )}
+      </ul>
+
+      <Text as="p" variant="meta" tone="subtle" className={styles.note}>
+        Twitch reads work without signing in. Signing in (to send) comes next.
+      </Text>
+    </div>
+  );
+}
