@@ -1,3 +1,9 @@
+.actions {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+}
+
 .action {
   display: inline-flex;
   align-items: center;
@@ -16,4 +22,34 @@
 .action:focus-visible {
   outline: 2px solid var(--virta-accent);
   outline-offset: -2px;
+}
+
+.menu {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 180px;
+}
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  padding: var(--virta-space-8);
+  border: 0;
+  border-radius: var(--virta-radius-sm);
+  background: none;
+  color: var(--virta-text-1);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  text-align: left;
+  cursor: pointer;
+}
+.menuItem:hover {
+  background: var(--virta-bg-2);
+  color: var(--virta-text-0);
+}
+.menuGlyph {
+  display: grid;
+  place-items: center;
+  color: var(--virta-text-2);
 }
