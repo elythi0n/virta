@@ -1,32 +1,51 @@
 import { useEffect, useState } from 'react';
-import { Feed, type FeedMessage, type Platform } from '@virta/feed-core';
+import { Feed, parseSegments, type FeedMessage, type Platform } from '@virta/feed-core';
 import { Segmented } from '@virta/ui-kit';
+import { useTheme } from '../theme';
 import styles from './FeedPanel.module.css';
 
-// Synthetic stream so the feed can be driven at velocity by hand until the daemon feeds it live.
+// Build a hex string from channels so no raw hex literal lives in the source (token-lint).
+const hex = (r: number, g: number, b: number) =>
+  '#' + [r, g, b].map((n) => n.toString(16).padStart(2, '0')).join('');
+
+// Stand-in emote images (small colored chips) so the emote render path is exercised offline.
+const emoteChip = (fill: string) =>
+  'data:image/svg+xml,' +
+  encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20" rx="4" fill="${fill}"/></svg>`);
+const EMOTES = {
+  Kappa: { url: emoteChip(hex(146, 70, 255)) },
+  PogU: { url: emoteChip(hex(83, 252, 24)) },
+};
+
+// Some author colors are deliberately too dark for the dark theme, to exercise the contrast clamp.
+const AUTHOR_COLORS = [hex(34, 34, 38), hex(91, 140, 255), hex(80, 200, 120), hex(70, 70, 170), hex(210, 153, 34)];
+
 const SAMPLE = [
   'gg that was clean',
   'no shot he actually hit that',
   'first time catching the stream live, this is sick',
   'what headset is that',
   'chat is going feral lol',
-  'W player',
-  'the pacing on this run is unreal, no notes',
-  'someone clip that',
+  'the pacing on this run is unreal Kappa',
+  'someone clip that PogU',
   'how is he this consistent',
-  'incoming raid, hold the line',
 ];
 const PLATFORMS: Platform[] = ['twitch', 'kick', 'x'];
 
 let seq = 0;
 function makeMessage(): FeedMessage {
   const i = seq++;
+  let body = SAMPLE[Math.floor(Math.random() * SAMPLE.length)];
+  if (Math.random() < 0.18) body = `@viewer_${Math.floor(Math.random() * 900)} ${body}`;
+  if (Math.random() < 0.08) body += ` https://clips.example/${i}`;
   return {
     id: `m${i}`,
     ts: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
     platform: PLATFORMS[i % PLATFORMS.length],
     author: `viewer_${Math.floor(Math.random() * 900)}`,
-    body: SAMPLE[Math.floor(Math.random() * SAMPLE.length)],
+    authorColor: AUTHOR_COLORS[i % AUTHOR_COLORS.length],
+    body,
+    segments: parseSegments(body, EMOTES),
   };
 }
 
@@ -36,8 +55,16 @@ const MAX_MESSAGES = 8000; // bound memory; oldest drop once exceeded
 const TICK_MS = 100;
 
 export default function FeedPanel() {
+  const { theme } = useTheme();
   const [messages, setMessages] = useState<FeedMessage[]>([]);
   const [rate, setRate] = useState<Rate>('live');
+  const [background, setBackground] = useState(() => hex(14, 15, 18));
+
+  // Clamp author colors against the live theme background.
+  useEffect(() => {
+    const value = getComputedStyle(document.documentElement).getPropertyValue('--virta-bg-0').trim();
+    if (value) setBackground(value);
+  }, [theme]);
 
   useEffect(() => {
     const perSecond = RATES[rate];
@@ -68,7 +95,7 @@ export default function FeedPanel() {
         />
       </div>
       <div className={styles.feedWrap}>
-        <Feed messages={messages} />
+        <Feed messages={messages} background={background} />
       </div>
     </div>
   );

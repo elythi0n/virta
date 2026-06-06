@@ -7,12 +7,16 @@ import styles from './Feed.module.css';
 // Within this many px of the bottom counts as "pinned"; new messages keep the view at the latest.
 const STICK_THRESHOLD = 48;
 
-type FeedProps = { messages: FeedMessage[] };
+type FeedProps = {
+  messages: FeedMessage[];
+  /** Feed background (hex) author colors are contrast-clamped against; pass the theme's bg-0. */
+  background: string;
+};
 
 // Virtualized chat feed: only the visible window is in the DOM (stable keys by message id), so
 // throughput is bounded by the viewport, not the backlog. Pins to the bottom while the user is
 // there; scrolling up detaches and a pill offers to jump back to the latest.
-export default function Feed({ messages }: FeedProps) {
+export default function Feed({ messages, background }: FeedProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const stick = useRef(true); // live pin state, read inside the scroll handler
   const prevCount = useRef(0);
@@ -76,7 +80,7 @@ export default function Feed({ messages }: FeedProps) {
               className={styles.rowWrap}
               style={{ transform: `translateY(${vi.start}px)` }}
             >
-              <FeedRow message={messages[vi.index]} />
+              <FeedRow message={messages[vi.index]} background={background} />
             </div>
           ))}
         </div>

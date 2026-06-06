@@ -1,3 +1,6 @@
 export { default as Feed } from './Feed';
 export { default as FeedRow } from './FeedRow';
 export type { FeedMessage, Platform } from './types';
+export { parseSegments } from './segments';
+export type { Segment, EmoteMeta } from './segments';
+export { clampForContrast, contrastRatio } from './contrast';

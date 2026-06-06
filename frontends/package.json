@@ -4,6 +4,11 @@
   "version": "0.0.0",
   "workspaces": ["ui-kit", "feed-core", "web"],
   "scripts": {
-    "lint:tokens": "node scripts/token-lint.mjs"
+    "lint:tokens": "node scripts/token-lint.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.8"
   }
 }

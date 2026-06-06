@@ -37,3 +37,19 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
+
+.emote {
+  height: 20px;
+  width: auto;
+  vertical-align: middle;
+  margin: 0 1px;
+}
+.mention {
+  color: var(--virta-accent);
+  font-weight: 600;
+}
+.link {
+  color: var(--virta-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

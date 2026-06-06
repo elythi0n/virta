@@ -7,7 +7,7 @@ const files = globSync([
   'ui-kit/src/**/*.{css,ts,tsx}',
   'feed-core/src/**/*.{css,ts,tsx}',
   'web/src/**/*.{css,ts,tsx}',
-]);
+]).filter((f) => !/\.(test|spec)\.[tj]sx?$/.test(f)); // test fixtures may use literal colors
 const HEX = /#[0-9a-fA-F]{3,8}\b/g;
 
 const violations = [];
