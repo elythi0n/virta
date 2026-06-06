@@ -45,10 +45,10 @@ type Server struct {
 	log      *slog.Logger
 	ring     *logRing
 	hub      *hub
-	channels Channels // join/leave controller, installed via SetChannels
-	profiles Profiles // profile controller, installed via SetProfiles
-	authCtl  Auth     // account-auth controller, installed via SetAuth
-	send     Send     // cross-posting controller, installed via SetSend
+	channels Channels     // join/leave controller, installed via SetChannels
+	profiles Profiles     // profile controller, installed via SetProfiles
+	authCtl  Auth         // account-auth controller, installed via SetAuth
+	send     Send         // cross-posting controller, installed via SetSend
 	webui    http.Handler // embedded web UI, installed via SetWebUI (nil = not served)
 
 	token         string
