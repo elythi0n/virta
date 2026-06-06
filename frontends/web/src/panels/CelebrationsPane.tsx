@@ -9,21 +9,24 @@ import {
   type Platform,
 } from '@virta/feed-core';
 import { Button, ContextMenu, Dialog, Text } from '@virta/ui-kit';
+import Icon, { type IconName } from '../Icon';
 import { channelKey, useChannels, useDaemonStream } from '../daemon';
 import styles from './CelebrationsPane.module.css';
 
 const MAX = 60; // events are rare; a small capped list needs no virtualization
 
-const TYPE_OPTIONS = [
-  { value: 'sub', label: 'Subs' },
-  { value: 'resub', label: 'Resubs' },
-  { value: 'giftsub', label: 'Gifts' },
-  { value: 'raid', label: 'Raids' },
-  { value: 'host', label: 'Hosts' },
-  { value: 'follow', label: 'Follows' },
-  { value: 'announcement', label: 'Announcements' },
-  { value: 'moderation', label: 'Moderation' },
-  { value: 'system', label: 'System' },
+// Each celebration type carries an icon; the row tints it to match the event band's colour
+// (driven by data-type in CSS), so the filter reads like the cards it controls.
+const TYPE_OPTIONS: { value: string; label: string; icon: IconName }[] = [
+  { value: 'sub', label: 'Subs', icon: 'star' },
+  { value: 'resub', label: 'Resubs', icon: 'star' },
+  { value: 'giftsub', label: 'Gifts', icon: 'gift' },
+  { value: 'raid', label: 'Raids', icon: 'stream' },
+  { value: 'host', label: 'Hosts', icon: 'stream' },
+  { value: 'follow', label: 'Follows', icon: 'user-plus' },
+  { value: 'announcement', label: 'Announcements', icon: 'megaphone' },
+  { value: 'moderation', label: 'Moderation', icon: 'ban' },
+  { value: 'system', label: 'System', icon: 'settings' },
 ];
 const ALL_TYPES = TYPE_OPTIONS.map((o) => o.value);
 
@@ -69,7 +72,7 @@ export default function CelebrationsPane({ panelId }: Props) {
   }, []);
   useDaemonStream({ onMessage });
 
-  const sourceOptions = channels.map((c) => ({ value: channelKey(c.platform, c.slug), label: c.slug }));
+  const sourceOptions = channels.map((c) => ({ value: channelKey(c.platform, c.slug), label: c.slug, platform: c.platform as Platform }));
   const allSources = sourceOptions.map((s) => s.value);
 
   const visible = useMemo(
@@ -151,26 +154,34 @@ export default function CelebrationsPane({ panelId }: Props) {
         }
       >
         <div className={styles.filterBody}>
-          <section>
+          <section className={styles.group}>
             <Text variant="meta" tone="subtle" as="h3" className={styles.groupLabel}>
               Types
             </Text>
-            <div className={styles.chips}>
-              {TYPE_OPTIONS.map((o) => (
-                <button
-                  key={o.value}
-                  type="button"
-                  className={`${styles.chip} ${checked(filter.types, o.value) ? styles.chipOn : ''}`}
-                  aria-pressed={checked(filter.types, o.value)}
-                  onClick={() => update({ ...filter, types: toggle(filter.types, ALL_TYPES, o.value) })}
-                >
-                  {o.label}
-                </button>
-              ))}
+            <div className={styles.typeGrid}>
+              {TYPE_OPTIONS.map((o) => {
+                const on = checked(filter.types, o.value);
+                return (
+                  <button
+                    key={o.value}
+                    type="button"
+                    data-type={o.value}
+                    className={`${styles.option} ${on ? styles.optionOn : ''}`}
+                    aria-pressed={on}
+                    onClick={() => update({ ...filter, types: toggle(filter.types, ALL_TYPES, o.value) })}
+                  >
+                    <span className={styles.optIcon}>
+                      <Icon name={o.icon} size={16} />
+                    </span>
+                    <span className={styles.optLabel}>{o.label}</span>
+                    <span className={styles.optCheck}>{on && <Icon name="check" size={14} />}</span>
+                  </button>
+                );
+              })}
             </div>
           </section>
 
-          <section>
+          <section className={styles.group}>
             <Text variant="meta" tone="subtle" as="h3" className={styles.groupLabel}>
               Sources
             </Text>
@@ -179,22 +190,28 @@ export default function CelebrationsPane({ panelId }: Props) {
                 No channels joined yet.
               </Text>
             ) : (
-              <div className={styles.chips}>
-                {sourceOptions.map((o) => (
-                  <button
-                    key={o.value}
-                    type="button"
-                    className={`${styles.chip} ${checked(filter.sources, o.value) ? styles.chipOn : ''}`}
-                    aria-pressed={checked(filter.sources, o.value)}
-                    onClick={() => update({ ...filter, sources: toggle(filter.sources, allSources, o.value) })}
-                  >
-                    {o.label}
-                  </button>
-                ))}
+              <div className={styles.sourceList}>
+                {sourceOptions.map((o) => {
+                  const on = checked(filter.sources, o.value);
+                  return (
+                    <button
+                      key={o.value}
+                      type="button"
+                      className={`${styles.option} ${on ? styles.optionOn : ''}`}
+                      aria-pressed={on}
+                      onClick={() => update({ ...filter, sources: toggle(filter.sources, allSources, o.value) })}
+                    >
+                      <span className={styles.optIcon}>
+                        <PlatformGlyph platform={o.platform} className={styles.optGlyph} />
+                      </span>
+                      <span className={styles.optLabel}>{o.label}</span>
+                      <span className={styles.optCheck}>{on && <Icon name="check" size={14} />}</span>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </section>
-
         </div>
       </Dialog>
     </>

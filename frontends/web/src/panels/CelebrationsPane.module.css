@@ -15,36 +15,104 @@
   flex-direction: column;
   gap: var(--virta-space-16);
 }
+.group {
+  margin: 0;
+}
 .groupLabel {
   margin: 0 0 var(--virta-space-8);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-.chips {
+
+/* Types laid out as a two-column grid of icon rows; sources as a single column (slugs can run long). */
+.typeGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--virta-space-8);
+}
+.sourceList {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: var(--virta-space-4);
 }
-.chip {
-  height: 26px;
-  padding: 0 var(--virta-space-8);
+
+/* An option row: icon, label, and a check when included. Excluded rows dim so "what's shown" reads
+   at a glance. */
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  padding: var(--virta-space-8) var(--virta-space-12);
   border: 1px solid var(--virta-line);
-  border-radius: var(--virta-radius-sm);
+  border-radius: var(--virta-radius-md);
   background: var(--virta-bg-0);
-  color: var(--virta-text-2);
-  font-family: var(--virta-font-ui);
-  font-size: var(--virta-type-meta-size);
-  font-weight: 600;
-  cursor: pointer;
-}
-.chip:hover {
-  border-color: var(--virta-text-2);
   color: var(--virta-text-0);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--virta-motion-fast) ease,
+    background var(--virta-motion-fast) ease,
+    opacity var(--virta-motion-fast) ease;
 }
-.chipOn {
-  border-color: transparent;
-  background: var(--virta-accent);
-  color: var(--virta-bg-0);
+.option:hover {
+  border-color: var(--virta-text-2);
+  background: var(--virta-bg-2);
+}
+.option:not(.optionOn) {
+  opacity: 0.5; /* excluded from this pane */
+}
+.optionOn {
+  border-color: color-mix(in srgb, var(--virta-accent) 45%, var(--virta-line));
+}
+.optIcon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  color: var(--virta-text-1);
+}
+.optGlyph {
+  width: 15px;
+  height: 15px;
+}
+.optLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.optCheck {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  color: var(--virta-accent);
+}
+
+/* Tint each type's icon to match its event-band colour, so the filter mirrors the cards. */
+.option[data-type='sub'] .optIcon,
+.option[data-type='resub'] .optIcon,
+.option[data-type='giftsub'] .optIcon,
+.option[data-type='announcement'] .optIcon {
+  color: var(--virta-accent);
+}
+.option[data-type='raid'] .optIcon,
+.option[data-type='host'] .optIcon {
+  color: var(--virta-warn);
+}
+.option[data-type='follow'] .optIcon {
+  color: var(--virta-ok);
+}
+.option[data-type='moderation'] .optIcon {
+  color: var(--virta-danger);
+}
+.option[data-type='system'] .optIcon {
+  color: var(--virta-text-2);
 }
 .pane {
   height: 100%;
