@@ -17,11 +17,16 @@ type fakeChannels struct {
 	mu     sync.Mutex
 	joined []string
 	left   []string
+	modes  map[string]platform.ConnMode
 }
 
-func (f *fakeChannels) Join(_ context.Context, ch platform.ChannelRef, _ platform.ConnMode) error {
+func (f *fakeChannels) Join(_ context.Context, ch platform.ChannelRef, mode platform.ConnMode) error {
 	f.mu.Lock()
 	f.joined = append(f.joined, channelKey(ch.Platform, ch.Slug))
+	if f.modes == nil {
+		f.modes = map[string]platform.ConnMode{}
+	}
+	f.modes[channelKey(ch.Platform, ch.Slug)] = mode
 	f.mu.Unlock()
 	return nil
 }
@@ -78,6 +83,46 @@ func createProfile(t *testing.T, mem *store.Memory, name string, doc Doc) store.
 
 func spec(slug string) ChannelSpec {
 	return ChannelSpec{Platform: platform.Twitch, Slug: slug, Mode: platform.ModeAnonymous}
+}
+
+func TestSetMethod_PinsReconnectsAndPersists(t *testing.T) {
+	m, mem, ch, _, _ := newManager(t)
+	p := createProfile(t, mem, "p", Doc{
+		Version:  CurrentVersion,
+		Channels: []ChannelSpec{{Platform: platform.Twitch, Slug: "a"}, {Platform: platform.Kick, Slug: "b"}},
+	})
+	if err := m.Activate(context.Background(), p.ID); err != nil {
+		t.Fatalf("Activate: %v", err)
+	}
+
+	if err := m.SetMethod(context.Background(), platform.Twitch, platform.ModeAnonymous); err != nil {
+		t.Fatalf("SetMethod: %v", err)
+	}
+
+	// Only the Twitch channel reconnects, with the pinned mode.
+	ch.mu.Lock()
+	left, mode := ch.left, ch.modes["twitch:a"]
+	ch.mu.Unlock()
+	if len(left) != 1 || left[0] != "twitch:a" {
+		t.Fatalf("reconnected channels = %v, want [twitch:a]", left)
+	}
+	if mode != platform.ModeAnonymous {
+		t.Fatalf("twitch rejoined with mode %q, want anonymous", mode)
+	}
+	if m.MethodFor(platform.Twitch) != platform.ModeAnonymous {
+		t.Fatalf("MethodFor(twitch) = %q", m.MethodFor(platform.Twitch))
+	}
+	if m.MethodFor(platform.Kick) != platform.ModeAutomatic {
+		t.Fatalf("Kick should be unpinned (automatic), got %q", m.MethodFor(platform.Kick))
+	}
+
+	// Clearing the pin (automatic) removes it from the stored methods.
+	if err := m.SetMethod(context.Background(), platform.Twitch, platform.ModeAutomatic); err != nil {
+		t.Fatalf("clear: %v", err)
+	}
+	if len(m.Methods()) != 0 {
+		t.Fatalf("methods after clear = %v, want empty", m.Methods())
+	}
 }
 
 func TestEnsureDefault(t *testing.T) {

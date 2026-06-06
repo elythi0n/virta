@@ -277,6 +277,7 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	srv.SetChannels(channelControl{eng: eng, emotes: emoteResolver, badges: badgeResolver, streams: streamResolver, profiles: mgr})
 	srv.SetProfiles(profileControl{mgr: mgr, repo: st.Profiles()})
 	srv.SetFilters(filterControl{mgr: mgr})
+	srv.SetConnections(connectionsControl{mgr: mgr})
 
 	// Outbound sends are paced per channel and cross-posted through the typed-action layer. Kick
 	// is seeded conservatively (its limits are undocumented and adapt on 429); Twitch starts at
@@ -424,7 +425,7 @@ func (c channelControl) Join(ctx context.Context, plat, slug, mode string) error
 	}
 	m := platform.ConnMode(mode)
 	if m == "" {
-		m = platform.ModeAutomatic
+		m = c.profiles.MethodFor(p) // honor the platform's pinned connection method (else Automatic)
 	}
 	ref := platform.ChannelRef{Platform: p, Slug: slug}
 	if err := c.eng.Join(ctx, ref, m); err != nil {
@@ -509,6 +510,26 @@ func (c filterControl) SetFilters(ctx context.Context, rules []api.FilterRule) e
 		return fmt.Errorf("%w: %v", api.ErrInvalidRuleset, err)
 	}
 	return c.mgr.SetFilters(ctx, in)
+}
+
+// connectionsControl adapts the profile manager to the API's per-platform connection-method
+// controller.
+type connectionsControl struct{ mgr *profiles.Manager }
+
+func (c connectionsControl) Methods() map[string]string {
+	out := map[string]string{}
+	for p, mode := range c.mgr.Methods() {
+		out[string(p)] = string(mode)
+	}
+	return out
+}
+
+func (c connectionsControl) SetMethod(ctx context.Context, plat, method string) error {
+	p, ok := parsePlatform(plat)
+	if !ok {
+		return fmt.Errorf("%w: %q", api.ErrUnknownPlatform, plat)
+	}
+	return c.mgr.SetMethod(ctx, p, platform.ConnMode(method))
 }
 
 // profileControl adapts the profile manager to the API's profile controller.

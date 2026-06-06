@@ -18,11 +18,29 @@ const CurrentVersion = 1
 // Doc is a workspace: the channels to join, the filter rules, logging policy, and per-frontend
 // layout sections (opaque to the core, carried through untouched).
 type Doc struct {
-	Version  int             `json:"version"`
-	Channels []ChannelSpec   `json:"channels,omitempty"`
-	Filters  []filter.Rule   `json:"filters,omitempty"`
-	Logging  Logging         `json:"logging"`
-	Layouts  json.RawMessage `json:"layouts,omitempty"`
+	Version  int                                     `json:"version"`
+	Channels []ChannelSpec                           `json:"channels,omitempty"`
+	Methods  map[platform.Platform]platform.ConnMode `json:"methods,omitempty"` // pinned per-platform connection method
+	Filters  []filter.Rule                           `json:"filters,omitempty"`
+	Logging  Logging                                 `json:"logging"`
+	Layouts  json.RawMessage                         `json:"layouts,omitempty"`
+}
+
+// methodFor returns the pinned connection method for a platform, or Automatic when none is set.
+func (d Doc) methodFor(p platform.Platform) platform.ConnMode {
+	if m, ok := d.Methods[p]; ok && m != "" {
+		return m
+	}
+	return platform.ModeAutomatic
+}
+
+// effectiveMode is the mode a channel actually joins with: the platform's pinned method overrides
+// the channel's own mode (a pinned method is the user's deliberate per-platform choice).
+func (d Doc) effectiveMode(c ChannelSpec) platform.ConnMode {
+	if m, ok := d.Methods[c.Platform]; ok && m != "" {
+		return m
+	}
+	return c.mode()
 }
 
 // ChannelSpec is one channel a profile joins.

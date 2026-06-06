@@ -114,7 +114,7 @@ func (m *Manager) Activate(ctx context.Context, id string) error {
 		_ = m.channels.Leave(ch.Ref())
 	}
 	for _, ch := range add {
-		_ = m.channels.Join(ctx, ch.Ref(), ch.mode())
+		_ = m.channels.Join(ctx, ch.Ref(), doc.effectiveMode(ch))
 	}
 
 	rs, err := filter.Compile(doc.Filters)
@@ -204,6 +204,61 @@ func (m *Manager) SetFilters(ctx context.Context, rules []filter.Rule) error {
 	m.active.Filters = rules
 	m.mu.Unlock()
 	m.filter.SetRuleset(rs)
+	return m.save(ctx)
+}
+
+// Methods returns the active profile's pinned per-platform connection methods (a copy).
+func (m *Manager) Methods() map[platform.Platform]platform.ConnMode {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := make(map[platform.Platform]platform.ConnMode, len(m.active.Methods))
+	for k, v := range m.active.Methods {
+		out[k] = v
+	}
+	return out
+}
+
+// MethodFor returns the pinned connection method for a platform, defaulting to Automatic. Used by
+// the join path so a user-added channel honors the platform's pinned method.
+func (m *Manager) MethodFor(p platform.Platform) platform.ConnMode {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.active.methodFor(p)
+}
+
+// SetMethod pins a platform's connection method, reconnecting that platform's joined channels with
+// the new mode (a brief drop), and persists. Empty mode clears the pin (back to Automatic).
+func (m *Manager) SetMethod(ctx context.Context, p platform.Platform, mode platform.ConnMode) error {
+	m.mu.Lock()
+	if !m.loaded {
+		m.mu.Unlock()
+		return nil
+	}
+	if m.active.Methods == nil {
+		m.active.Methods = map[platform.Platform]platform.ConnMode{}
+	}
+	if mode == "" || mode == platform.ModeAutomatic {
+		delete(m.active.Methods, p)
+	} else {
+		m.active.Methods[p] = mode
+	}
+	// Snapshot the channels to reconnect and the effective mode, under the lock.
+	type rejoin struct {
+		ref  platform.ChannelRef
+		mode platform.ConnMode
+	}
+	var todo []rejoin
+	for _, c := range m.active.Channels {
+		if c.Platform == p {
+			todo = append(todo, rejoin{ref: c.Ref(), mode: m.active.effectiveMode(c)})
+		}
+	}
+	m.mu.Unlock()
+
+	for _, r := range todo {
+		_ = m.channels.Leave(r.ref)
+		_ = m.channels.Join(ctx, r.ref, r.mode)
+	}
 	return m.save(ctx)
 }
 

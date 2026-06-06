@@ -42,15 +42,16 @@ type Config struct {
 
 // Server is the local HTTP/WebSocket API.
 type Server struct {
-	log      *slog.Logger
-	ring     *logRing
-	hub      *hub
-	channels Channels     // join/leave controller, installed via SetChannels
-	profiles Profiles     // profile controller, installed via SetProfiles
-	filters  Filters      // filter-ruleset controller, installed via SetFilters
-	authCtl  Auth         // account-auth controller, installed via SetAuth
-	send     Send         // cross-posting controller, installed via SetSend
-	webui    http.Handler // embedded web UI, installed via SetWebUI (nil = not served)
+	log         *slog.Logger
+	ring        *logRing
+	hub         *hub
+	channels    Channels     // join/leave controller, installed via SetChannels
+	profiles    Profiles     // profile controller, installed via SetProfiles
+	filters     Filters      // filter-ruleset controller, installed via SetFilters
+	connections Connections  // per-platform connection-method controller, installed via SetConnections
+	authCtl     Auth         // account-auth controller, installed via SetAuth
+	send        Send         // cross-posting controller, installed via SetSend
+	webui       http.Handler // embedded web UI, installed via SetWebUI (nil = not served)
 
 	token         string
 	runtimeDir    string
@@ -101,6 +102,8 @@ func New(cfg Config) (*Server, error) {
 	mux.Handle("GET /v1/streams", s.auth(http.HandlerFunc(s.handleListStreams)))
 	mux.Handle("GET /v1/filters", s.auth(http.HandlerFunc(s.handleListFilters)))
 	mux.Handle("PUT /v1/filters", s.auth(http.HandlerFunc(s.handleSetFilters)))
+	mux.Handle("GET /v1/connections/methods", s.auth(http.HandlerFunc(s.handleListMethods)))
+	mux.Handle("PUT /v1/connections/method", s.auth(http.HandlerFunc(s.handleSetMethod)))
 	mux.Handle("POST /v1/channels", s.auth(http.HandlerFunc(s.handleJoinChannel)))
 	mux.Handle("DELETE /v1/channels", s.auth(http.HandlerFunc(s.handleLeaveChannel)))
 	mux.Handle("POST /v1/send", s.auth(http.HandlerFunc(s.handleSend)))
