@@ -1,9 +1,19 @@
-import { Button, Text } from '@virta/ui-kit';
+import { useState } from 'react';
+import { Button, Text, Tooltip } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { PANEL_CATALOG, type ViewId } from './views';
 import AddChannel from './AddChannel';
-import StreamsSidebar from './StreamsSidebar';
+import StreamsSidebar, { type StreamLayout } from './StreamsSidebar';
 import styles from './SideBar.module.css';
+
+const LAYOUT_KEY = 'virta.streams.layout';
+function loadLayout(): StreamLayout {
+  try {
+    return localStorage.getItem(LAYOUT_KEY) === 'list' ? 'list' : 'cards';
+  } catch {
+    return 'cards';
+  }
+}
 
 type Props = {
   view: ViewId;
@@ -21,13 +31,34 @@ const TITLES: Record<ViewId, string> = {
 };
 
 export default function SideBar({ view, openPanel, openChannel, openStream, listFeeds, mergeChannelIntoFeed, onNewFeed }: Props) {
+  const [layout, setLayout] = useState<StreamLayout>(loadLayout);
+  const toggleLayout = () =>
+    setLayout((l) => {
+      const next: StreamLayout = l === 'cards' ? 'list' : 'cards';
+      try {
+        localStorage.setItem(LAYOUT_KEY, next);
+      } catch {
+        // storage unavailable; the choice just won't persist across reloads
+      }
+      return next;
+    });
+
   return (
     <aside className={styles.side} aria-label={TITLES[view]}>
       <header className={styles.head}>
         <Text variant="meta" tone="subtle">
           {TITLES[view]}
         </Text>
-        {view === 'streams' && <AddChannel />}
+        {view === 'streams' && (
+          <div className={styles.headActions}>
+            <Tooltip content={layout === 'cards' ? 'List view' : 'Thumbnail view'} side="bottom">
+              <button type="button" className={styles.layoutToggle} aria-label="Toggle stream layout" onClick={toggleLayout}>
+                <Icon name={layout === 'cards' ? 'list' : 'grid'} size={18} />
+              </button>
+            </Tooltip>
+            <AddChannel />
+          </div>
+        )}
       </header>
       <div className={styles.body}>
         {view === 'panels' && (
@@ -54,6 +85,7 @@ export default function SideBar({ view, openPanel, openChannel, openStream, list
 
         {view === 'streams' && (
           <StreamsSidebar
+            layout={layout}
             openChannel={openChannel}
             openStream={openStream}
             listFeeds={listFeeds}

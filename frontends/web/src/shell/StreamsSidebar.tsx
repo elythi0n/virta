@@ -16,7 +16,12 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 // Compact count: 1.2k above a thousand, whole numbers below.
 const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k` : Math.round(n).toString());
 
+/** How the rail draws each streamer: large preview cards, or a compact one-line list. */
+export type StreamLayout = 'cards' | 'list';
+
 type Props = {
+  /** Card previews vs a compact list. */
+  layout: StreamLayout;
   /** Open a feed scoped to a single channel ("platform:slug"). */
   openChannel: (channelKey: string, label: string) => void;
   /** Open a channel's embedded player. */
@@ -32,7 +37,7 @@ type Props = {
 // come through), sorted with the most-watched live streamers on top. Click the preview to watch or
 // the name to open chat (the primary platform); right-click for those plus opening a specific
 // platform or merging chat into an existing feed.
-export default function StreamsSidebar({ openChannel, openStream, listFeeds, mergeChannelIntoFeed }: Props) {
+export default function StreamsSidebar({ layout, openChannel, openStream, listFeeds, mergeChannelIntoFeed }: Props) {
   const { channels, status, leave } = useChannels();
   const streams = useStreams();
   const { stats } = useStats();
@@ -54,13 +59,15 @@ export default function StreamsSidebar({ openChannel, openStream, listFeeds, mer
   }
 
   const groups = groupStreams(channels, streams);
+  const compact = layout === 'list';
 
   return (
-    <ul className={styles.list}>
+    <ul className={styles.list} data-layout={layout}>
       {groups.map((g) => (
         <StreamCard
           key={g.name}
           group={g}
+          compact={compact}
           stat={stats[g.primary.key]}
           open={expanded === g.name}
           onToggle={() => setExpanded(expanded === g.name ? null : g.name)}
@@ -77,6 +84,7 @@ export default function StreamsSidebar({ openChannel, openStream, listFeeds, mer
 
 function StreamCard({
   group,
+  compact,
   stat,
   open,
   onToggle,
@@ -87,6 +95,7 @@ function StreamCard({
   onRemove,
 }: {
   group: StreamGroup;
+  compact: boolean;
   stat?: { messagesPerSec: number; uniqueChatters: number; topEmote?: string };
   open: boolean;
   onToggle: () => void;
@@ -138,7 +147,7 @@ function StreamCard({
         items={menuItems}
         trigger={
           <div className={styles.card}>
-            {live && (
+            {!compact && live && (
               <button type="button" className={styles.thumb} onClick={() => openStream(primary.key, display)} aria-label={`Watch ${display}`}>
                 {info?.thumbnail_url ? (
                   <img className={styles.thumbImg} src={info.thumbnail_url} alt="" loading="lazy" />
@@ -168,6 +177,15 @@ function StreamCard({
                   ))}
                 </span>
                 <span className={styles.name}>{display}</span>
+                {compact && live && (
+                  <span
+                    className={styles.inlineLive}
+                    title={liveCount > 1 ? `${fmt(viewers)} across ${liveCount} platforms` : undefined}
+                  >
+                    <i className={styles.vdot} aria-hidden />
+                    {viewers > 0 ? fmt(viewers) : 'LIVE'}
+                  </span>
+                )}
                 {!live && <span className={styles.offline}>Offline</span>}
                 <StatusDot status={stateDot(primary.state)} label={primary.state} />
               </button>
@@ -183,7 +201,7 @@ function StreamCard({
               </button>
             </div>
 
-            {live && (info?.category || info?.title) && (
+            {!compact && live && (info?.category || info?.title) && (
               <div className={styles.streamInfo}>
                 {info?.category && <span className={styles.category}>{info.category}</span>}
                 {info?.title && (

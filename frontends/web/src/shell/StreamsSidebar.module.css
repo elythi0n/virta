@@ -11,6 +11,10 @@
   flex-direction: column;
   gap: var(--virta-space-8);
 }
+/* The compact list packs rows tighter than the spaced preview cards. */
+.list[data-layout='list'] {
+  gap: var(--virta-space-4);
+}
 
 .item {
   border: 1px solid var(--virta-line);
@@ -158,6 +162,17 @@
   flex: none;
   color: var(--virta-text-2);
   font-size: var(--virta-type-meta-size);
+}
+/* List layout: the live audience inline in the row (there's no thumbnail to carry it). */
+.inlineLive {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--virta-space-4);
+  color: var(--virta-text-1);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 .expand {
   flex: none;

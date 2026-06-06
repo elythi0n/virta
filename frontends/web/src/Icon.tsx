@@ -1,4 +1,4 @@
-export type IconName = 'sources' | 'panels' | 'settings' | 'chat' | 'stream' | 'mods' | 'stats' | 'x' | 'popout' | 'search' | 'chevron-down' | 'plus' | 'text-size' | 'plugins' | 'mentions' | 'filter' | 'gift' | 'eye' | 'eye-off' | 'collapse' | 'trash' | 'clock' | 'ban' | 'reply' | 'zap' | 'check';
+export type IconName = 'sources' | 'panels' | 'settings' | 'chat' | 'stream' | 'mods' | 'stats' | 'x' | 'popout' | 'search' | 'chevron-down' | 'plus' | 'text-size' | 'plugins' | 'mentions' | 'filter' | 'gift' | 'eye' | 'eye-off' | 'collapse' | 'trash' | 'clock' | 'ban' | 'reply' | 'zap' | 'check' | 'list' | 'grid';
 
 // Stroke icons on a 24px grid (Lucide geometry). Inner markup only; the wrapper sets sizing,
 // stroke, and currentColor so a single icon adapts to any context.
@@ -29,6 +29,8 @@ const PATHS: Record<IconName, string> = {
   reply: '<polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/>',
   zap: '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
   check: '<path d="M20 6 9 17l-5-5"/>',
+  list: '<line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/>',
+  grid: '<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>',
   clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
   ban: '<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',
   eye: '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
