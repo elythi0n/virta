@@ -1,6 +1,14 @@
 // Generated from the Go wire types by cmd/apigen. Do not edit by hand.
 // Run `make apigen` after changing the daemon's API structs.
 
+export interface AccountInfo {
+  id: string;
+  platform: string;
+  login: string;
+  display_name?: string;
+  scopes?: string[];
+}
+
 export interface Annotations {
   hidden?: boolean;
   highlight?: string;

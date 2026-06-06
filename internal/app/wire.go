@@ -278,6 +278,14 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	srv.SetProfiles(profileControl{mgr: mgr, repo: st.Profiles()})
 	srv.SetFilters(filterControl{mgr: mgr})
 	srv.SetConnections(connectionsControl{mgr: mgr})
+	srv.SetAccounts(accountsControl{
+		repo:  st.Accounts(),
+		vault: vault,
+		deauth: map[platform.Platform]func(){
+			platform.Twitch: twitchAdapter.Deauthenticate,
+			platform.Kick:   kickAdapter.Deauthenticate,
+		},
+	})
 
 	// Outbound sends are paced per channel and cross-posted through the typed-action layer. Kick
 	// is seeded conservatively (its limits are undocumented and adapt on 429); Twitch starts at
@@ -530,6 +538,50 @@ func (c connectionsControl) SetMethod(ctx context.Context, plat, method string) 
 		return fmt.Errorf("%w: %q", api.ErrUnknownPlatform, plat)
 	}
 	return c.mgr.SetMethod(ctx, p, platform.ConnMode(method))
+}
+
+// accountsControl adapts the account store + adapters to the API's accounts controller: it lists
+// connected accounts and disconnects one (delete its keychain secret and row, then revert that
+// platform's adapter to anonymous read-only).
+type accountsControl struct {
+	repo   store.AccountRepo
+	vault  secrets.Vault
+	deauth map[platform.Platform]func()
+}
+
+func (c accountsControl) Accounts() []api.AccountInfo {
+	list, err := c.repo.List(context.Background())
+	if err != nil {
+		return nil
+	}
+	out := make([]api.AccountInfo, 0, len(list))
+	for _, a := range list {
+		out = append(out, api.AccountInfo{
+			ID:          a.ID,
+			Platform:    string(a.Platform),
+			Login:       a.Login,
+			DisplayName: a.DisplayName,
+			Scopes:      a.Scopes,
+		})
+	}
+	return out
+}
+
+func (c accountsControl) Disconnect(ctx context.Context, id string) error {
+	a, err := c.repo.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	if a.SecretRef != "" {
+		_ = c.vault.Delete(ctx, a.SecretRef)
+	}
+	if err := c.repo.Delete(ctx, id); err != nil {
+		return err
+	}
+	if fn := c.deauth[a.Platform]; fn != nil {
+		fn() // revert the adapter to anonymous; capabilities drop to read-only
+	}
+	return nil
 }
 
 // profileControl adapts the profile manager to the API's profile controller.
