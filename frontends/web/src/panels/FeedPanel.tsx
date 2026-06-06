@@ -181,6 +181,10 @@ type Rate = 'off' | 'live' | 'stress';
 const RATES: Record<Rate, number> = { off: 0, live: 12, stress: 200 }; // messages/second
 const MAX_MESSAGES = 8000; // bound memory; oldest drop once exceeded
 const TICK_MS = 50;
+// Calm-mode paced release: up to CALM_RELEASE_BATCH messages every CALM_RELEASE_TICK_MS (~18/s),
+// so each line stays on screen long enough to read; the rest queue behind the "+N" pill.
+const CALM_RELEASE_TICK_MS = 110;
+const CALM_RELEASE_BATCH = 2;
 
 type Props = {
   /** The channel set this feed shows ("platform:slug"); undefined = all (the unified feed). */
@@ -198,7 +202,28 @@ export default function FeedPanel({ channels, panelId }: Props) {
   const { messages, push, markDeleted, clearChannel } = useFeedBuffer({ max: MAX_MESSAGES });
   const [chatSettings, setChatSettings] = useState<Record<string, ChatSettings>>({});
   const onChatSettings = useCallback((ch: string, s: ChatSettings) => setChatSettings((prev) => ({ ...prev, [ch]: s })), []);
-  const status = useDaemonStream({ onMessage: push, onDeleted: markDeleted, onClear: clearChannel, onChatSettings }, channels);
+
+  // Paced intake: in calm mode, hold incoming messages in a queue and release a small batch per
+  // tick (min on-screen time) so a flood stays readable; the backlog surfaces as a "+N" pill. When
+  // calm is off, receive pushes straight through. calmActiveRef lets receive read the live state
+  // without being re-created (and re-subscribing the stream) on every toggle.
+  const pending = useRef<FeedMessage[]>([]);
+  const [pendingCount, setPendingCount] = useState(0);
+  const calmActiveRef = useRef(false);
+  const receive = useCallback(
+    (m: FeedMessage | FeedMessage[]) => {
+      const arr = Array.isArray(m) ? m : [m];
+      if (calmActiveRef.current) {
+        pending.current.push(...arr);
+        setPendingCount(pending.current.length);
+      } else {
+        push(arr);
+      }
+    },
+    [push],
+  );
+
+  const status = useDaemonStream({ onMessage: receive, onDeleted: markDeleted, onClear: clearChannel, onChatSettings }, channels);
 
   // Backfill recent scrollback when a channel-scoped feed opens onto an empty buffer, so it shows
   // context instead of a blank pane. Only when still empty at resolve (a busy channel fills live,
@@ -258,6 +283,29 @@ export default function FeedPanel({ channels, panelId }: Props) {
   );
   const autoCalm = autoCalmRate > 0 && liveRate >= autoCalmRate;
   const calmActive = calm || autoCalm;
+  calmActiveRef.current = calmActive;
+
+  // Flush the whole backlog at once (the "+N" pill, or when calm turns off).
+  const flushPending = useCallback(() => {
+    if (pending.current.length === 0) return;
+    push(pending.current);
+    pending.current = [];
+    setPendingCount(0);
+  }, [push]);
+
+  // While calm, drain the queue a batch at a time; when it turns off, release everything held.
+  useEffect(() => {
+    if (!calmActive) {
+      flushPending();
+      return;
+    }
+    const id = setInterval(() => {
+      if (pending.current.length === 0) return;
+      push(pending.current.splice(0, CALM_RELEASE_BATCH));
+      setPendingCount(pending.current.length);
+    }, CALM_RELEASE_TICK_MS);
+    return () => clearInterval(id);
+  }, [calmActive, push, flushPending]);
 
   // Client-side view filter over the buffered feed; the full buffer keeps streaming underneath.
   const { visible, thinned } = useMemo(() => {
@@ -326,9 +374,9 @@ export default function FeedPanel({ channels, panelId }: Props) {
     const perSecond = RATES[rate];
     if (perSecond === 0) return;
     const perTick = Math.max(1, Math.round((perSecond * TICK_MS) / 1000));
-    const id = setInterval(() => push(Array.from({ length: perTick }, makeMessage)), TICK_MS);
+    const id = setInterval(() => receive(Array.from({ length: perTick }, makeMessage)), TICK_MS);
     return () => clearInterval(id);
-  }, [status, rate, push]);
+  }, [status, rate, receive]);
 
   return (
     <div className={styles.panel}>
@@ -440,6 +488,11 @@ export default function FeedPanel({ channels, panelId }: Props) {
           showDeleted={showDeleted}
           renderActions={renderActions}
         />
+        {calmActive && pendingCount > 0 && (
+          <button type="button" className={styles.pendingPill} onClick={flushPending}>
+            +{pendingCount} paused · show
+          </button>
+        )}
       </div>
       {hud && <Composer targets={targets} chatters={chatters} replyTo={replyTo} onCancelReply={() => setReplyTo(null)} />}
 

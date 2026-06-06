@@ -154,7 +154,33 @@
 }
 
 .feedWrap {
+  position: relative;
   flex: 1 1 auto;
   min-height: 0;
+}
+
+/* Calm-mode backlog: a floating pill showing how many messages are held back, click to catch up. */
+.pendingPill {
+  position: absolute;
+  left: 50%;
+  bottom: var(--virta-space-12);
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  padding: var(--virta-space-4) var(--virta-space-12);
+  border: 1px solid transparent;
+  border-radius: var(--virta-radius-md);
+  background: var(--virta-accent);
+  color: var(--virta-bg-0);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 6px 16px -6px rgb(0 0 0 / 0.6);
+  cursor: pointer;
+  transition: filter var(--virta-motion-fast) ease;
+}
+.pendingPill:hover {
+  filter: brightness(1.08);
 }
 
