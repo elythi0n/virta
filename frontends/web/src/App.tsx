@@ -14,7 +14,23 @@ import { loadLayout, saveLayoutDebounced } from './shell/layout';
 import { ActionsProvider } from './actions';
 import { DensityProvider } from './density';
 import { FeedDisplayProvider } from './feedDisplay';
+import { A11yProvider } from './a11y';
 import { ThemeProvider, DARK_THEME, LIGHT_THEME, type ThemeMode } from './theme';
+
+const loadBool = (key: string) => {
+  try {
+    return localStorage.getItem(key) === '1';
+  } catch {
+    return false;
+  }
+};
+const saveBool = (key: string, v: boolean) => {
+  try {
+    localStorage.setItem(key, v ? '1' : '0');
+  } catch {
+    // storage unavailable; the preference just won't persist
+  }
+};
 
 const prefersDark = () => typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches;
 function loadMode(): ThemeMode {
@@ -59,10 +75,29 @@ export default function App() {
       // storage unavailable; names just won't persist across reloads
     }
   }, []);
+  const [reduceMotion, setReduceMotionState] = useState(() => loadBool('virta.reduceMotion'));
+  const setReduceMotion = useCallback((v: boolean) => {
+    setReduceMotionState(v);
+    saveBool('virta.reduceMotion', v);
+  }, []);
+  const [dyslexicFont, setDyslexicFontState] = useState(() => loadBool('virta.dyslexicFont'));
+  const setDyslexicFont = useCallback((v: boolean) => {
+    setDyslexicFontState(v);
+    saveBool('virta.dyslexicFont', v);
+  }, []);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [newFeedOpen, setNewFeedOpen] = useState(false);
   const apiRef = useRef<DockviewApi | null>(null);
+
+  // Reflect the accessibility preferences as document-level attributes the global CSS keys off.
+  useEffect(() => {
+    document.documentElement.dataset.reduceMotion = reduceMotion ? '1' : '0';
+  }, [reduceMotion]);
+  useEffect(() => {
+    if (dyslexicFont) document.documentElement.dataset.font = 'dyslexic';
+    else delete document.documentElement.dataset.font;
+  }, [dyslexicFont]);
 
   // Track the OS color-scheme so "system" mode flips live when the OS theme changes.
   useEffect(() => {
@@ -249,6 +284,7 @@ export default function App() {
 
   return (
     <ThemeProvider value={{ mode, setMode, theme }}>
+      <A11yProvider value={{ reduceMotion, setReduceMotion, dyslexicFont, setDyslexicFont }}>
       <DensityProvider value={{ density, setDensity }}>
         <FeedDisplayProvider value={{ showTimestamps, setShowTimestamps, mentionNames, setMentionNames }}>
         <ActionsProvider value={actions}>
@@ -287,6 +323,7 @@ export default function App() {
         </ActionsProvider>
         </FeedDisplayProvider>
       </DensityProvider>
+      </A11yProvider>
     </ThemeProvider>
   );
 }

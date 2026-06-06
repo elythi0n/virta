@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Input, Segmented, Select, Text, formatShortcut } from '@virta/ui-kit';
 import type { Density } from '@virta/feed-core';
+import { useA11y } from '../a11y';
 import { useActions } from '../actions';
 import { useDensity } from '../density';
 import { useFeedDisplay } from '../feedDisplay';
@@ -11,6 +12,7 @@ import styles from './Settings.module.css';
 
 type CategoryId =
   | 'appearance'
+  | 'accessibility'
   | 'connections'
   | 'chat'
   | 'filters'
@@ -24,6 +26,7 @@ type Category = { id: CategoryId; label: string; keywords: string };
 
 const CATEGORIES: Category[] = [
   { id: 'appearance', label: 'Appearance', keywords: 'theme dark light density font color' },
+  { id: 'accessibility', label: 'Accessibility', keywords: 'motion reduce dyslexia font contrast screen reader a11y' },
   { id: 'connections', label: 'Connections', keywords: 'accounts sign in twitch kick channels platform' },
   { id: 'chat', label: 'Chat', keywords: 'feed messages events emotes timestamps' },
   { id: 'filters', label: 'Filters', keywords: 'rules block hide highlight keywords' },
@@ -107,6 +110,42 @@ function Appearance() {
   );
 }
 
+function OnOff({ label, hint, value, onChange }: { label: string; hint: string; value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <Field label={label} hint={hint}>
+      <Segmented
+        ariaLabel={label}
+        value={value ? 'on' : 'off'}
+        onValueChange={(v) => onChange(v === 'on')}
+        options={[
+          { value: 'on', label: 'On' },
+          { value: 'off', label: 'Off' },
+        ]}
+      />
+    </Field>
+  );
+}
+
+function Accessibility() {
+  const { reduceMotion, setReduceMotion, dyslexicFont, setDyslexicFont } = useA11y();
+  return (
+    <>
+      <OnOff
+        label="Reduce motion"
+        hint="Turn off animations and transitions across the app, beyond your system setting."
+        value={reduceMotion}
+        onChange={setReduceMotion}
+      />
+      <OnOff
+        label="Dyslexia-friendly font"
+        hint="Use the bundled OpenDyslexic typeface for the interface and chat."
+        value={dyslexicFont}
+        onChange={setDyslexicFont}
+      />
+    </>
+  );
+}
+
 function Shortcuts() {
   const actions = useActions();
   const bound = actions.filter((a) => a.shortcut);
@@ -140,6 +179,8 @@ function CategoryBody({ id }: { id: CategoryId }) {
   switch (id) {
     case 'appearance':
       return <Appearance />;
+    case 'accessibility':
+      return <Accessibility />;
     case 'shortcuts':
       return <Shortcuts />;
     case 'about':

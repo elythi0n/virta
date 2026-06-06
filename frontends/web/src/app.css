@@ -4,6 +4,21 @@ body {
   height: 100%;
 }
 
+/* Accessibility: a force-off for motion (beyond the OS preference) and a bundled dyslexia font,
+   both toggled from Settings via document-level attributes. */
+[data-reduce-motion='1'] *,
+[data-reduce-motion='1'] *::before,
+[data-reduce-motion='1'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+[data-font='dyslexic'] {
+  --virta-font-ui: 'OpenDyslexic', system-ui, sans-serif;
+  --virta-font-mono: 'OpenDyslexic', ui-monospace, monospace;
+}
+
 body {
   background: var(--virta-bg-0);
   color: var(--virta-text-0);

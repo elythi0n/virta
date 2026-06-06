@@ -1,6 +1,8 @@
 import '@virta/ui-kit/tokens.css';
 import '@fontsource-variable/geist/wght.css';
 import '@fontsource-variable/geist-mono/wght.css';
+import '@fontsource/opendyslexic/400.css';
+import '@fontsource/opendyslexic/700.css';
 import 'dockview/dist/styles/dockview.css';
 import './app.css';
 import './dock-theme.css';
