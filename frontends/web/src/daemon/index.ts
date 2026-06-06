@@ -13,6 +13,7 @@ export { useStats } from './useStats';
 export type { ChannelStats } from './useStats';
 export { useStreams, listStreams } from './streams';
 export { listFilters, saveFilters } from './filters';
+export { listMethods, setMethod } from './connections';
 export { startTwitchDevice, twitchDeviceStatus, startKickAuth, kickAuthStatus, pollSession, isTerminal } from './auth';
 export { listProfiles, createProfile, activateProfile } from './profiles';
 export { useProfiles } from './useProfiles';

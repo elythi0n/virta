@@ -68,6 +68,18 @@
   color: var(--virta-ok);
 }
 
+.method {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+}
+.methodLabel {
+  color: var(--virta-text-2);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 600;
+}
+
 .note {
   margin: 0;
 }

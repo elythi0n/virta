@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { Badge, Button, Text } from '@virta/ui-kit';
+import { useEffect, useState } from 'react';
+import { Badge, Button, Segmented, Text } from '@virta/ui-kit';
 import { PlatformGlyph, type Platform } from '@virta/feed-core';
-import { useCapabilities } from '../daemon';
+import { listMethods, setMethod, useCapabilities } from '../daemon';
 import SignInDialog, { type SignInPlatform } from '../shell/SignInDialog';
 import styles from './Connections.module.css';
 
@@ -30,6 +30,23 @@ const STABILITY: Record<string, string> = {
 export default function Connections() {
   const { caps, status, refresh } = useCapabilities();
   const [signIn, setSignIn] = useState<SignInPlatform | null>(null);
+  const [methods, setMethods] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    listMethods()
+      .then(setMethods)
+      .catch(() => {});
+  }, []);
+
+  const changeMethod = async (platform: string, method: string) => {
+    setMethods((m) => ({ ...m, [platform]: method })); // optimistic
+    try {
+      setMethods(await setMethod(platform, method));
+    } catch {
+      void listMethods().then(setMethods); // reload on failure
+    }
+    void refresh(); // capabilities shift with the method (e.g. anonymous drops send)
+  };
 
   return (
     <div className={styles.list}>
@@ -77,6 +94,29 @@ export default function Connections() {
                 </span>
               ))}
             </div>
+
+            {p.signable && (
+              <div className={styles.method}>
+                <span className={styles.methodLabel}>Connect</span>
+                <Segmented
+                  ariaLabel={`${p.label} connection method`}
+                  value={methods[p.id] || 'automatic'}
+                  onValueChange={(v) => void changeMethod(p.id, v)}
+                  options={
+                    c?.send
+                      ? [
+                          { value: 'automatic', label: 'Automatic' },
+                          { value: 'anonymous', label: 'Anonymous' },
+                          { value: 'authenticated', label: 'Authenticated' },
+                        ]
+                      : [
+                          { value: 'automatic', label: 'Automatic' },
+                          { value: 'anonymous', label: 'Anonymous' },
+                        ]
+                  }
+                />
+              </div>
+            )}
 
             <Text variant="meta" tone="subtle" as="p" className={styles.note}>
               {p.note}
