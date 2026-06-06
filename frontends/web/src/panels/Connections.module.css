@@ -46,6 +46,17 @@
   margin-left: auto;
   display: inline-flex;
   align-items: center;
+  gap: var(--virta-space-8);
+}
+.identity {
+  color: var(--virta-text-1);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 600;
+}
+.scopes {
+  margin: 0;
+  word-break: break-word;
 }
 
 .tags {

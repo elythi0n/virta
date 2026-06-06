@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
-import { Badge, Button, Segmented, Text } from '@virta/ui-kit';
+import { useCallback, useEffect, useState } from 'react';
+import { Button, Segmented, Text } from '@virta/ui-kit';
 import { PlatformGlyph, type Platform } from '@virta/feed-core';
-import { listMethods, setMethod, useCapabilities } from '../daemon';
+import { disconnectAccount, listAccounts, listMethods, setMethod, useCapabilities } from '../daemon';
+import type { AccountInfo } from '../daemon/wire.gen';
 import SignInDialog, { type SignInPlatform } from '../shell/SignInDialog';
 import styles from './Connections.module.css';
 
@@ -31,12 +32,30 @@ export default function Connections() {
   const { caps, status, refresh } = useCapabilities();
   const [signIn, setSignIn] = useState<SignInPlatform | null>(null);
   const [methods, setMethods] = useState<Record<string, string>>({});
+  const [accounts, setAccounts] = useState<AccountInfo[]>([]);
+
+  const reloadAccounts = useCallback(() => {
+    listAccounts()
+      .then(setAccounts)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     listMethods()
       .then(setMethods)
       .catch(() => {});
-  }, []);
+    reloadAccounts();
+  }, [reloadAccounts]);
+
+  const disconnect = async (id: string) => {
+    try {
+      await disconnectAccount(id);
+    } catch {
+      // ignore; the reloads below reflect the real state
+    }
+    reloadAccounts();
+    void refresh();
+  };
 
   const changeMethod = async (platform: string, method: string) => {
     setMethods((m) => ({ ...m, [platform]: method })); // optimistic
@@ -58,6 +77,7 @@ export default function Connections() {
 
       {PLATFORMS.map((p) => {
         const c = caps[p.id];
+        const account = accounts.find((a) => a.platform === p.id);
         const tags: { label: string; on: boolean }[] = [
           { label: 'Read', on: !!(c?.read_anonymous || c?.read_authed) },
           { label: 'Send', on: !!c?.send },
@@ -72,8 +92,13 @@ export default function Connections() {
               {c?.stability && <span className={styles.stability}>{STABILITY[c.stability] ?? c.stability}</span>}
               <span className={styles.account}>
                 {p.signable ? (
-                  c?.send ? (
-                    <Badge tone="ok">Signed in</Badge>
+                  account ? (
+                    <>
+                      <span className={styles.identity}>{account.display_name || account.login}</span>
+                      <Button variant="ghost" size="sm" onClick={() => void disconnect(account.id)}>
+                        Disconnect
+                      </Button>
+                    </>
                   ) : (
                     <Button variant="subtle" size="sm" onClick={() => setSignIn(p.id as SignInPlatform)}>
                       Sign in
@@ -94,6 +119,12 @@ export default function Connections() {
                 </span>
               ))}
             </div>
+
+            {account?.scopes && account.scopes.length > 0 && (
+              <Text variant="meta" tone="subtle" as="p" className={styles.scopes}>
+                Scopes: {account.scopes.join(', ')}
+              </Text>
+            )}
 
             {p.signable && (
               <div className={styles.method}>
@@ -130,6 +161,7 @@ export default function Connections() {
         onClose={() => setSignIn(null)}
         onAuthorized={() => {
           void refresh();
+          reloadAccounts();
         }}
       />
     </div>
