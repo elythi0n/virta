@@ -1,0 +1,67 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-12);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  width: 100%;
+  padding: var(--virta-space-8);
+  border: 0;
+  border-radius: var(--virta-radius-sm);
+  background: none;
+  color: var(--virta-text-1);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  text-align: left;
+  cursor: pointer;
+}
+.item:hover {
+  background: var(--virta-bg-2);
+  color: var(--virta-text-0);
+}
+.on {
+  color: var(--virta-text-0);
+}
+
+.check {
+  width: 14px;
+  flex: none;
+  color: var(--virta-accent);
+}
+
+.rail {
+  width: 3px;
+  height: 14px;
+  border-radius: 2px;
+  flex: none;
+  background: var(--virta-text-2);
+}
+.rail[data-platform='twitch'] {
+  background: var(--virta-plat-twitch);
+}
+.rail[data-platform='kick'] {
+  background: var(--virta-plat-kick);
+}
+.rail[data-platform='x'] {
+  background: var(--virta-plat-x);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+}

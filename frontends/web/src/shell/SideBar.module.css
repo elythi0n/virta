@@ -40,6 +40,11 @@
   text-align: left;
 }
 
+.newFeed {
+  width: 100%;
+  margin-top: var(--virta-space-8);
+}
+
 .sourceRow {
   display: flex;
   align-items: center;

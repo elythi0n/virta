@@ -5,6 +5,7 @@ import ActivityBar from './shell/ActivityBar';
 import SideBar from './shell/SideBar';
 import Titlebar from './shell/Titlebar';
 import ShortcutHelp from './shell/ShortcutHelp';
+import NewFeedDialog from './shell/NewFeedDialog';
 import { CommandPalette, TooltipProvider, matchesShortcut, type CommandAction } from '@virta/ui-kit';
 import { PANEL_CATALOG, type ViewId } from './shell/views';
 import { loadLayout, saveLayoutDebounced } from './shell/layout';
@@ -17,6 +18,7 @@ export default function App() {
   const [theme, setTheme] = useState('graphite-dark');
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [newFeedOpen, setNewFeedOpen] = useState(false);
   const apiRef = useRef<DockviewApi | null>(null);
 
   // Reflect the chosen theme onto the document so the token theme blocks switch.
@@ -89,6 +91,20 @@ export default function App() {
     api.addPanel({ id: 'settings', component: 'settings', title: 'Settings' });
   }, []);
 
+  // Open (or focus) a feed scoped to a channel set. The id is the sorted set, so reopening the
+  // same combination focuses the existing panel rather than duplicating it.
+  const openFeedSet = useCallback((title: string, channels: string[]) => {
+    const api = apiRef.current;
+    if (!api || channels.length === 0) return;
+    const id = `feed:${[...channels].sort().join('|')}`;
+    const existing = api.getPanel(id);
+    if (existing) {
+      existing.api.setActive();
+      return;
+    }
+    api.addPanel({ id, component: 'panel', params: { kind: 'feed', channels, title }, title });
+  }, []);
+
   // Every shell action is registered here so the palette (and later, the keymap and menus)
   // dispatch through one list rather than each surface wiring its own handler.
   const actions = useMemo<CommandAction[]>(() => {
@@ -103,6 +119,7 @@ export default function App() {
       { id: 'command-palette', title: 'Command Palette', group: 'Go', shortcut: 'mod+shift+p', perform: () => setPaletteOpen(true) },
       { id: 'shortcut-help', title: 'Keyboard Shortcuts', group: 'Help', shortcut: 'mod+/', perform: () => setHelpOpen(true) },
       ...openPanels,
+      { id: 'new-feed', title: 'New Feed…', group: 'Open', keywords: ['set', 'channels', 'unified'], perform: () => setNewFeedOpen(true) },
       { id: 'open-settings', title: 'Open Settings', group: 'Open', shortcut: 'mod+,', perform: openSettings },
       { id: 'view-panels', title: 'Show Panels', group: 'View', perform: () => { setActiveView('panels'); setSidebarOpen(true); } },
       { id: 'view-sources', title: 'Show Sources', group: 'View', perform: () => { setActiveView('sources'); setSidebarOpen(true); } },
@@ -137,7 +154,7 @@ export default function App() {
           <Titlebar onOpenPalette={() => setPaletteOpen(true)} />
           <div className="shell">
             <ActivityBar activeView={activeView} sidebarOpen={sidebarOpen} onSelect={selectView} onOpenSettings={openSettings} />
-            {sidebarOpen && <SideBar view={activeView} openPanel={openPanel} />}
+            {sidebarOpen && <SideBar view={activeView} openPanel={openPanel} onNewFeed={() => setNewFeedOpen(true)} />}
             <div className="dock-host">
               <Dock onReady={onReady} />
             </div>
@@ -145,6 +162,7 @@ export default function App() {
         </div>
           <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} actions={actions} placeholder="Search commands…" />
           <ShortcutHelp open={helpOpen} onOpenChange={setHelpOpen} actions={actions} />
+          <NewFeedDialog open={newFeedOpen} onClose={() => setNewFeedOpen(false)} onCreate={openFeedSet} />
         </TooltipProvider>
       </ActionsProvider>
     </ThemeProvider>
