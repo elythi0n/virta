@@ -19,6 +19,15 @@ body {
   --virta-font-mono: 'OpenDyslexic', ui-monospace, monospace;
 }
 
+/* Keyboard focus is always visible: a token outline on any keyboard-focused element, so bespoke
+   buttons and rows that don't define their own :focus-visible never lose the focus ring. Components
+   with a tuned focus style (class selectors) win on specificity; this is the safety net. The
+   outline follows the element's own border-radius. Mouse focus stays quiet. */
+:focus-visible {
+  outline: 2px solid var(--virta-accent);
+  outline-offset: 2px;
+}
+
 body {
   background: var(--virta-bg-0);
   color: var(--virta-text-0);
