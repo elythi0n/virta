@@ -96,7 +96,7 @@ func writeJSON(w http.ResponseWriter, v any) {
 }
 
 func (o *oauthServer) client(clk clock.Clock) *Client {
-	c := NewClient("test-client-id", o.srv.Client(), clk)
+	c := NewClient(func() string { return "test-client-id" }, o.srv.Client(), clk)
 	c.SetEndpoints(o.srv.URL+"/device", o.srv.URL+"/token", o.srv.URL+"/validate")
 	return c
 }
@@ -232,7 +232,7 @@ func mustJSON(t Token) string {
 }
 
 func TestClient_DefaultHTTPClient(t *testing.T) {
-	if NewClient("id", nil, clock.NewFake(time.Unix(0, 0))) == nil {
+	if NewClient(func() string { return "id" }, nil, clock.NewFake(time.Unix(0, 0))) == nil {
 		t.Error("NewClient returned nil")
 	}
 }

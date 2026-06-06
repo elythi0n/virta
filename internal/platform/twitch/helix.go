@@ -21,14 +21,14 @@ const helixUsersURL = "https://api.twitch.tv/helix/users"
 // HTTP client and URL are injectable so the request shaping and drop-reason handling are tested
 // offline; live sends are tracked in live-debt.
 type HelixClient struct {
-	clientID string
+	clientID func() string // read on each call so a runtime-configured id takes effect
 	http     *http.Client
 	sendURL  string
 	usersURL string
 }
 
-// NewHelixClient builds a Helix client for the given app client id.
-func NewHelixClient(clientID string, hc *http.Client) *HelixClient {
+// NewHelixClient builds a Helix client reading its app client id from clientID on each call.
+func NewHelixClient(clientID func() string, hc *http.Client) *HelixClient {
 	if hc == nil {
 		hc = &http.Client{Timeout: 15 * time.Second}
 	}
@@ -42,7 +42,7 @@ func (c *HelixClient) UserID(ctx context.Context, accessToken, login string) (st
 		return "", err
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
-	req.Header.Set("Client-Id", c.clientID)
+	req.Header.Set("Client-Id", c.clientID())
 	resp, err := c.http.Do(req)
 	if err != nil {
 		return "", err
@@ -85,7 +85,7 @@ func (c *HelixClient) SendChat(ctx context.Context, accessToken, broadcasterID, 
 		return "", err
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
-	req.Header.Set("Client-Id", c.clientID)
+	req.Header.Set("Client-Id", c.clientID())
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.http.Do(req)

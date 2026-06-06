@@ -63,9 +63,11 @@ type Identity struct {
 	Scopes []string
 }
 
-// Client talks to Twitch's OAuth endpoints with a public client id (no secret).
+// Client talks to Twitch's OAuth endpoints with a public client id (no secret). The client id is
+// read through a provider on each call, so it can be configured at runtime (settings UI) without
+// rebuilding the client.
 type Client struct {
-	clientID    string
+	clientID    func() string
 	http        *http.Client
 	clk         clock.Clock
 	deviceURL   string
@@ -73,9 +75,9 @@ type Client struct {
 	validateURL string
 }
 
-// NewClient builds a client for the given public client id. A nil http client uses a sane
-// default with a timeout.
-func NewClient(clientID string, hc *http.Client, clk clock.Clock) *Client {
+// NewClient builds a client reading its public client id from clientID on each call. A nil http
+// client uses a sane default with a timeout.
+func NewClient(clientID func() string, hc *http.Client, clk clock.Clock) *Client {
 	if hc == nil {
 		hc = &http.Client{Timeout: 15 * time.Second}
 	}
@@ -96,7 +98,7 @@ func (c *Client) SetEndpoints(device, token, validate string) {
 
 // StartDevice begins the device flow, returning the code to show the user.
 func (c *Client) StartDevice(ctx context.Context, scopes []string) (DeviceAuth, error) {
-	form := url.Values{"client_id": {c.clientID}, "scopes": {strings.Join(scopes, " ")}}
+	form := url.Values{"client_id": {c.clientID()}, "scopes": {strings.Join(scopes, " ")}}
 	var body struct {
 		DeviceCode      string `json:"device_code"`
 		UserCode        string `json:"user_code"`
@@ -123,7 +125,7 @@ func (c *Client) StartDevice(ctx context.Context, scopes []string) (DeviceAuth, 
 // the sentinel errors (pending/slow-down/expired/denied) the poller distinguishes.
 func (c *Client) PollToken(ctx context.Context, deviceCode string) (Token, error) {
 	form := url.Values{
-		"client_id":   {c.clientID},
+		"client_id":   {c.clientID()},
 		"device_code": {deviceCode},
 		"grant_type":  {deviceGrant},
 	}
@@ -133,7 +135,7 @@ func (c *Client) PollToken(ctx context.Context, deviceCode string) (Token, error
 // Refresh exchanges a refresh token for a fresh token set (Twitch rotates the refresh token).
 func (c *Client) Refresh(ctx context.Context, refreshToken string) (Token, error) {
 	form := url.Values{
-		"client_id":     {c.clientID},
+		"client_id":     {c.clientID()},
 		"grant_type":    {"refresh_token"},
 		"refresh_token": {refreshToken},
 	}

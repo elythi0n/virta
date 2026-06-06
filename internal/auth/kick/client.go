@@ -45,10 +45,11 @@ type Identity struct {
 	Login  string
 }
 
-// Client talks to Kick's OAuth endpoints.
+// Client talks to Kick's OAuth endpoints. The client id and (optional) secret are read through
+// providers on each call, so they can be configured at runtime (settings UI).
 type Client struct {
-	clientID     string
-	clientSecret string // ⚠ Kick may require this even with PKCE; empty = pure PKCE (docs 04)
+	clientID     func() string
+	clientSecret func() string // ⚠ Kick may require this even with PKCE; empty = pure PKCE (docs 04)
 	http         *http.Client
 	clk          clock.Clock
 	authURL      string
@@ -56,8 +57,9 @@ type Client struct {
 	usersURL     string
 }
 
-// NewClient builds a Kick OAuth client. clientSecret may be empty (pure PKCE).
-func NewClient(clientID, clientSecret string, hc *http.Client, clk clock.Clock) *Client {
+// NewClient builds a Kick OAuth client reading its id/secret from the given providers. The secret
+// provider may return "" (pure PKCE).
+func NewClient(clientID, clientSecret func() string, hc *http.Client, clk clock.Clock) *Client {
 	if hc == nil {
 		hc = &http.Client{Timeout: 15 * time.Second}
 	}
@@ -82,7 +84,7 @@ func (c *Client) SetEndpoints(auth, token, users string) {
 func (c *Client) AuthorizeURL(redirectURI string, scopes []string, challenge, state string) string {
 	q := url.Values{
 		"response_type":         {"code"},
-		"client_id":             {c.clientID},
+		"client_id":             {c.clientID()},
 		"redirect_uri":          {redirectURI},
 		"scope":                 {strings.Join(scopes, " ")},
 		"code_challenge":        {challenge},
@@ -96,7 +98,7 @@ func (c *Client) AuthorizeURL(redirectURI string, scopes []string, challenge, st
 func (c *Client) Exchange(ctx context.Context, code, verifier, redirectURI string) (Token, error) {
 	form := url.Values{
 		"grant_type":    {"authorization_code"},
-		"client_id":     {c.clientID},
+		"client_id":     {c.clientID()},
 		"code":          {code},
 		"redirect_uri":  {redirectURI},
 		"code_verifier": {verifier},
@@ -109,7 +111,7 @@ func (c *Client) Exchange(ctx context.Context, code, verifier, redirectURI strin
 func (c *Client) Refresh(ctx context.Context, refreshToken string) (Token, error) {
 	form := url.Values{
 		"grant_type":    {"refresh_token"},
-		"client_id":     {c.clientID},
+		"client_id":     {c.clientID()},
 		"refresh_token": {refreshToken},
 	}
 	c.maybeSecret(form)
@@ -117,8 +119,8 @@ func (c *Client) Refresh(ctx context.Context, refreshToken string) (Token, error
 }
 
 func (c *Client) maybeSecret(form url.Values) {
-	if c.clientSecret != "" {
-		form.Set("client_secret", c.clientSecret)
+	if s := c.clientSecret(); s != "" {
+		form.Set("client_secret", s)
 	}
 }
 

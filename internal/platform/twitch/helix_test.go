@@ -24,7 +24,7 @@ func TestHelixSend_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := NewHelixClient("cid", srv.Client())
+	c := NewHelixClient(func() string { return "cid" }, srv.Client())
 	c.SetSendURL(srv.URL)
 	id, err := c.SendChat(context.Background(), "tok", "b1", "s1", "hello", "p1")
 	if err != nil || id != "m1" {
@@ -43,7 +43,7 @@ func TestHelixSend_DroppedSurfacesReason(t *testing.T) {
 		_, _ = w.Write([]byte(`{"data":[{"message_id":"","is_sent":false,"drop_reason":{"code":"msg_duplicate","message":"duplicate message"}}]}`))
 	}))
 	defer srv.Close()
-	c := NewHelixClient("cid", srv.Client())
+	c := NewHelixClient(func() string { return "cid" }, srv.Client())
 	c.SetSendURL(srv.URL)
 	_, err := c.SendChat(context.Background(), "tok", "b", "s", "dupe", "")
 	if err == nil || !strings.Contains(err.Error(), "duplicate message") {
@@ -57,7 +57,7 @@ func TestHelixSend_NonOKStatus(t *testing.T) {
 		_, _ = w.Write([]byte(`{"error":"Unauthorized"}`))
 	}))
 	defer srv.Close()
-	c := NewHelixClient("cid", srv.Client())
+	c := NewHelixClient(func() string { return "cid" }, srv.Client())
 	c.SetSendURL(srv.URL)
 	if _, err := c.SendChat(context.Background(), "tok", "b", "s", "hi", ""); err == nil {
 		t.Error("401 returned nil error")
@@ -72,7 +72,7 @@ func TestHelixUserID(t *testing.T) {
 		_, _ = w.Write([]byte(`{"data":[{"id":"12345"}]}`))
 	}))
 	defer srv.Close()
-	c := NewHelixClient("cid", srv.Client())
+	c := NewHelixClient(func() string { return "cid" }, srv.Client())
 	c.SetUsersURL(srv.URL)
 	id, err := c.UserID(context.Background(), "tok", "forsen")
 	if err != nil || id != "12345" {
@@ -91,7 +91,7 @@ func TestAdapter_AuthenticatedSend(t *testing.T) {
 		_, _ = w.Write([]byte(`{"data":[{"message_id":"m1","is_sent":true}]}`))
 	}))
 	defer srv.Close()
-	helix := NewHelixClient("cid", srv.Client())
+	helix := NewHelixClient(func() string { return "cid" }, srv.Client())
 	helix.SetSendURL(srv.URL)
 
 	a := New(Options{Dial: dialFake(newFakeTransport())})

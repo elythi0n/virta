@@ -97,15 +97,14 @@ type Daemon struct {
 
 // authControl adapts the auth managers to the API's auth controller.
 type authControl struct {
-	tw               *twitchauth.Manager
-	twitchConfigured bool
-	kick             *kickauth.Manager
-	kickConfigured   bool
+	tw    *twitchauth.Manager
+	kick  *kickauth.Manager
+	creds *credentials
 }
 
 func (c authControl) StartTwitchDevice(ctx context.Context) (api.DeviceSession, error) {
-	if !c.twitchConfigured {
-		return api.DeviceSession{}, fmt.Errorf("%w: Twitch sign-in needs VIRTA_TWITCH_CLIENT_ID set on the daemon", api.ErrAuthNotConfigured)
+	if c.creds.TwitchID() == "" {
+		return api.DeviceSession{}, fmt.Errorf("%w: add a Twitch client id in Settings → Connections", api.ErrAuthNotConfigured)
 	}
 	s, err := c.tw.StartDevice(ctx)
 	if err != nil {
@@ -123,8 +122,8 @@ func (c authControl) TwitchDeviceStatus(id string) (api.DeviceSession, bool) {
 }
 
 func (c authControl) StartKickAuth(ctx context.Context) (api.AuthSession, error) {
-	if !c.kickConfigured {
-		return api.AuthSession{}, fmt.Errorf("%w: Kick sign-in needs VIRTA_KICK_CLIENT_ID set on the daemon", api.ErrAuthNotConfigured)
+	if c.creds.KickID() == "" {
+		return api.AuthSession{}, fmt.Errorf("%w: add a Kick client id in Settings → Connections", api.ErrAuthNotConfigured)
 	}
 	s, err := c.kick.StartAuth(ctx)
 	if err != nil {
@@ -300,21 +299,24 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	}, gov, sendHelpText)
 	srv.SetSend(sendControl{sender: sender})
 
+	// OAuth app credentials are read through providers so they can be set at runtime via the UI
+	// (stored in the vault), seeded from the env vars on first run.
+	creds := newCredentials(vault)
+	creds.seed(context.Background(), cfg.TwitchClientID, cfg.KickClientID, cfg.KickClientSecret)
+
 	// Twitch sign-in via Device Code Grant. Tokens live in the vault; the account row in the
-	// store. Disabled (sign-in returns a clear error) when no client id is configured.
-	twitchAuth := twitchauth.NewManager(twitchauth.NewClient(cfg.TwitchClientID, nil, clk), vault, st.Accounts(), gen, clk)
-	kickAuth := kickauth.NewManager(kickauth.NewClient(cfg.KickClientID, cfg.KickClientSecret, nil, clk), vault, st.Accounts(), gen, clk)
-	srv.SetAuth(authControl{
-		tw: twitchAuth, twitchConfigured: cfg.TwitchClientID != "",
-		kick: kickAuth, kickConfigured: cfg.KickClientID != "",
-	})
+	// store. Sign-in returns a clear error until a client id is configured (env or UI).
+	twitchAuth := twitchauth.NewManager(twitchauth.NewClient(creds.TwitchID, nil, clk), vault, st.Accounts(), gen, clk)
+	kickAuth := kickauth.NewManager(kickauth.NewClient(creds.KickID, creds.KickSecret, nil, clk), vault, st.Accounts(), gen, clk)
+	srv.SetAuth(authControl{tw: twitchAuth, kick: kickAuth, creds: creds})
+	srv.SetAuthConfig(authConfigControl{creds: creds})
 
 	// Attach an authenticated account to its platform adapter: bind a token source to the
 	// account's vault ref and a broadcaster-id resolver, then flip the adapter to authenticated
 	// (enabling send/moderation). Tokens never leave the auth manager; the adapter only gets a
 	// closure. This runs both when an account signs in (the hooks below) and at startup for
 	// accounts already stored, so a signed-in account survives a restart.
-	helix := twitch.NewHelixClient(cfg.TwitchClientID, nil)
+	helix := twitch.NewHelixClient(creds.TwitchID, nil)
 	kickAPI := kick.NewAPIClient(nil)
 	authTwitch := func(acc store.Account) {
 		ref := acc.SecretRef
@@ -538,6 +540,36 @@ func (c connectionsControl) SetMethod(ctx context.Context, plat, method string) 
 		return fmt.Errorf("%w: %q", api.ErrUnknownPlatform, plat)
 	}
 	return c.mgr.SetMethod(ctx, p, platform.ConnMode(method))
+}
+
+// authConfigControl adapts the credentials holder to the API's auth-config controller: read which
+// platforms have an OAuth client id, and set the id/secret (persisted to the vault).
+type authConfigControl struct{ creds *credentials }
+
+func (c authConfigControl) AuthConfig() api.AuthConfig {
+	return api.AuthConfig{
+		Twitch: api.PlatformAuthConfig{ClientID: c.creds.TwitchID(), Configured: c.creds.TwitchID() != ""},
+		Kick: api.PlatformAuthConfig{
+			ClientID:   c.creds.KickID(),
+			HasSecret:  c.creds.KickSecret() != "",
+			Configured: c.creds.KickID() != "",
+		},
+	}
+}
+
+func (c authConfigControl) SetAuthConfig(ctx context.Context, plat, clientID, clientSecret string) error {
+	p, ok := parsePlatform(plat)
+	if !ok {
+		return fmt.Errorf("%w: %q", api.ErrUnknownPlatform, plat)
+	}
+	switch p {
+	case platform.Twitch:
+		return c.creds.SetTwitch(ctx, clientID)
+	case platform.Kick:
+		return c.creds.SetKick(ctx, clientID, clientSecret)
+	default:
+		return fmt.Errorf("%w: %q has no configurable sign-in", api.ErrUnknownPlatform, plat)
+	}
 }
 
 // accountsControl adapts the account store + adapters to the API's accounts controller: it lists

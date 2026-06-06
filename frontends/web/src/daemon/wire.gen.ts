@@ -16,6 +16,11 @@ export interface Annotations {
   first_time?: boolean;
 }
 
+export interface AuthConfig {
+  twitch: PlatformAuthConfig;
+  kick: PlatformAuthConfig;
+}
+
 export interface AuthSession {
   id: string;
   authorize_url: string;
@@ -130,6 +135,12 @@ export interface MessageRef {
 export type MessageType = string;
 
 export type Platform = string;
+
+export interface PlatformAuthConfig {
+  client_id: string;
+  has_secret: boolean;
+  configured: boolean;
+}
 
 export interface ProfileInfo {
   id: string;

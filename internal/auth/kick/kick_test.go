@@ -77,7 +77,7 @@ func writeJSON(w http.ResponseWriter, v any) {
 
 func newManager(t *testing.T, o *kickOAuth, clk clock.Clock) (*Manager, *secrets.Memory, *store.Memory) {
 	t.Helper()
-	c := NewClient("client-id", "", o.srv.Client(), clk)
+	c := NewClient(func() string { return "client-id" }, func() string { return "" }, o.srv.Client(), clk)
 	c.SetEndpoints("https://id.kick.com/oauth/authorize", o.srv.URL+"/token", o.srv.URL+"/users")
 	vault := secrets.NewMemory()
 	st := store.NewMemory(clk)
@@ -317,7 +317,7 @@ func TestRestartSurvival(t *testing.T) {
 	b, _ := json.Marshal(Token{Access: "persisted", Refresh: "r", ExpiresAt: clk.Now().Add(time.Hour)})
 	_ = vault.Set(ctx, ref, string(b))
 
-	c := NewClient("client-id", "", o.srv.Client(), clk)
+	c := NewClient(func() string { return "client-id" }, func() string { return "" }, o.srv.Client(), clk)
 	m := NewManager(c, vault, st.Accounts(), id.NewFake("acc"), clk)
 	t.Cleanup(func() { _ = m.Close() })
 	if got, err := m.AccessToken(ctx, ref); err != nil || got != "persisted" {
