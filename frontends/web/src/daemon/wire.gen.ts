@@ -22,6 +22,17 @@ export interface Annotations {
   sampled?: boolean;
 }
 
+export interface AskEvent {
+  kind: string;
+  text?: string;
+  tool_name?: string;
+  tool_args?: string;
+  tool_result?: string;
+  error?: string;
+  input_tokens?: number;
+  output_tokens?: number;
+}
+
 export interface AuthConfig {
   twitch: PlatformAuthConfig;
   kick: PlatformAuthConfig;
@@ -146,6 +157,15 @@ export interface HeldMessage {
   held_at_ms: number;
 }
 
+export interface IntelConfig {
+  enabled: boolean;
+  selected_model: string;
+  provider_keys?: Record<string, string>;
+  feature_enabled: Record<string, boolean>;
+  daily_limit_usd?: number;
+  monthly_limit_usd?: number;
+}
+
 export interface LoggedMessage {
   id: string;
   channel: string;
@@ -171,6 +191,23 @@ export interface MintedToken {
   created_at_ms: number;
   last_used_at_ms?: number;
   token: string;
+}
+
+export interface ModelGroup {
+  provider_id: string;
+  display_name: string;
+  models: ModelItem[];
+}
+
+export interface ModelItem {
+  id: string;
+  display_name: string;
+  family: string;
+  context_window: number;
+  supports_tools: boolean;
+  deprecated?: boolean;
+  price_in_per_mtok?: number;
+  price_out_per_mtok?: number;
 }
 
 export type Platform = string;

@@ -61,6 +61,7 @@ type Server struct {
 	themes            Themes            // custom theme management, installed via SetThemes
 	webhooks          Webhooks          // outbound webhook management, installed via SetWebhooks
 	mcpHandler        http.Handler      // MCP server, installed via SetMCPHandler (nil = not available)
+	intel             Intel             // intelligence controller, installed via SetIntel
 	webui             http.Handler      // embedded web UI, installed via SetWebUI (nil = not served)
 	corsOrigins       []string          // opt-in CORS allowlist for local web tools (empty = CORS off)
 	integrationReport any               // native-integration report forwarded from the desktop shell
@@ -377,6 +378,10 @@ func (s *Server) routes() []route {
 		{"POST", "/v1/themes", ScopeControl, s.handleImportTheme, "Import a .vtheme JSON"},
 		{"GET", "/v1/themes/{id}/export", ScopeRead, s.handleExportTheme, "Export a theme as .vtheme JSON"},
 		{"DELETE", "/v1/themes/{id}", ScopeControl, s.handleDeleteTheme, "Delete a custom theme"},
+		{"GET", "/v1/intel/models", ScopeRead, s.handleListModels, "List available AI models"},
+		{"POST", "/v1/intel/ask", ScopeRead, s.handleAsk, "Ask a question over logged chat (agent loop, NDJSON stream)"},
+		{"GET", "/v1/intel/config", ScopeRead, s.handleGetIntelConfig, "Get LLM configuration"},
+		{"PUT", "/v1/intel/config", ScopeControl, s.handleSetIntelConfig, "Update LLM configuration"},
 		{"GET", "/dev", ScopeRead, s.handleDev, "Developer event probe page"},
 	}
 }

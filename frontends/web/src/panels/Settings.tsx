@@ -5,7 +5,7 @@ import { useA11y } from '../a11y';
 import { useActions } from '../actions';
 import { useDensity } from '../density';
 import { useFeedDisplay } from '../feedDisplay';
-import { useIntegration, listTokens, mintToken, revokeToken } from '../daemon';
+import { useIntegration, listTokens, mintToken, revokeToken, getIntelConfig, setIntelConfig, listModels } from '../daemon';
 import type { TokenInfo } from '../daemon/wire.gen';
 import { useTheme, type ThemeMode } from '../theme';
 import { DENSITIES } from './DensityControl';
@@ -23,6 +23,7 @@ type CategoryId =
   | 'notifications'
   | 'shortcuts'
   | 'integrations'
+  | 'intelligence'
   | 'integration'
   | 'storage'
   | 'advanced'
@@ -38,6 +39,7 @@ const CATEGORIES: Category[] = [
   { id: 'filters', label: 'Filters', keywords: 'rules block hide highlight keywords' },
   { id: 'notifications', label: 'Notifications & Webhooks', keywords: 'alerts sounds mentions webhooks outbound delivery hmac' },
   { id: 'shortcuts', label: 'Shortcuts', keywords: 'keyboard keymap hotkeys bindings' },
+  { id: 'intelligence', label: 'Intelligence', keywords: 'ai llm ask anthropic openai ollama search translation provider budget' },
   { id: 'integrations', label: 'Integrations', keywords: 'api tokens scoped token third party stream deck bot webhook' },
   { id: 'integration', label: 'Platform integration', keywords: 'native tray hotkeys notifications sounds wayland os desktop' },
   { id: 'storage', label: 'Storage', keywords: 'database sqlite postgres logging retention' },
@@ -390,6 +392,73 @@ function Integrations() {
   );
 }
 
+function IntelligenceSettings() {
+  const [cfg, setCfg] = useState<{ enabled?: boolean; selected_model?: string; daily_limit_usd?: number; provider_keys?: Record<string, string> } | null>(null);
+  const [models, setModels] = useState<{ provider_id: string; display_name: string; models: { id: string; display_name: string; supports_tools: boolean }[] }[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    getIntelConfig().then(c => setCfg(c as never)).catch(() => {});
+    listModels().then(setModels as never).catch(() => {});
+  }, []);
+
+  const save = async (patch: typeof cfg) => {
+    setSaving(true);
+    await setIntelConfig(patch as never).catch(() => {});
+    setSaving(false);
+    setCfg(c => ({ ...c, ...patch }));
+  };
+
+  return (
+    <>
+      <Text variant="meta" tone="subtle" as="p" className={styles.introNote}>
+        AI features are opt-in, off by default. When enabled, only configured providers receive data;
+        local-only mode (Ollama) involves no external calls at all.
+      </Text>
+      <OnOff
+        label="Enable AI features"
+        hint="Master kill switch — off means zero external AI calls regardless of other settings."
+        value={!!(cfg?.enabled)}
+        onChange={v => void save({ ...cfg, enabled: v })}
+      />
+      {cfg?.enabled && (
+        <>
+          <Field label="AI provider API key" hint="Key is stored in the OS keychain; never in the database.">
+            <Input
+              aria-label="Anthropic API key"
+              type="password"
+              placeholder="sk-ant-… (leave blank to keep current)"
+              onBlur={(e) => {
+                const v = e.currentTarget.value.trim();
+                if (v) void save({ ...cfg, provider_keys: { ...cfg.provider_keys, anthropic: v } });
+              }}
+            />
+          </Field>
+          {models.length > 0 && (
+            <Field label="Default model" hint="Saved per-profile. Tool-incapable models are disabled.">
+              <Select
+                ariaLabel="Default model"
+                value={cfg?.selected_model ?? ''}
+                onValueChange={v => void save({ ...cfg, selected_model: v })}
+                options={models.flatMap(g => g.models.map(m => ({ value: m.id, label: `${g.display_name} — ${m.display_name}` })))}
+              />
+            </Field>
+          )}
+          <Field label="Daily budget (USD)" hint="0 = no limit. Stops new calls when the day's spend reaches this amount.">
+            <Input
+              aria-label="Daily budget"
+              type="number"
+              defaultValue={String(cfg?.daily_limit_usd ?? 0)}
+              onBlur={(e) => void save({ ...cfg, daily_limit_usd: Number(e.currentTarget.value) })}
+            />
+          </Field>
+        </>
+      )}
+      {saving && <Text variant="meta" tone="subtle">Saving…</Text>}
+    </>
+  );
+}
+
 function PlatformIntegration() {
   const report = useIntegration();
   return (
@@ -430,6 +499,8 @@ function CategoryBody({ id }: { id: CategoryId }) {
       return <Shortcuts />;
     case 'notifications':
       return <WebhooksPanel />;
+    case 'intelligence':
+      return <IntelligenceSettings />;
     case 'integrations':
       return <Integrations />;
     case 'integration':

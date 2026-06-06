@@ -46,6 +46,10 @@ func roots() []reflect.Type {
 		reflect.TypeOf(api.ProfileExport{}),
 		reflect.TypeOf(api.WebhookEndpointInfo{}),
 		reflect.TypeOf(api.WebhookAttempt{}),
+		reflect.TypeOf(api.ModelGroup{}),
+		reflect.TypeOf(api.ModelItem{}),
+		reflect.TypeOf(api.AskEvent{}),
+		reflect.TypeOf(api.IntelConfig{}),
 	}
 }
 
