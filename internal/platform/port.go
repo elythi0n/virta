@@ -114,12 +114,14 @@ type EmoteRef struct {
 	Animated    bool          `json:"animated"`
 }
 
-// Badge is one author badge (broadcaster, mod, subscriber, …). Artwork is resolved
-// separately (M2); ID/Set/Version identify it.
+// Badge is one author badge (broadcaster, mod, subscriber, …). Set/Version identify it; URL is
+// the resolved artwork (filled by the badge resolver stage), empty until/unless resolved so the
+// frontend falls back to a text chip.
 type Badge struct {
 	Set     string `json:"set"`     // e.g. "subscriber", "moderator"
 	Version string `json:"version"` // e.g. "12" (months)
 	Title   string `json:"title,omitempty"`
+	URL     string `json:"url,omitempty"` // resolved badge image
 }
 
 // Author is the message sender, normalized across platforms.

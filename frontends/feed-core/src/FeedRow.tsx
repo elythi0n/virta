@@ -67,11 +67,15 @@ function FeedRow({ message, background, showSource, density }: FeedRowProps) {
       )}
       {badges.length > 0 && (
         <span className={styles.badges}>
-          {badges.slice(0, 3).map((b, i) => (
-            <span key={i} className={styles.badge} style={{ color: badgeColor(b.set) }} title={b.title ?? b.set}>
-              {badgeLabel(b.set)}
-            </span>
-          ))}
+          {badges.slice(0, 3).map((b, i) =>
+            b.url ? (
+              <img key={i} className={styles.badgeImg} src={b.url} alt={b.title ?? b.set} title={b.title ?? b.set} loading="lazy" />
+            ) : (
+              <span key={i} className={styles.badge} style={{ color: badgeColor(b.set) }} title={b.title ?? b.set}>
+                {badgeLabel(b.set)}
+              </span>
+            ),
+          )}
           {badges.length > 3 && <span className={styles.badgeMore}>+{badges.length - 3}</span>}
         </span>
       )}

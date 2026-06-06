@@ -28,6 +28,7 @@ export interface Badge {
   set: string;
   version: string;
   title?: string;
+  url?: string;
 }
 
 export interface Capabilities {

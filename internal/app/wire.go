@@ -16,6 +16,7 @@ import (
 	"github.com/elythi0n/virta/internal/api"
 	kickauth "github.com/elythi0n/virta/internal/auth/kick"
 	twitchauth "github.com/elythi0n/virta/internal/auth/twitch"
+	"github.com/elythi0n/virta/internal/badges"
 	"github.com/elythi0n/virta/internal/clock"
 	"github.com/elythi0n/virta/internal/config"
 	"github.com/elythi0n/virta/internal/dispatch"
@@ -222,6 +223,11 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 		emotes.Cached(emotes.NewFFZ(nil, ""), emoteCache, clk, emotes.DefaultTTL),
 	)
 
+	// Badge artwork (mod/sub/broadcaster icons) is resolved per channel from Twitch's tokenless
+	// badge CDN and stamped onto each message's badges; channels without resolved artwork fall
+	// back to the frontend's text chips.
+	badgeResolver := badges.NewResolver(badges.NewTwitch(nil, ""))
+
 	// The pipeline annotates each message — filter rules (hide/highlight/mask) first, then
 	// emote overlays — and fans events out to the API hub (and, later, the logger and other
 	// sinks). The filter stage starts with an empty ruleset (no surprise masking); profiles and
@@ -236,7 +242,7 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	sweeper := logbook.NewSweeper(logSink, clk)
 	runner := pipeline.NewRunner(pipeline.Options{
 		Clock:  clk,
-		Stages: []pipeline.Stage{filterStage, emotes.NewStage(emoteResolver)},
+		Stages: []pipeline.Stage{filterStage, emotes.NewStage(emoteResolver), badges.NewStage(badgeResolver)},
 		Sinks:  []pipeline.Sink{srv.Sink(), statsAgg, logSink},
 		Logger: log,
 	})
@@ -263,7 +269,7 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	// logging policy on activation and persists live channel changes. Profiles activate at Start.
 	logCtl := loggingControl{eng: eng, sink: logSink, sweeper: sweeper}
 	mgr := profiles.New(st.Profiles(), eng, filterStage, logCtl, runner, clk)
-	srv.SetChannels(channelControl{eng: eng, emotes: emoteResolver, profiles: mgr})
+	srv.SetChannels(channelControl{eng: eng, emotes: emoteResolver, badges: badgeResolver, profiles: mgr})
 	srv.SetProfiles(profileControl{mgr: mgr, repo: st.Profiles()})
 
 	// Outbound sends are paced per channel and cross-posted through the typed-action layer. Kick
@@ -400,6 +406,7 @@ func (c emoteSetCache) Put(ctx context.Context, key string, refs []platform.Emot
 type channelControl struct {
 	eng      *engine.Engine
 	emotes   *emotes.Resolver
+	badges   *badges.Resolver
 	profiles *profiles.Manager
 }
 
@@ -417,9 +424,10 @@ func (c channelControl) Join(ctx context.Context, plat, slug, mode string) error
 		return err
 	}
 	_ = c.profiles.AddChannel(ctx, ref, m) // persist to the active profile
-	// Warm the channel's third-party emote set off the request path. A no-op until the
-	// platform user id is known, but wired so it lights up the moment it is.
+	// Warm the channel's third-party emote set and badge artwork off the request path. A no-op
+	// until the platform user id is known, but wired so they light up the moment it is.
 	go func() { _ = c.emotes.Refresh(context.Background(), ref) }()
+	go c.badges.Refresh(context.Background(), ref)
 	return nil
 }
 

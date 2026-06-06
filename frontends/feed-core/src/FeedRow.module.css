@@ -83,6 +83,12 @@
   letter-spacing: 0.04em;
   opacity: 0.95;
 }
+.badgeImg {
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  vertical-align: middle;
+}
 .badgeMore {
   color: var(--virta-text-2);
   font-size: var(--virta-type-meta-size);
