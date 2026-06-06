@@ -10,10 +10,11 @@ export function previewSend(channels: string[]): Promise<SendTarget[]> {
   }).then((r) => r.targets);
 }
 
-// Cross-post text to the targets; returns each target's disposition.
-export function sendMessage(channels: string[], text: string): Promise<SendResult[]> {
+// Cross-post text to the targets; returns each target's disposition. replyTo is the platform
+// message id this replies to ("" / omitted for a normal message).
+export function sendMessage(channels: string[], text: string, replyTo = ''): Promise<SendResult[]> {
   return request<{ results: SendResult[] }>('/v1/send', {
     method: 'POST',
-    body: JSON.stringify({ channels, text }),
+    body: JSON.stringify({ channels, text, reply_to: replyTo }),
   }).then((r) => r.results);
 }

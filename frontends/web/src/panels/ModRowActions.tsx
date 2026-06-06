@@ -1,20 +1,28 @@
 import type { FeedMessage } from '@virta/feed-core';
 import { Tooltip } from '@virta/ui-kit';
-import Icon from '../Icon';
+import Icon, { type IconName } from '../Icon';
 import styles from './ModRowActions.module.css';
 
 export type ModAction = 'delete' | 'timeout' | 'ban';
 
-// Hover actions on a chat row for a moderator: delete the message, time the user out, or ban them.
-// The parent runs the action (it composes the slash command and sends it to the row's channel).
-export default function ModRowActions({ message, onAction }: { message: FeedMessage; onAction: (action: ModAction, m: FeedMessage) => void }) {
-  const btn = (action: ModAction, icon: 'trash' | 'clock' | 'ban', label: string, danger?: boolean) => (
+// Hover actions on a chat row: reply (any signed-in viewer, when the platform supports it) and the
+// moderator trio (delete / timeout / ban). The parent runs each action.
+export default function ModRowActions({
+  message,
+  onReply,
+  onModerate,
+}: {
+  message: FeedMessage;
+  onReply?: (m: FeedMessage) => void;
+  onModerate?: (action: ModAction, m: FeedMessage) => void;
+}) {
+  const btn = (icon: IconName, label: string, onClick: () => void, danger?: boolean) => (
     <Tooltip content={label} side="top">
       <button
         type="button"
         className={`${styles.btn} ${danger ? styles.danger : ''}`}
         aria-label={`${label} ${message.author}`}
-        onClick={() => onAction(action, message)}
+        onClick={onClick}
       >
         <Icon name={icon} size={14} />
       </button>
@@ -22,9 +30,10 @@ export default function ModRowActions({ message, onAction }: { message: FeedMess
   );
   return (
     <span className={styles.actions}>
-      {message.platformMessageId && btn('delete', 'trash', 'Delete message')}
-      {btn('timeout', 'clock', 'Time out')}
-      {btn('ban', 'ban', 'Ban', true)}
+      {onReply && btn('reply', 'Reply', () => onReply(message))}
+      {onModerate && message.platformMessageId && btn('trash', 'Delete message', () => onModerate('delete', message))}
+      {onModerate && btn('clock', 'Time out', () => onModerate('timeout', message))}
+      {onModerate && btn('ban', 'Ban', () => onModerate('ban', message), true)}
     </span>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Button, Input, Popover, Text } from '@virta/ui-kit';
 import { PlatformGlyph, type Platform } from '@virta/feed-core';
+import Icon from '../Icon';
 import { previewSend, sendMessage, useEmotes } from '../daemon';
 import SignInDialog, { type SignInPlatform } from '../shell/SignInDialog';
 import type { SendTarget } from '../daemon/wire.gen';
@@ -18,13 +19,16 @@ type Props = {
   targets: string[];
   /** Recent chatter names, for @mention autocomplete. */
   chatters?: string[];
+  /** When set, the composer is in reply mode: the next send goes only to this channel as a reply. */
+  replyTo?: { channel: string; parentId: string; author: string } | null;
+  onCancelReply?: () => void;
 };
 
 // Compose and cross-post to the feed's channels. Target chips show where a message will land:
 // reachable ones solid, unreachable ones (platforms you're not signed in to) dimmed with a ⊘; a
 // single passive line offers to sign in. After a send, each chip carries its per-target result.
 // Typing offers emote/@mention autocomplete.
-export default function Composer({ targets, chatters = [] }: Props) {
+export default function Composer({ targets, chatters = [], replyTo = null, onCancelReply }: Props) {
   const [text, setText] = useState('');
   const [preview, setPreview] = useState<SendTarget[] | null>([]); // null = daemon unreachable
   const [sending, setSending] = useState(false);
@@ -88,19 +92,19 @@ export default function Composer({ targets, chatters = [] }: Props) {
   const unreachable = (preview ?? []).filter((t) => !t.can_send);
   const offline = preview === null;
   const signable = [...new Set(unreachable.map((t) => platformOf(t.channel)).filter((p) => SIGNABLE.has(p)))] as SignInPlatform[];
-  const canSend = reachable.length > 0 && text.trim() !== '' && !sending;
+  const canSend = (replyTo ? true : reachable.length > 0) && text.trim() !== '' && !sending;
 
   const submit = async () => {
     if (!canSend) return;
     setSending(true);
     setResults({});
     try {
-      const res = await sendMessage(
-        reachable.map((r) => r.channel),
-        text.trim(),
-      );
+      // In reply mode the message goes only to the parent's channel, carrying the parent id.
+      const channels = replyTo ? [replyTo.channel] : reachable.map((r) => r.channel);
+      const res = await sendMessage(channels, text.trim(), replyTo?.parentId ?? '');
       setText('');
       setResults(Object.fromEntries(res.map((r) => [r.channel, r.status])));
+      if (replyTo) onCancelReply?.();
     } catch {
       // a transient failure; the feed reflects what actually sent
     } finally {
@@ -110,6 +114,17 @@ export default function Composer({ targets, chatters = [] }: Props) {
 
   return (
     <div className={styles.composer}>
+      {replyTo && (
+        <div className={styles.replyBar}>
+          <Icon name="reply" size={13} />
+          <span className={styles.replyText}>
+            Replying to <b>{replyTo.author}</b>
+          </span>
+          <button type="button" className={styles.replyCancel} aria-label="Cancel reply" onClick={() => onCancelReply?.()}>
+            ✕
+          </button>
+        </div>
+      )}
       {preview && preview.length > 0 && (
         <div className={styles.chips}>
           {reachable.map((t) => (

@@ -119,7 +119,7 @@ type TargetSend struct {
 // SendMany cross-posts text as a chat message to every reachable target, pacing each through the
 // governor. Unreachable targets (signed out, no adapter) are excluded before anything is sent
 // and reported — never errored — so one unreachable target can't fail the send to the others.
-func (s *Sender) SendMany(ctx context.Context, targets []platform.ChannelRef, text string) []TargetSend {
+func (s *Sender) SendMany(ctx context.Context, targets []platform.ChannelRef, text string, opts platform.SendOpts) []TargetSend {
 	out := make([]TargetSend, 0, len(targets))
 	for _, ch := range targets {
 		ok, reason := s.canSend(ch)
@@ -129,7 +129,7 @@ func (s *Sender) SendMany(ctx context.Context, targets []platform.ChannelRef, te
 		}
 		a := s.adapters[ch.Platform]
 		res := s.gov.Submit(channelKey(ch), func() error {
-			return a.Send(ctx, ch, text, platform.SendOpts{})
+			return a.Send(ctx, ch, text, opts)
 		})
 		out = append(out, TargetSend{Channel: ch, Reachable: true, Sent: res})
 	}

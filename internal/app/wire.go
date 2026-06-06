@@ -778,13 +778,13 @@ func (c sendControl) Preview(targets []string) ([]api.SendTarget, error) {
 	return out, nil
 }
 
-func (c sendControl) Send(ctx context.Context, targets []string, text string) ([]api.SendResult, error) {
+func (c sendControl) Send(ctx context.Context, targets []string, text, replyTo string) ([]api.SendResult, error) {
 	refs, err := parseTargets(targets)
 	if err != nil {
 		return nil, err
 	}
 	out := make([]api.SendResult, 0, len(refs))
-	for _, ts := range c.sender.SendMany(ctx, refs, text) {
+	for _, ts := range c.sender.SendMany(ctx, refs, text, platform.SendOpts{ReplyParentID: replyTo}) {
 		r := api.SendResult{Channel: ts.Channel.Key()}
 		if !ts.Reachable {
 			r.Status, r.Reason = api.SendExcluded, string(ts.Reason)

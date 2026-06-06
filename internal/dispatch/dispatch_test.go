@@ -155,7 +155,7 @@ func TestSendMany_ReachableAndExcluded(t *testing.T) {
 		platform.Capabilities{Send: true},          // Twitch signed in
 		platform.Capabilities{ReadAnonymous: true}, // Kick signed out → no Send
 	)
-	results := s.SendMany(context.Background(), []platform.ChannelRef{twitchCh, kickCh}, "gg")
+	results := s.SendMany(context.Background(), []platform.ChannelRef{twitchCh, kickCh}, "gg", platform.SendOpts{})
 
 	byKey := map[string]dispatch.TargetSend{}
 	for _, r := range results {
@@ -205,8 +205,8 @@ func TestQueueState_ReportsDepthAndCountdown(t *testing.T) {
 	gov := ratelimit.New(clock.NewFake(time.Unix(0, 0)), ratelimit.Limit{Burst: 1, Window: time.Second})
 	s := dispatch.New(map[platform.Platform]dispatch.Adapter{platform.Twitch: a}, gov, "help")
 
-	s.SendMany(context.Background(), []platform.ChannelRef{twitchCh}, "one") // uses the one token
-	s.SendMany(context.Background(), []platform.ChannelRef{twitchCh}, "two") // queued: no token left
+	s.SendMany(context.Background(), []platform.ChannelRef{twitchCh}, "one", platform.SendOpts{}) // uses the one token
+	s.SendMany(context.Background(), []platform.ChannelRef{twitchCh}, "two", platform.SendOpts{}) // queued: no token left
 
 	st := s.QueueState([]platform.ChannelRef{twitchCh})
 	if len(st) != 1 || st[0].Queued != 1 || st[0].NextIn <= 0 {
@@ -218,7 +218,7 @@ func TestQueueState_ReportsDepthAndCountdown(t *testing.T) {
 // errored.
 func TestSendMany_UnknownPlatformExcluded(t *testing.T) {
 	s, _, _ := newCrossSender(platform.Capabilities{Send: true}, platform.Capabilities{Send: true})
-	results := s.SendMany(context.Background(), []platform.ChannelRef{{Platform: platform.X, Slug: "z"}}, "hi")
+	results := s.SendMany(context.Background(), []platform.ChannelRef{{Platform: platform.X, Slug: "z"}}, "hi", platform.SendOpts{})
 	if len(results) != 1 || results[0].Reachable {
 		t.Errorf("unknown-platform target should be excluded: %+v", results)
 	}

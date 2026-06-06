@@ -47,6 +47,38 @@
   font-weight: 700;
 }
 
+.replyBar {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  padding: var(--virta-space-4) var(--virta-space-8);
+  border-radius: var(--virta-radius-sm);
+  background: var(--virta-bg-2);
+  color: var(--virta-text-2);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+}
+.replyText {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.replyText b {
+  color: var(--virta-text-1);
+}
+.replyCancel {
+  flex: none;
+  border: 0;
+  background: none;
+  color: var(--virta-text-2);
+  cursor: pointer;
+}
+.replyCancel:hover {
+  color: var(--virta-text-0);
+}
+
 .acWrap {
   position: relative;
 }

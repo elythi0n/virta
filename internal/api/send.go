@@ -12,8 +12,9 @@ import (
 type Send interface {
 	// Preview reports per-target send reachability without sending — the composer's chips.
 	Preview(targets []string) ([]SendTarget, error)
-	// Send cross-posts text to the targets, returning each target's disposition.
-	Send(ctx context.Context, targets []string, text string) ([]SendResult, error)
+	// Send cross-posts text to the targets, returning each target's disposition. replyTo is the
+	// platform message id this is a reply to ("" for a normal message).
+	Send(ctx context.Context, targets []string, text, replyTo string) ([]SendResult, error)
 	// Queue reports each target's send-queue depth and next-send countdown.
 	Queue(targets []string) ([]QueueState, error)
 }
@@ -55,6 +56,7 @@ func (s *Server) SetSend(c Send) { s.send = c }
 type sendRequest struct {
 	Channels []string `json:"channels"`
 	Text     string   `json:"text"`
+	ReplyTo  string   `json:"reply_to,omitempty"` // platform message id to reply to
 }
 
 // previewRequest is the POST /v1/send/preview body.
@@ -72,7 +74,7 @@ func (s *Server) handleSend(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "expected JSON body with channels and text", http.StatusBadRequest)
 		return
 	}
-	results, err := s.send.Send(r.Context(), req.Channels, req.Text)
+	results, err := s.send.Send(r.Context(), req.Channels, req.Text, req.ReplyTo)
 	if err != nil {
 		s.channelError(w, err)
 		return

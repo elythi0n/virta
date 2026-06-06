@@ -34,6 +34,6 @@ describe('send client', () => {
     const results = await sendMessage(['twitch:a'], 'hello');
     expect(results).toEqual([{ channel: 'twitch:a', status: 'sent' }]);
     const post = calls.find((c) => c.url.endsWith('/v1/send'))!;
-    expect(JSON.parse(post.init!.body as string)).toEqual({ channels: ['twitch:a'], text: 'hello' });
+    expect(JSON.parse(post.init!.body as string)).toEqual({ channels: ['twitch:a'], text: 'hello', reply_to: '' });
   });
 });

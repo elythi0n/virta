@@ -244,13 +244,20 @@ export default function FeedPanel({ channels, panelId }: Props) {
     else if (action === 'timeout') void sendMessage([m.channel], `/timeout ${m.author} 600`).catch(() => {});
     else setPendingBan(m);
   }, []);
+  const [replyTo, setReplyTo] = useState<{ channel: string; parentId: string; author: string } | null>(null);
+  const onReply = useCallback((m: FeedMessage) => {
+    if (m.channel && m.platformMessageId) setReplyTo({ channel: m.channel, parentId: m.platformMessageId, author: m.author });
+  }, []);
   const renderActions = useCallback(
     (m: FeedMessage) => {
       if (m.deleted || (m.type && m.type !== 'chat' && m.type !== 'action') || !m.channel) return null;
-      if (!caps[m.platform]?.moderation) return null;
-      return <ModRowActions message={m} onAction={runMod} />;
+      const c = caps[m.platform];
+      const canReply = !!c?.replies && !!m.platformMessageId;
+      const canMod = !!c?.moderation;
+      if (!canReply && !canMod) return null;
+      return <ModRowActions message={m} onReply={canReply ? onReply : undefined} onModerate={canMod ? runMod : undefined} />;
     },
-    [caps, runMod],
+    [caps, runMod, onReply],
   );
 
   // Chat-settings toggles apply to one channel, so show them only for a single moderatable feed.
@@ -374,7 +381,7 @@ export default function FeedPanel({ channels, panelId }: Props) {
           renderActions={renderActions}
         />
       </div>
-      {hud && <Composer targets={targets} chatters={chatters} />}
+      {hud && <Composer targets={targets} chatters={chatters} replyTo={replyTo} onCancelReply={() => setReplyTo(null)} />}
 
       <Dialog
         open={pendingBan !== null}

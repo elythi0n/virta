@@ -33,7 +33,7 @@ func (f *fakeSend) Preview(targets []string) ([]SendTarget, error) {
 	return f.targets, nil
 }
 
-func (f *fakeSend) Send(_ context.Context, targets []string, text string) ([]SendResult, error) {
+func (f *fakeSend) Send(_ context.Context, targets []string, text, _ string) ([]SendResult, error) {
 	f.gotChannels, f.gotText = targets, text
 	if f.err != nil {
 		return nil, f.err
