@@ -424,8 +424,9 @@ func (c channelControl) Join(ctx context.Context, plat, slug, mode string) error
 		return err
 	}
 	_ = c.profiles.AddChannel(ctx, ref, m) // persist to the active profile
-	// Warm the channel's third-party emote set and badge artwork off the request path. A no-op
-	// until the platform user id is known, but wired so they light up the moment it is.
+	// Warm the channel's third-party emote set and badge artwork off the request path. Badges
+	// resolve by login, so they fill in here; emotes stay a no-op until the platform user id is
+	// known, but are wired so they light up the moment it is.
 	go func() { _ = c.emotes.Refresh(context.Background(), ref) }()
 	go c.badges.Refresh(context.Background(), ref)
 	return nil

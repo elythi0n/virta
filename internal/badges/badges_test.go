@@ -2,6 +2,7 @@ package badges
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -59,16 +60,24 @@ func TestResolver_SkipsErroringProvider(t *testing.T) {
 	}
 }
 
-func TestTwitchProvider_ParsesDisplayDocs(t *testing.T) {
+func TestTwitchProvider_ParsesGraphQL(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.URL.Path == "/global/display":
-			_, _ = w.Write([]byte(`{"badge_sets":{"moderator":{"versions":{"1":{"image_url_2x":"https://cdn/mod2x"}}}}}`))
-		case r.URL.Path == "/channels/42/display":
-			_, _ = w.Write([]byte(`{"badge_sets":{"subscriber":{"versions":{"12":{"image_url_2x":"https://cdn/sub12"}}}}}`))
-		default:
-			w.WriteHeader(http.StatusNotFound)
+		if r.Method != http.MethodPost || r.Header.Get("Client-ID") == "" {
+			t.Errorf("expected an authenticated POST, got %s without a Client-ID", r.Method)
 		}
+		var body struct {
+			Variables struct {
+				Login string `json:"login"`
+			} `json:"variables"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if body.Variables.Login != "shroud" {
+			t.Errorf("login variable = %q", body.Variables.Login)
+		}
+		_, _ = w.Write([]byte(`{"data":{
+			"badges":[{"setID":"moderator","version":"1","imageURL":"https://cdn/mod2x"}],
+			"user":{"broadcastBadges":[{"setID":"subscriber","version":"12","imageURL":"https://cdn/sub12"}]}
+		}}`))
 	}))
 	defer srv.Close()
 
