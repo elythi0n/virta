@@ -1,0 +1,27 @@
+.add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: var(--virta-radius-sm);
+  background: none;
+  color: var(--virta-text-2);
+  cursor: pointer;
+  transition:
+    background var(--virta-motion-fast) ease,
+    color var(--virta-motion-fast) ease;
+}
+.add:hover {
+  background: var(--virta-bg-2);
+  color: var(--virta-text-0);
+}
+
+.form {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: var(--virta-space-8);
+  align-items: center;
+  min-width: 260px;
+}

@@ -1,6 +1,7 @@
 import { Button, Text } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { PANEL_CATALOG, type ViewId } from './views';
+import AddChannel from './AddChannel';
 import Sources from './Sources';
 import StreamsSidebar from './StreamsSidebar';
 import styles from './SideBar.module.css';
@@ -24,9 +25,12 @@ const TITLES: Record<ViewId, string> = {
 export default function SideBar({ view, openPanel, openChannel, openStream, listFeeds, mergeChannelIntoFeed, onNewFeed }: Props) {
   return (
     <aside className={styles.side} aria-label={TITLES[view]}>
-      <Text as="header" variant="meta" tone="subtle" className={styles.head}>
-        {TITLES[view]}
-      </Text>
+      <header className={styles.head}>
+        <Text variant="meta" tone="subtle">
+          {TITLES[view]}
+        </Text>
+        {view === 'streams' && <AddChannel />}
+      </header>
       <div className={styles.body}>
         {view === 'panels' && (
           <>
