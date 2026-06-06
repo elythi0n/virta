@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>virta — one feed for every stream</title>
+    <meta name="description" content="Unified live chat for Twitch, Kick, and X." />
+    <!-- Placeholder page (no repo link, no trackers, no external requests) on the app's graphite
+         palette, so a visitor who later opens the app feels zero discontinuity. -->
+    <style>
+      :root {
+        --bg-0: #0e0f12;
+        --bg-1: #15171c;
+        --text-0: #e8eaf0;
+        --text-1: #9aa1ae;
+        --text-2: #5c6370;
+        --accent: #5b8cff;
+        --twitch: #9146ff;
+        --kick: #53fc18;
+        --x: #e7e9ea;
+      }
+      * {
+        margin: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        display: grid;
+        place-items: center;
+        min-height: 100vh;
+        padding: 32px;
+        background:
+          radial-gradient(60% 50% at 50% 38%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%),
+          var(--bg-0);
+        color: var(--text-0);
+        font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+      }
+      main {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 22px;
+      }
+      .flow {
+        width: 200px;
+        height: 64px;
+        opacity: 0.95;
+      }
+      .flow path {
+        fill: none;
+        stroke-width: 3;
+        stroke-linecap: round;
+        stroke-dasharray: 14 10;
+        animation: drift 2.6s linear infinite;
+      }
+      .flow .merged {
+        stroke: var(--accent);
+        stroke-width: 4;
+        animation-duration: 1.9s;
+      }
+      @keyframes drift {
+        to {
+          stroke-dashoffset: -48;
+        }
+      }
+      .wordmark {
+        font-size: clamp(56px, 14vw, 132px);
+        font-weight: 650;
+        letter-spacing: -0.04em;
+        line-height: 0.9;
+        background: linear-gradient(180deg, var(--text-0), color-mix(in srgb, var(--text-0) 72%, var(--text-1)));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .tagline {
+        font-size: clamp(17px, 3.4vw, 22px);
+        font-weight: 500;
+        color: var(--text-0);
+      }
+      .subline {
+        font-size: 14px;
+        color: var(--text-1);
+        letter-spacing: 0.01em;
+      }
+      .subline b {
+        font-weight: 600;
+      }
+      .tw {
+        color: var(--twitch);
+      }
+      .ki {
+        color: var(--kick);
+      }
+      .xx {
+        color: var(--x);
+      }
+      footer {
+        position: fixed;
+        bottom: 24px;
+        font-size: 12px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--text-2);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .flow path {
+          animation: none;
+          stroke-dasharray: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <!-- The brand moment: three currents (Twitch, Kick, X) becoming one. -->
+      <svg class="flow" viewBox="0 0 200 64" aria-hidden="true">
+        <path style="stroke: var(--twitch)" d="M2 14 C 70 14, 90 32, 150 32" />
+        <path style="stroke: var(--kick)" d="M2 32 C 70 32, 90 32, 150 32" />
+        <path style="stroke: var(--x)" d="M2 50 C 70 50, 90 32, 150 32" />
+        <path class="merged" d="M150 32 L 198 32" />
+      </svg>
+      <h1 class="wordmark">virta</h1>
+      <p class="tagline">One feed for every stream.</p>
+      <p class="subline">
+        Unified live chat for <b class="tw">Twitch</b>, <b class="ki">Kick</b>, and <b class="xx">X</b>.
+      </p>
+    </main>
+    <footer>virta.lol</footer>
+  </body>
+</html>
