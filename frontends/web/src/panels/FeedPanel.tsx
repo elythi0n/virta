@@ -51,10 +51,34 @@ function sampleBadges(i: number): { set: string }[] | undefined {
   return undefined;
 }
 
+// Occasional synthetic events so the tinted event bands are visible offline.
+const SAMPLE_EVENTS: { type: FeedMessage['type']; author: string; text: string }[] = [
+  { type: 'sub', author: 'nightbot_fan', text: 'subscribed at Tier 1! 3 months in a row' },
+  { type: 'resub', author: 'longtime_viewer', text: 'resubscribed for 24 months' },
+  { type: 'giftsub', author: 'generous_one', text: 'gifted 5 subs to the community' },
+  { type: 'raid', author: 'partnered_streamer', text: 'is raiding with 1,240 viewers' },
+  { type: 'announcement', author: 'moderator_x', text: 'Tournament starts in 10 minutes' },
+];
+
 let seq = 0;
 function makeMessage(): FeedMessage {
   const i = seq++;
   const src = SAMPLE_SOURCES[i % SAMPLE_SOURCES.length];
+
+  if (i % 19 === 0) {
+    const e = SAMPLE_EVENTS[Math.floor(i / 19) % SAMPLE_EVENTS.length];
+    return {
+      id: `m${i}`,
+      ts: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      platform: src.platform,
+      type: e.type,
+      author: e.author,
+      source: { slug: src.slug, label: src.label },
+      body: e.text,
+      segments: [{ type: 'text', text: e.text }],
+    };
+  }
+
   let body = SAMPLE[Math.floor(Math.random() * SAMPLE.length)];
   if (Math.random() < 0.18) body = `@viewer_${Math.floor(Math.random() * 900)} ${body}`;
   if (Math.random() < 0.08) body += ` https://clips.example/${i}`;

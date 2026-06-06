@@ -1,4 +1,4 @@
-import type { FeedMessage, Platform, Segment as FeedSegment } from '@virta/feed-core';
+import type { FeedMessage, MessageType, Platform, Segment as FeedSegment } from '@virta/feed-core';
 import type { EmoteRef, Segment as WireSegment, UnifiedMessage } from './wire.gen';
 
 // Emote CDN templates carry a {size} placeholder the frontend fills; the token differs per
@@ -45,6 +45,9 @@ export function toFeedMessage(m: UnifiedMessage): FeedMessage {
     id: m.id,
     ts: formatTimestamp(m.sent_at),
     platform: m.platform as Platform,
+    type: m.type as MessageType,
+    platformMessageId: m.platform_message_id,
+    authorId: m.author.id,
     author: m.author.display_name || m.author.login,
     authorColor: m.author.color || undefined,
     source: { slug: m.channel.slug, label: m.channel.display_name || m.channel.slug },

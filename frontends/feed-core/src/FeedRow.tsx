@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { clampForContrast } from './contrast';
 import type { Segment } from './segments';
-import type { FeedMessage } from './types';
+import type { FeedMessage, MessageType } from './types';
 import styles from './FeedRow.module.css';
 
 export type Density = 'compact' | 'cozy' | 'comfortable';
@@ -18,6 +18,20 @@ const BADGE: Record<string, { label: string; color: string }> = {
 };
 const badgeLabel = (set: string) => BADGE[set]?.label ?? set.slice(0, 3).toUpperCase();
 const badgeColor = (set: string) => BADGE[set]?.color ?? 'var(--virta-text-2)';
+
+// Non-chat message types render as a tinted event band with a short label.
+const EVENT_LABEL: Record<string, string> = {
+  sub: 'SUB',
+  resub: 'RESUB',
+  giftsub: 'GIFT',
+  raid: 'RAID',
+  host: 'HOST',
+  follow: 'FOLLOW',
+  announcement: 'ANNOUNCEMENT',
+  moderation: 'MOD',
+  system: 'SYSTEM',
+};
+const isEventType = (t: MessageType) => t in EVENT_LABEL;
 
 function renderSegment(seg: Segment, i: number) {
   switch (seg.type) {
@@ -40,6 +54,15 @@ function renderSegment(seg: Segment, i: number) {
   }
 }
 
+function SourceTag({ message }: { message: FeedMessage }) {
+  if (!message.source) return null;
+  return (
+    <span className={styles.source} data-platform={message.platform} title={message.source.label}>
+      {message.source.label}
+    </span>
+  );
+}
+
 type FeedRowProps = {
   message: FeedMessage;
   /** Feed background (hex) the author color is contrast-clamped against. */
@@ -49,22 +72,32 @@ type FeedRowProps = {
   density: Density;
 };
 
-// The single most-rendered element. Bespoke (not a library primitive) and memoized so streaming a
-// new message never re-renders the rows above it. A left rail carries platform identity; an
-// optional source tag names the channel when several are merged; badges mark the author's role.
+// The single most-rendered element. Bespoke and memoized so streaming a new message never
+// re-renders the rows above it. Chat rows carry a platform rail, optional source tag, badges, the
+// author, and segments; non-chat types render as a tinted event band; deletions fade and strike.
 function FeedRow({ message, background, showSource, density }: FeedRowProps) {
-  const authorStyle = message.authorColor
-    ? { color: clampForContrast(message.authorColor, background) }
-    : undefined;
+  const type = message.type ?? 'chat';
+
+  if (isEventType(type)) {
+    return (
+      <div className={`${styles.event} ${styles[`ev-${type}`]} ${styles[density]}`}>
+        <span className={styles.ts}>{message.ts}</span>
+        {showSource && <SourceTag message={message} />}
+        <span className={styles.eventLabel}>{EVENT_LABEL[type]}</span>
+        <span className={styles.eventText}>
+          {message.author && <strong className={styles.eventAuthor}>{message.author} </strong>}
+          {message.segments.map(renderSegment)}
+        </span>
+      </div>
+    );
+  }
+
+  const authorStyle = message.authorColor ? { color: clampForContrast(message.authorColor, background) } : undefined;
   const badges = message.badges ?? [];
   return (
-    <div className={`${styles.row} ${styles[message.platform]} ${styles[density]}`}>
+    <div className={`${styles.row} ${styles[message.platform]} ${styles[density]} ${message.deleted ? styles.deleted : ''}`}>
       <span className={styles.ts}>{message.ts}</span>
-      {showSource && message.source && (
-        <span className={styles.source} data-platform={message.platform} title={message.source.label}>
-          {message.source.label}
-        </span>
-      )}
+      {showSource && <SourceTag message={message} />}
       {badges.length > 0 && (
         <span className={styles.badges}>
           {badges.slice(0, 3).map((b, i) =>
@@ -82,7 +115,9 @@ function FeedRow({ message, background, showSource, density }: FeedRowProps) {
       <span className={styles.author} style={authorStyle}>
         {message.author}
       </span>
-      <span className={styles.body}>{message.segments.map(renderSegment)}</span>
+      <span className={`${styles.body} ${type === 'action' ? styles.action : ''}`}>
+        {message.deleted ? <span className={styles.tombstone}>message deleted</span> : message.segments.map(renderSegment)}
+      </span>
     </div>
   );
 }

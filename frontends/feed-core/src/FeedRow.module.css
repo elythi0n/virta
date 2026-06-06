@@ -121,3 +121,65 @@
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+.action {
+  font-style: italic;
+}
+
+.deleted {
+  opacity: 0.5;
+}
+.tombstone {
+  color: var(--virta-text-2);
+  font-style: italic;
+}
+
+/* Event bands: non-chat message types (sub, raid, …) get a tinted, accented row. */
+.event {
+  display: flex;
+  align-items: baseline;
+  gap: var(--virta-space-8);
+  padding-inline: var(--virta-space-12);
+  border-left: 2px solid var(--ev, var(--virta-accent));
+  background: color-mix(in srgb, var(--ev, var(--virta-accent)) 9%, transparent);
+  font-family: var(--virta-font-ui);
+}
+.ev-sub,
+.ev-resub,
+.ev-giftsub,
+.ev-announcement {
+  --ev: var(--virta-accent);
+}
+.ev-raid,
+.ev-host {
+  --ev: var(--virta-warn);
+}
+.ev-follow {
+  --ev: var(--virta-ok);
+}
+.ev-moderation {
+  --ev: var(--virta-danger);
+}
+.ev-system {
+  --ev: var(--virta-text-2);
+}
+.eventLabel {
+  flex: none;
+  padding: 0 var(--virta-space-4);
+  border: 1px solid currentColor;
+  border-radius: var(--virta-radius-sm);
+  color: var(--ev, var(--virta-accent));
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.eventAuthor {
+  color: var(--virta-text-0);
+  font-weight: 600;
+}
+.eventText {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--virta-text-1);
+  overflow-wrap: anywhere;
+}
