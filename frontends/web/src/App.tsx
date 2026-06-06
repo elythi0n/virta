@@ -1,16 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DockviewApi, DockviewReadyEvent } from 'dockview';
 import Dock from './dock/Dock';
 import ActivityBar from './shell/ActivityBar';
 import SideBar from './shell/SideBar';
-import { TooltipProvider } from '@virta/ui-kit';
-import type { ViewId } from './shell/views';
+import { CommandPalette, TooltipProvider, type CommandAction } from '@virta/ui-kit';
+import { PANEL_CATALOG, type ViewId } from './shell/views';
 import { ThemeProvider } from './theme';
 
 export default function App() {
   const [activeView, setActiveView] = useState<ViewId>('panels');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [theme, setTheme] = useState('graphite-dark');
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const apiRef = useRef<DockviewApi | null>(null);
 
   // Reflect the chosen theme onto the document so the token theme blocks switch.
@@ -71,6 +72,39 @@ export default function App() {
     api.addPanel({ id: 'settings', component: 'settings', title: 'Settings' });
   }, []);
 
+  // Every shell action is registered here so the palette (and later, the keymap and menus)
+  // dispatch through one list rather than each surface wiring its own handler.
+  const actions = useMemo<CommandAction[]>(() => {
+    const openPanels = PANEL_CATALOG.map((p) => ({
+      id: `open-${p.kind}`,
+      title: `Open ${p.title}`,
+      group: 'Open',
+      keywords: [p.kind],
+      perform: () => openPanel(p.kind, p.title),
+    }));
+    return [
+      ...openPanels,
+      { id: 'open-settings', title: 'Open Settings', group: 'Open', perform: openSettings },
+      { id: 'view-panels', title: 'Show Panels', group: 'View', perform: () => { setActiveView('panels'); setSidebarOpen(true); } },
+      { id: 'view-sources', title: 'Show Sources', group: 'View', perform: () => { setActiveView('sources'); setSidebarOpen(true); } },
+      { id: 'toggle-sidebar', title: 'Toggle Side Bar', group: 'View', keywords: ['hide', 'show'], perform: () => setSidebarOpen((o) => !o) },
+      { id: 'theme-graphite', title: 'Theme: Graphite (Dark)', group: 'Preferences', perform: () => setTheme('graphite-dark') },
+      { id: 'theme-light', title: 'Theme: Light', group: 'Preferences', perform: () => setTheme('light') },
+    ];
+  }, [openPanel, openSettings]);
+
+  // Ctrl/Cmd+Shift+P toggles the command palette (VS Code's binding).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        setPaletteOpen((open) => !open);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   return (
     <ThemeProvider value={{ theme, setTheme }}>
       <TooltipProvider>
@@ -81,6 +115,7 @@ export default function App() {
             <Dock onReady={onReady} />
           </div>
         </div>
+        <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} actions={actions} placeholder="Search commands…" />
       </TooltipProvider>
     </ThemeProvider>
   );
