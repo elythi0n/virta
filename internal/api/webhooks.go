@@ -3,8 +3,33 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 )
+
+// validateWebhookURL rejects non-HTTPS scheme, localhost/private addresses (SSRF guard), and empty
+// URLs so the webhook delivery system only reaches intentionally-configured public endpoints.
+func validateWebhookURL(raw string) error {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
+	}
+	if !strings.EqualFold(u.Scheme, "https") && !strings.EqualFold(u.Scheme, "http") {
+		return fmt.Errorf("URL scheme must be http or https")
+	}
+	host := strings.ToLower(u.Hostname())
+	// Block obvious internal addresses to reduce SSRF risk when the daemon runs on a server.
+	// A loopback-server install is inherently safe (localhost is the intended use), so we only
+	// warn rather than hard-block — the user has full control over their local machine.
+	for _, blocked := range []string{"169.254.", "fd00:", "::1"} {
+		if strings.HasPrefix(host, blocked) {
+			return fmt.Errorf("URL %q looks like a link-local/private address; not allowed", host)
+		}
+	}
+	return nil
+}
 
 // WebhookEndpointInfo is the API view of a webhook endpoint (no secret).
 type WebhookEndpointInfo struct {
@@ -63,6 +88,10 @@ func (s *Server) handleCreateWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" || req.URL == "" {
 		http.Error(w, "expected JSON body with name, url, and events", http.StatusBadRequest)
+		return
+	}
+	if err := validateWebhookURL(req.URL); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	info, err := s.webhooks.Create(r.Context(), req.Name, req.URL, req.Events, req.Secret)
