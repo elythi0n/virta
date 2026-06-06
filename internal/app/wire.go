@@ -105,7 +105,7 @@ type authControl struct {
 
 func (c authControl) StartTwitchDevice(ctx context.Context) (api.DeviceSession, error) {
 	if !c.twitchConfigured {
-		return api.DeviceSession{}, fmt.Errorf("twitch sign-in is not configured (set VIRTA_TWITCH_CLIENT_ID)")
+		return api.DeviceSession{}, fmt.Errorf("%w: Twitch sign-in needs VIRTA_TWITCH_CLIENT_ID set on the daemon", api.ErrAuthNotConfigured)
 	}
 	s, err := c.tw.StartDevice(ctx)
 	if err != nil {
@@ -124,7 +124,7 @@ func (c authControl) TwitchDeviceStatus(id string) (api.DeviceSession, bool) {
 
 func (c authControl) StartKickAuth(ctx context.Context) (api.AuthSession, error) {
 	if !c.kickConfigured {
-		return api.AuthSession{}, fmt.Errorf("kick sign-in is not configured (set VIRTA_KICK_CLIENT_ID)")
+		return api.AuthSession{}, fmt.Errorf("%w: Kick sign-in needs VIRTA_KICK_CLIENT_ID set on the daemon", api.ErrAuthNotConfigured)
 	}
 	s, err := c.kick.StartAuth(ctx)
 	if err != nil {

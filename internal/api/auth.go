@@ -2,8 +2,23 @@ package api
 
 import (
 	"context"
+	"errors"
 	"net/http"
 )
+
+// ErrAuthNotConfigured means a platform's sign-in credentials (client id) aren't set, so the flow
+// can't start. It's a server-config issue, not an upstream failure — the API answers 503, not 502.
+var ErrAuthNotConfigured = errors.New("sign-in not configured")
+
+// authStartError maps an auth-start failure to a status: a missing configuration is 503 (with the
+// actionable message), anything else is an upstream/network failure (502).
+func (s *Server) authStartError(w http.ResponseWriter, err error) {
+	if errors.Is(err, ErrAuthNotConfigured) {
+		http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		return
+	}
+	http.Error(w, err.Error(), http.StatusBadGateway)
+}
 
 // Auth is the account-authorization control surface, implemented by the auth managers and
 // injected via SetAuth. Decoupled from the auth packages via plain structs.
@@ -49,7 +64,7 @@ func (s *Server) handleTwitchDeviceStart(w http.ResponseWriter, r *http.Request)
 	}
 	sess, err := s.authCtl.StartTwitchDevice(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		s.authStartError(w, err)
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
@@ -76,7 +91,7 @@ func (s *Server) handleKickAuthStart(w http.ResponseWriter, r *http.Request) {
 	}
 	sess, err := s.authCtl.StartKickAuth(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		s.authStartError(w, err)
 		return
 	}
 	w.WriteHeader(http.StatusCreated)

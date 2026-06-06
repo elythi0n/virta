@@ -25,7 +25,11 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
     resetDiscovery();
     throw new Error('unauthorized');
   }
-  if (!res.ok) throw new Error(`${init?.method ?? 'GET'} ${path} -> ${res.status}`);
+  if (!res.ok) {
+    // Surface the daemon's message (it writes a plain-text reason) so callers can show why.
+    const detail = (await res.text().catch(() => '')).trim();
+    throw new Error(detail || `${init?.method ?? 'GET'} ${path} -> ${res.status}`);
+  }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
