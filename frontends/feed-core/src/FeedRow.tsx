@@ -95,6 +95,11 @@ function FeedRow({ message, background, showSource, showTimestamps = true, rende
     <div
       className={`${styles.row} ${styles[message.platform]} ${styles[density]} ${message.highlighted ? styles.highlight : ''} ${message.deleted ? styles.deleted : ''}`}
     >
+      {message.replyTo && (
+        <span className={styles.reply} title={`${message.replyTo.author}: ${message.replyTo.snippet}`}>
+          ↩ <span className={styles.replyAuthor}>{message.replyTo.author}</span> {message.replyTo.snippet}
+        </span>
+      )}
       <PlatformGlyph platform={message.platform} className={styles.glyph} />
       {showTimestamps && <span className={styles.ts}>{message.ts}</span>}
       {showSource && <SourceTag message={message} />}

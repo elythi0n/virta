@@ -36,6 +36,8 @@ export interface FeedMessage {
   highlighted?: boolean;
   /** Calm mode: how many identical consecutive messages this row stands in for (≥2 = a combo). */
   combo?: number;
+  /** The message this one replies to (rendered as a quoted context line). */
+  replyTo?: { author: string; snippet: string };
   author: string;
   /** Platform-provided author color (hex); contrast-clamped before use. */
   authorColor?: string;

@@ -1,10 +1,26 @@
 .row {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   gap: var(--virta-space-8);
   padding: 0 var(--virta-space-12);
   border-left: 2px solid transparent;
   font-family: var(--virta-font-ui);
+}
+
+/* A reply's quoted context, on its own line above the message (full-width forces the wrap). */
+.reply {
+  flex-basis: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--virta-text-2);
+  font-size: var(--virta-type-meta-size);
+}
+.replyAuthor {
+  color: var(--virta-text-1);
+  font-weight: 600;
 }
 
 /* Density sets the row's type scale and vertical rhythm; five steps from XS to XL. */
