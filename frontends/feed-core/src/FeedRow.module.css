@@ -140,6 +140,21 @@
 }
 
 /* Calm-mode combo count: how many identical messages this row folds in. */
+/* Hover-revealed row actions (e.g. moderator buttons), pinned to the right of the row. */
+.rowActions {
+  margin-left: auto;
+  flex: none;
+  align-self: center;
+  display: inline-flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity var(--virta-motion-fast) ease;
+}
+.row:hover .rowActions,
+.rowActions:focus-within {
+  opacity: 1;
+}
+
 .combo {
   flex: none;
   align-self: center;

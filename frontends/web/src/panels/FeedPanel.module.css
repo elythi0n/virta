@@ -136,3 +136,9 @@
   flex: 1 1 auto;
   min-height: 0;
 }
+
+.banActions {
+  display: flex;
+  gap: var(--virta-space-8);
+  justify-content: flex-end;
+}

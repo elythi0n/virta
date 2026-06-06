@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, type ReactNode } from 'react';
 import { clampForContrast } from './contrast';
 import { EVENT_LABEL, eventCountLabel, isBigEvent, isEventType } from './events';
 import PlatformGlyph from './PlatformGlyph';
@@ -59,13 +59,15 @@ type FeedRowProps = {
   showSource?: boolean;
   /** Show the per-row timestamp. */
   showTimestamps?: boolean;
+  /** Optional hover-revealed actions for a chat row (e.g. moderator buttons); return null to omit. */
+  renderActions?: (m: FeedMessage) => ReactNode;
   density: Density;
 };
 
 // The single most-rendered element. Bespoke and memoized so streaming a new message never
 // re-renders the rows above it. Chat rows carry a platform rail, optional source tag, badges, the
 // author, and segments; non-chat types render as a tinted event band; deletions fade and strike.
-function FeedRow({ message, background, showSource, showTimestamps = true, density }: FeedRowProps) {
+function FeedRow({ message, background, showSource, showTimestamps = true, renderActions, density }: FeedRowProps) {
   const type = message.type ?? 'chat';
 
   if (isEventType(type)) {
@@ -88,6 +90,7 @@ function FeedRow({ message, background, showSource, showTimestamps = true, densi
 
   const authorStyle = message.authorColor ? { color: clampForContrast(message.authorColor, background) } : undefined;
   const badges = message.badges ?? [];
+  const actions = renderActions?.(message);
   return (
     <div
       className={`${styles.row} ${styles[message.platform]} ${styles[density]} ${message.highlighted ? styles.highlight : ''} ${message.deleted ? styles.deleted : ''}`}
@@ -116,6 +119,7 @@ function FeedRow({ message, background, showSource, showTimestamps = true, densi
         {message.deleted ? <span className={styles.tombstone}>message deleted</span> : message.segments.map(renderSegment)}
       </span>
       {message.combo && message.combo > 1 && <span className={styles.combo}>×{message.combo}</span>}
+      {actions && <span className={styles.rowActions}>{actions}</span>}
     </div>
   );
 }

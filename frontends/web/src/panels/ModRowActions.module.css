@@ -1,0 +1,31 @@
+.actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 20px;
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-sm);
+  background: var(--virta-bg-1);
+  color: var(--virta-text-2);
+  cursor: pointer;
+  transition:
+    border-color var(--virta-motion-fast) ease,
+    background var(--virta-motion-fast) ease,
+    color var(--virta-motion-fast) ease;
+}
+.btn:hover {
+  border-color: var(--virta-text-2);
+  background: var(--virta-bg-2);
+  color: var(--virta-text-0);
+}
+.danger:hover {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--virta-danger) 22%, transparent);
+  color: var(--virta-danger);
+}

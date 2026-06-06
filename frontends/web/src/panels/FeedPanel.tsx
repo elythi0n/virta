@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Feed, parseSegments, PlatformGlyph, useFeedBuffer, type Density, type FeedMessage, type Platform } from '@virta/feed-core';
-import { Input, Segmented, Text, Tooltip } from '@virta/ui-kit';
+import { Button, Dialog, Input, Segmented, Text, Tooltip } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { filterFeed, QUICK_FILTERS, type QuickFilter } from './quickFilter';
 import { collapseCombos } from './calmMode';
-import { useChannels, useDaemonStream } from '../daemon';
+import ModRowActions, { type ModAction } from './ModRowActions';
+import { sendMessage, useCapabilities, useChannels, useDaemonStream } from '../daemon';
 import { useDensity } from '../density';
 import { useFeedDisplay } from '../feedDisplay';
 import { useTheme } from '../theme';
@@ -229,6 +230,25 @@ export default function FeedPanel({ channels, panelId }: Props) {
     return out;
   }, [messages]);
 
+  // Moderator row actions, gated on the platform's moderation capability. They compose a slash
+  // command (parsed by the send path) to the message's own channel. Ban asks for confirmation.
+  const { caps } = useCapabilities();
+  const [pendingBan, setPendingBan] = useState<FeedMessage | null>(null);
+  const runMod = useCallback((action: ModAction, m: FeedMessage) => {
+    if (!m.channel) return;
+    if (action === 'delete') void sendMessage([m.channel], `/delete ${m.platformMessageId}`).catch(() => {});
+    else if (action === 'timeout') void sendMessage([m.channel], `/timeout ${m.author} 600`).catch(() => {});
+    else setPendingBan(m);
+  }, []);
+  const renderActions = useCallback(
+    (m: FeedMessage) => {
+      if (m.deleted || (m.type && m.type !== 'chat' && m.type !== 'action') || !m.channel) return null;
+      if (!caps[m.platform]?.moderation) return null;
+      return <ModRowActions message={m} onAction={runMod} />;
+    },
+    [caps, runMod],
+  );
+
   // A feed aggregating more than one channel shows the source tag; a single-channel feed hides it.
   const showSource = channels === undefined || channels.length !== 1;
 
@@ -332,9 +352,39 @@ export default function FeedPanel({ channels, panelId }: Props) {
       </div>
       )}
       <div className={styles.feedWrap}>
-        <Feed messages={visible} background={background} showSource={showSource} density={density} showTimestamps={showTimestamps} />
+        <Feed
+          messages={visible}
+          background={background}
+          showSource={showSource}
+          density={density}
+          showTimestamps={showTimestamps}
+          renderActions={renderActions}
+        />
       </div>
       {hud && <Composer targets={targets} chatters={chatters} />}
+
+      <Dialog
+        open={pendingBan !== null}
+        onOpenChange={(o) => !o && setPendingBan(null)}
+        title="Ban user"
+        description={pendingBan ? `Ban ${pendingBan.author} from ${pendingBan.channel?.split(':')[1] ?? 'this channel'}?` : ''}
+      >
+        <div className={styles.banActions}>
+          <Button
+            variant="solid"
+            size="md"
+            onClick={() => {
+              if (pendingBan?.channel) void sendMessage([pendingBan.channel], `/ban ${pendingBan.author}`).catch(() => {});
+              setPendingBan(null);
+            }}
+          >
+            Ban
+          </Button>
+          <Button variant="ghost" size="md" onClick={() => setPendingBan(null)}>
+            Cancel
+          </Button>
+        </div>
+      </Dialog>
     </div>
   );
 }
