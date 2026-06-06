@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { clampForContrast } from './contrast';
 import { eventCountLabel, isBigEvent } from './events';
+import PlatformGlyph from './PlatformGlyph';
 import type { Segment } from './segments';
 import type { FeedMessage, MessageType } from './types';
 import styles from './FeedRow.module.css';
@@ -84,6 +85,7 @@ function FeedRow({ message, background, showSource, density }: FeedRowProps) {
     const count = eventCountLabel(message);
     return (
       <div className={`${styles.event} ${styles[`ev-${type}`]} ${styles[density]} ${big ? styles.big : ''}`}>
+        <PlatformGlyph platform={message.platform} className={styles.glyph} />
         <span className={styles.ts}>{message.ts}</span>
         {showSource && <SourceTag message={message} />}
         <span className={styles.eventLabel}>{EVENT_LABEL[type]}</span>
@@ -100,6 +102,7 @@ function FeedRow({ message, background, showSource, density }: FeedRowProps) {
   const badges = message.badges ?? [];
   return (
     <div className={`${styles.row} ${styles[message.platform]} ${styles[density]} ${message.deleted ? styles.deleted : ''}`}>
+      <PlatformGlyph platform={message.platform} className={styles.glyph} />
       <span className={styles.ts}>{message.ts}</span>
       {showSource && <SourceTag message={message} />}
       {badges.length > 0 && (

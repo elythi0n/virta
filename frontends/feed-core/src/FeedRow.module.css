@@ -52,6 +52,22 @@
   border-left-color: var(--virta-plat-x);
 }
 
+.glyph {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  align-self: center;
+}
+.glyph[data-platform='twitch'] {
+  color: var(--virta-plat-twitch);
+}
+.glyph[data-platform='kick'] {
+  color: var(--virta-plat-kick);
+}
+.glyph[data-platform='x'] {
+  color: var(--virta-plat-x);
+}
+
 .ts {
   flex: none;
   color: var(--virta-text-2);
@@ -71,15 +87,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.source[data-platform='twitch'] {
-  color: var(--virta-plat-twitch);
-}
-.source[data-platform='kick'] {
-  color: var(--virta-plat-kick);
-}
-.source[data-platform='x'] {
-  color: var(--virta-plat-x);
-}
+/* The channel label stays neutral; platform color is carried by the rail and the glyph alone. */
 .badges {
   flex: none;
   display: inline-flex;
