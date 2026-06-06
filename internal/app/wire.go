@@ -314,6 +314,11 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	srv.SetSend(sendControl{sender: sender})
 	srv.SetHeld(heldControl{queue: heldQueue, sender: sender, emitter: runner})
 	srv.SetHistory(historyControl{store: st, ring: scrollbackRing, loggingOn: logSink.Enabled})
+	tokenStore := api.NewMemTokens()
+	if raw, err := st.Settings().Get(context.Background(), "api.tokens"); err == nil {
+		_ = tokenStore.LoadFromJSON(raw.Data)
+	}
+	srv.SetTokens(tokenStoreWrapper{store: tokenStore, settings: st.Settings()})
 
 	// OAuth app credentials are read through providers so they can be set at runtime via the UI
 	// (stored in the vault), seeded from the env vars on first run.
@@ -902,6 +907,37 @@ func (c heldControl) resolve(ctx context.Context, id string, approve bool) error
 	}
 	c.emitter.Submit(platform.HeldResolvedEvent{Channel: m.Channel, ID: m.ID, Approved: approve})
 	return nil
+}
+
+// tokenStoreWrapper wraps MemTokens with persistence: every mutation serialises the current set to
+// the settings repo so tokens survive daemon restarts without storing plaintext secrets.
+type tokenStoreWrapper struct {
+	store    *api.MemTokens
+	settings store.SettingsRepo
+}
+
+func (t tokenStoreWrapper) List() []api.TokenInfo { return t.store.List() }
+func (t tokenStoreWrapper) Verify(tok string) ([]api.Scope, bool) { return t.store.Verify(tok) }
+func (t tokenStoreWrapper) Mint(name string, scopes []api.Scope) (api.MintedToken, error) {
+	minted, err := t.store.Mint(name, scopes)
+	if err == nil {
+		t.persist()
+	}
+	return minted, err
+}
+func (t tokenStoreWrapper) Revoke(id string) error {
+	if err := t.store.Revoke(id); err != nil {
+		return err
+	}
+	t.persist()
+	return nil
+}
+func (t tokenStoreWrapper) persist() {
+	data, err := t.store.DumpJSON()
+	if err != nil {
+		return
+	}
+	_ = t.settings.Put(context.Background(), store.Setting{Scope: "api.tokens", Data: data})
 }
 
 // parseTarget turns a "platform:slug" target into a ChannelRef, rejecting an unknown platform so

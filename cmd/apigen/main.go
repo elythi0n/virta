@@ -40,6 +40,8 @@ func roots() []reflect.Type {
 		reflect.TypeOf(api.QueueState{}),
 		reflect.TypeOf(api.HeldMessage{}),
 		reflect.TypeOf(api.LoggedMessage{}),
+		reflect.TypeOf(api.TokenInfo{}),
+		reflect.TypeOf(api.MintedToken{}),
 	}
 }
 
@@ -111,20 +113,29 @@ func (g *generator) walk(t reflect.Type) {
 func (g *generator) structDecl(t reflect.Type) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "export interface %s {\n", t.Name())
+	g.structFields(&b, t)
+	b.WriteString("}\n")
+	return b.String()
+}
+
+func (g *generator) structFields(b *strings.Builder, t reflect.Type) {
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
 		if f.PkgPath != "" {
 			continue // unexported
+		}
+		// Inline anonymous (embedded) struct fields; JSON encoding flattens them.
+		if f.Anonymous {
+			g.structFields(b, deref(f.Type))
+			continue
 		}
 		jsonName, omit, skip := jsonField(f)
 		if skip {
 			continue
 		}
 		optional := omit || f.Type.Kind() == reflect.Ptr
-		fmt.Fprintf(&b, "  %s%s: %s;\n", jsonName, optChar(optional), g.tsType(f.Type))
+		fmt.Fprintf(b, "  %s%s: %s;\n", jsonName, optChar(optional), g.tsType(f.Type))
 	}
-	b.WriteString("}\n")
-	return b.String()
 }
 
 // tsType maps a Go type to its TS representation, enqueuing any named types it references.

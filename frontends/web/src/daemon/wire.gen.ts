@@ -159,6 +159,15 @@ export interface MessageRef {
 
 export type MessageType = string;
 
+export interface MintedToken {
+  id: string;
+  name: string;
+  scopes: string[];
+  created_at_ms: number;
+  last_used_at_ms?: number;
+  token: string;
+}
+
 export type Platform = string;
 
 export interface PlatformAuthConfig {
@@ -220,6 +229,14 @@ export interface StreamInfo {
   category?: string;
   thumbnail_url?: string;
   started_at?: string;
+}
+
+export interface TokenInfo {
+  id: string;
+  name: string;
+  scopes: string[];
+  created_at_ms: number;
+  last_used_at_ms?: number;
 }
 
 export interface UnifiedMessage {

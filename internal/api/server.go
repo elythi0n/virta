@@ -7,7 +7,6 @@ package api
 import (
 	"context"
 	"crypto/rand"
-	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -36,7 +35,8 @@ type Discovery struct {
 type Config struct {
 	Addr       string // listen address, e.g. "127.0.0.1:0" for an ephemeral loopback port
 	Token      string
-	RuntimeDir string // where the discovery file is written
+	RuntimeDir string   // where the discovery file is written
+	CORSOrigins []string // opt-in CORS allowlist for local web tools (empty = CORS off)
 	Logger     *slog.Logger
 }
 
@@ -55,7 +55,9 @@ type Server struct {
 	send        Send              // cross-posting controller, installed via SetSend
 	held        Held              // AutoMod hold-queue controller, installed via SetHeld
 	history     History           // message-log search/scrollback controller, installed via SetHistory
+	tokens      Tokens            // scoped API-token controller, installed via SetTokens
 	webui       http.Handler      // embedded web UI, installed via SetWebUI (nil = not served)
+	corsOrigins []string          // opt-in CORS allowlist for local web tools (empty = CORS off)
 
 	token         string
 	runtimeDir    string
@@ -93,44 +95,21 @@ func New(cfg Config) (*Server, error) {
 		token:         token,
 		runtimeDir:    cfg.RuntimeDir,
 		discoveryPath: filepath.Join(cfg.RuntimeDir, discoveryFileName),
+		corsOrigins:   cfg.CORSOrigins,
 		baseCtx:       ctx,
 		cancel:        cancel,
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /v1/health", s.handleHealth)
-	mux.Handle("GET /v1/diagnostics", s.auth(http.HandlerFunc(s.handleDiagnostics)))
-	mux.Handle("GET /v1/stream", s.auth(http.HandlerFunc(s.handleStream)))
-	mux.Handle("GET /v1/channels", s.auth(http.HandlerFunc(s.handleListChannels)))
-	mux.Handle("GET /v1/capabilities", s.auth(http.HandlerFunc(s.handleCapabilities)))
-	mux.Handle("GET /v1/streams", s.auth(http.HandlerFunc(s.handleListStreams)))
-	mux.Handle("GET /v1/emotes", s.auth(http.HandlerFunc(s.handleListEmotes)))
-	mux.Handle("GET /v1/filters", s.auth(http.HandlerFunc(s.handleListFilters)))
-	mux.Handle("PUT /v1/filters", s.auth(http.HandlerFunc(s.handleSetFilters)))
-	mux.Handle("GET /v1/connections/methods", s.auth(http.HandlerFunc(s.handleListMethods)))
-	mux.Handle("PUT /v1/connections/method", s.auth(http.HandlerFunc(s.handleSetMethod)))
-	mux.Handle("GET /v1/accounts", s.auth(http.HandlerFunc(s.handleListAccounts)))
-	mux.Handle("DELETE /v1/accounts/{id}", s.auth(http.HandlerFunc(s.handleDisconnectAccount)))
-	mux.Handle("GET /v1/auth/config", s.auth(http.HandlerFunc(s.handleGetAuthConfig)))
-	mux.Handle("PUT /v1/auth/config", s.auth(http.HandlerFunc(s.handleSetAuthConfig)))
-	mux.Handle("POST /v1/channels", s.auth(http.HandlerFunc(s.handleJoinChannel)))
-	mux.Handle("DELETE /v1/channels", s.auth(http.HandlerFunc(s.handleLeaveChannel)))
-	mux.Handle("POST /v1/send", s.auth(http.HandlerFunc(s.handleSend)))
-	mux.Handle("POST /v1/send/preview", s.auth(http.HandlerFunc(s.handleSendPreview)))
-	mux.Handle("POST /v1/send/queue", s.auth(http.HandlerFunc(s.handleSendQueue)))
-	mux.Handle("GET /v1/search", s.auth(http.HandlerFunc(s.handleSearch)))
-	mux.Handle("GET /v1/history", s.auth(http.HandlerFunc(s.handleHistory)))
-	mux.Handle("GET /v1/held", s.auth(http.HandlerFunc(s.handleListHeld)))
-	mux.Handle("POST /v1/held/{id}/approve", s.auth(http.HandlerFunc(s.handleApproveHeld)))
-	mux.Handle("POST /v1/held/{id}/deny", s.auth(http.HandlerFunc(s.handleDenyHeld)))
-	mux.Handle("GET /v1/profiles", s.auth(http.HandlerFunc(s.handleListProfiles)))
-	mux.Handle("POST /v1/profiles", s.auth(http.HandlerFunc(s.handleCreateProfile)))
-	mux.Handle("POST /v1/profiles/{id}/activate", s.auth(http.HandlerFunc(s.handleActivateProfile)))
-	mux.Handle("POST /v1/auth/twitch/device", s.auth(http.HandlerFunc(s.handleTwitchDeviceStart)))
-	mux.Handle("GET /v1/auth/twitch/device/{id}", s.auth(http.HandlerFunc(s.handleTwitchDeviceStatus)))
-	mux.Handle("POST /v1/auth/kick/start", s.auth(http.HandlerFunc(s.handleKickAuthStart)))
-	mux.Handle("GET /v1/auth/kick/{id}", s.auth(http.HandlerFunc(s.handleKickAuthStatus)))
-	mux.Handle("GET /dev", s.auth(http.HandlerFunc(s.handleDev)))
+	mux.HandleFunc("GET /v1/health", s.handleHealth) // public: liveness, no token
+	mux.HandleFunc("GET /v1/openapi.json", s.handleOpenAPI)
+	mux.HandleFunc("GET /v1/asyncapi.json", s.handleAsyncAPI)
+	mux.HandleFunc("GET /docs", s.handleDocs)
+	// Every authenticated endpoint is declared once in routes(), with the scope a non-root token
+	// needs; the same table drives the generated OpenAPI doc, so the contract can't drift.
+	for _, rt := range s.routes() {
+		mux.Handle(rt.method+" "+rt.path, s.scoped(rt.scope, http.HandlerFunc(rt.handler)))
+	}
 	// Bootstrap for a same-machine browser: hand a loopback client the token so a virtad-served
 	// SPA can authenticate. Empty addr means "this origin". Remote clients are refused; serving a
 	// UI beyond loopback needs the hosted auth layer (ADR-031, deferred).
@@ -139,7 +118,7 @@ func New(cfg Config) (*Server, error) {
 	mux.HandleFunc("/", s.handleWebUI)
 
 	s.httpSrv = &http.Server{
-		Handler:           mux,
+		Handler:           s.withCORS(mux),
 		ReadHeaderTimeout: 10 * time.Second,
 		BaseContext:       func(net.Listener) context.Context { return s.baseCtx },
 	}
@@ -259,25 +238,59 @@ func ReadDiscovery(runtimeDir string) (Discovery, error) {
 	return d, nil
 }
 
-// auth requires a valid bearer token, accepted either in the Authorization header or a
-// "token" query parameter (browsers can't set headers on a WebSocket handshake).
-func (s *Server) auth(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !s.tokenOK(r) {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
+// route is one authenticated endpoint: method, path pattern, the scope a non-root token needs, the
+// handler, and a one-line summary for the generated OpenAPI doc. One table = scope enforcement and
+// the published contract from a single source.
+type route struct {
+	method  string
+	path    string
+	scope   Scope
+	handler http.HandlerFunc
+	summary string
 }
 
-func (s *Server) tokenOK(r *http.Request) bool {
-	presented := r.URL.Query().Get("token")
-	if h := r.Header.Get("Authorization"); presented == "" && len(h) > 7 && h[:7] == "Bearer " {
-		presented = h[7:]
+func (s *Server) routes() []route {
+	return []route{
+		{"GET", "/v1/diagnostics", ScopeRead, s.handleDiagnostics, "Server diagnostics (clients, log ring)"},
+		{"GET", "/v1/stream", ScopeRead, s.handleStream, "Live event stream (WebSocket)"},
+		{"GET", "/v1/channels", ScopeRead, s.handleListChannels, "List joined channels"},
+		{"GET", "/v1/capabilities", ScopeRead, s.handleCapabilities, "Per-platform capabilities"},
+		{"GET", "/v1/streams", ScopeRead, s.handleListStreams, "Live stream metadata per channel"},
+		{"GET", "/v1/emotes", ScopeRead, s.handleListEmotes, "Resolved emote sets"},
+		{"GET", "/v1/filters", ScopeRead, s.handleListFilters, "Current filter ruleset"},
+		{"GET", "/v1/search", ScopeRead, s.handleSearch, "Full-text search over the message log"},
+		{"GET", "/v1/history", ScopeRead, s.handleHistory, "Per-channel scrollback"},
+		{"GET", "/v1/held", ScopeRead, s.handleListHeld, "AutoMod hold queue"},
+		{"GET", "/v1/accounts", ScopeRead, s.handleListAccounts, "Connected accounts"},
+		{"GET", "/v1/connections/methods", ScopeRead, s.handleListMethods, "Per-platform connection method"},
+		{"GET", "/v1/profiles", ScopeRead, s.handleListProfiles, "List workspace profiles"},
+		{"GET", "/v1/auth/config", ScopeRead, s.handleGetAuthConfig, "Which platforms have OAuth credentials configured"},
+
+		{"POST", "/v1/send", ScopeSend, s.handleSend, "Cross-post a message to channels"},
+		{"POST", "/v1/send/preview", ScopeSend, s.handleSendPreview, "Preview per-target send reachability"},
+		{"POST", "/v1/send/queue", ScopeSend, s.handleSendQueue, "Per-channel send-queue state"},
+
+		{"POST", "/v1/held/{id}/approve", ScopeModerate, s.handleApproveHeld, "Approve a held message"},
+		{"POST", "/v1/held/{id}/deny", ScopeModerate, s.handleDenyHeld, "Deny a held message"},
+
+		{"PUT", "/v1/filters", ScopeControl, s.handleSetFilters, "Replace the filter ruleset"},
+		{"PUT", "/v1/connections/method", ScopeControl, s.handleSetMethod, "Set a platform's connection method"},
+		{"POST", "/v1/channels", ScopeControl, s.handleJoinChannel, "Join a channel"},
+		{"DELETE", "/v1/channels", ScopeControl, s.handleLeaveChannel, "Leave a channel"},
+		{"POST", "/v1/profiles", ScopeControl, s.handleCreateProfile, "Create a workspace profile"},
+		{"POST", "/v1/profiles/{id}/activate", ScopeControl, s.handleActivateProfile, "Activate a profile"},
+
+		{"PUT", "/v1/auth/config", ScopeAdmin, s.handleSetAuthConfig, "Set OAuth app credentials"},
+		{"DELETE", "/v1/accounts/{id}", ScopeAdmin, s.handleDisconnectAccount, "Disconnect an account"},
+		{"POST", "/v1/auth/twitch/device", ScopeAdmin, s.handleTwitchDeviceStart, "Begin Twitch device sign-in"},
+		{"GET", "/v1/auth/twitch/device/{id}", ScopeAdmin, s.handleTwitchDeviceStatus, "Twitch device sign-in status"},
+		{"POST", "/v1/auth/kick/start", ScopeAdmin, s.handleKickAuthStart, "Begin Kick sign-in"},
+		{"GET", "/v1/auth/kick/{id}", ScopeAdmin, s.handleKickAuthStatus, "Kick sign-in status"},
+		{"GET", "/v1/tokens", ScopeAdmin, s.handleListTokens, "List API tokens"},
+		{"POST", "/v1/tokens", ScopeAdmin, s.handleMintToken, "Mint a scoped API token"},
+		{"DELETE", "/v1/tokens/{id}", ScopeAdmin, s.handleRevokeToken, "Revoke an API token"},
+		{"GET", "/dev", ScopeRead, s.handleDev, "Developer event probe page"},
 	}
-	// Constant-time compare to avoid leaking the token via timing.
-	return presented != "" && subtle.ConstantTimeCompare([]byte(presented), []byte(s.token)) == 1
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
@@ -289,6 +302,38 @@ func (s *Server) handleDiagnostics(w http.ResponseWriter, _ *http.Request) {
 		"clients":            s.hub.clientCount(),
 		"unforwarded_events": s.hub.unforwardedCount(),
 		"log":                s.ring.snapshot(),
+	})
+}
+
+// withCORS adds CORS headers for an opt-in allowlist of origins (local web tools), and answers
+// preflight requests. Off by default (empty allowlist): a same-origin SPA and the desktop webview
+// never need it, so cross-origin access is something the user deliberately enables (ADR-017). A
+// "*" entry allows any origin (credentials still ride the bearer token, not cookies).
+func (s *Server) withCORS(next http.Handler) http.Handler {
+	if len(s.corsOrigins) == 0 {
+		return next
+	}
+	allowAll := false
+	allowed := map[string]bool{}
+	for _, o := range s.corsOrigins {
+		if o == "*" {
+			allowAll = true
+		}
+		allowed[o] = true
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if origin != "" && (allowAll || allowed[origin]) {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Vary", "Origin")
+			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		}
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
 	})
 }
 
