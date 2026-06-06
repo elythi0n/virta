@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Virta
+GenericName=Live Chat Aggregator
+Comment=Unified live chat for Twitch, Kick, and X
+Exec=virta
+Icon=virta
+Categories=Network;Chat;
+Keywords=stream;twitch;kick;chat;
+StartupWMClass=virta

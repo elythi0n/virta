@@ -1,0 +1,24 @@
+app-id: com.virta.Virta
+runtime: org.gnome.Platform
+runtime-version: '47'
+sdk: org.gnome.Sdk
+command: virta
+finish-args:
+  - --share=network
+  - --socket=wayland
+  - --socket=x11
+  - --share=ipc
+  - --device=dri
+  - --filesystem=xdg-run/virta:create
+modules:
+  - name: virta
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 virta /app/bin/virta
+      - install -Dm755 virtad /app/bin/virtad
+      - install -Dm644 packaging/virta.desktop /app/share/applications/com.virta.Virta.desktop
+      - install -Dm644 packaging/com.virta.Virta.yaml /app/share/metainfo/com.virta.Virta.metainfo.xml
+    sources:
+      - type: archive
+        url: https://github.com/elythi0n/virta/releases/download/v1.0.0/virta-1.0.0-linux-x86_64.tar.gz
+        sha256: PLACEHOLDER

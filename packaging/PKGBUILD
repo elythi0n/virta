@@ -1,0 +1,30 @@
+# Arch Linux PKGBUILD (source build)
+# Place in a directory and run: makepkg -si
+pkgname=virta
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Unified live chat for Twitch, Kick, and X"
+arch=('x86_64' 'aarch64')
+url="https://virta.lol"
+license=('AGPL3')
+depends=('webkit2gtk-4.1')
+makedepends=('go>=1.26' 'npm' 'wails')
+source=("$pkgname-$pkgver.tar.gz::https://github.com/elythi0n/virta/archive/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+    cd "$pkgname-$pkgver/frontends"
+    npm ci --workspace web
+    npm run -s build --workspace web
+    cd ..
+    make app
+}
+
+package() {
+    cd "$pkgname-$pkgver"
+    install -Dm755 dist/virtad "$pkgdir/usr/bin/virtad"
+    install -Dm755 dist/virta-tui "$pkgdir/usr/bin/virta-tui"
+    install -Dm755 build/bin/virta "$pkgdir/usr/bin/virta"
+    install -Dm644 packaging/virta.desktop "$pkgdir/usr/share/applications/virta.desktop"
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

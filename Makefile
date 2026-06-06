@@ -127,6 +127,40 @@ app:
 	}
 	@echo "✓ desktop bundle: frontends/desktop/build/bin"
 
+## app-appimage: Linux AppImage. Requires appimagetool + the app target's prerequisites.
+app-appimage: app
+	@command -v appimagetool >/dev/null 2>&1 || { echo "appimagetool not found (https://appimage.github.io/appimagetool/)"; exit 1; }
+	@mkdir -p dist/AppDir/usr/bin dist/AppDir/usr/share/applications dist/AppDir/usr/share/icons/hicolor/512x512/apps
+	cp frontends/desktop/build/bin/virta dist/AppDir/usr/bin/virta
+	cp dist/virtad dist/AppDir/usr/bin/virtad
+	cp dist/virta-tui dist/AppDir/usr/bin/virta-tui
+	cp packaging/virta.desktop dist/AppDir/usr/share/applications/virta.desktop
+	cp frontends/ui-kit/src/assets/virta-logo-512.png dist/AppDir/usr/share/icons/hicolor/512x512/apps/virta.png
+	ARCH=x86_64 appimagetool dist/AppDir dist/Virta-$(shell git describe --tags --dirty).AppImage
+	@echo "✓ AppImage: dist/Virta-*.AppImage"
+
+## app-dmg: macOS disk image (universal). Requires xcode + create-dmg.
+app-dmg: app
+	@command -v create-dmg >/dev/null 2>&1 || { echo "create-dmg not found (brew install create-dmg)"; exit 1; }
+	create-dmg \
+		--volname "Virta" \
+		--background frontends/ui-kit/src/assets/virta-logo-512.png \
+		--window-pos 200 120 \
+		--window-size 600 400 \
+		--icon-size 100 \
+		--icon "Virta.app" 175 120 \
+		--hide-extension "Virta.app" \
+		--app-drop-link 425 120 \
+		"dist/Virta-$(shell git describe --tags --dirty).dmg" \
+		"frontends/desktop/build/bin/"
+	@echo "✓ DMG: dist/Virta-*.dmg"
+
+## app-nsis: Windows NSIS installer. Requires NSIS makensis + running on Windows or Wine.
+app-nsis: app
+	@command -v makensis >/dev/null 2>&1 || { echo "makensis not found (choco install nsis / apt install nsis)"; exit 1; }
+	makensis packaging/virta.nsi
+	@echo "✓ installer: dist/VirtaSetup-*.exe"
+
 ## fixtures: regenerate golden fixtures by re-running normalization with -update.
 fixtures:
 	go test ./... -run 'Golden|Replay' -update
