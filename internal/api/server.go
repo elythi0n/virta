@@ -54,6 +54,7 @@ type Server struct {
 	authCtl     Auth              // account-auth controller, installed via SetAuth
 	send        Send              // cross-posting controller, installed via SetSend
 	held        Held              // AutoMod hold-queue controller, installed via SetHeld
+	history     History           // message-log search/scrollback controller, installed via SetHistory
 	webui       http.Handler      // embedded web UI, installed via SetWebUI (nil = not served)
 
 	token         string
@@ -117,6 +118,8 @@ func New(cfg Config) (*Server, error) {
 	mux.Handle("POST /v1/send", s.auth(http.HandlerFunc(s.handleSend)))
 	mux.Handle("POST /v1/send/preview", s.auth(http.HandlerFunc(s.handleSendPreview)))
 	mux.Handle("POST /v1/send/queue", s.auth(http.HandlerFunc(s.handleSendQueue)))
+	mux.Handle("GET /v1/search", s.auth(http.HandlerFunc(s.handleSearch)))
+	mux.Handle("GET /v1/history", s.auth(http.HandlerFunc(s.handleHistory)))
 	mux.Handle("GET /v1/held", s.auth(http.HandlerFunc(s.handleListHeld)))
 	mux.Handle("POST /v1/held/{id}/approve", s.auth(http.HandlerFunc(s.handleApproveHeld)))
 	mux.Handle("POST /v1/held/{id}/deny", s.auth(http.HandlerFunc(s.handleDenyHeld)))

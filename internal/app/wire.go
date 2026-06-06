@@ -7,6 +7,7 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -308,6 +309,7 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	}, gov, sendHelpText)
 	srv.SetSend(sendControl{sender: sender})
 	srv.SetHeld(heldControl{queue: heldQueue, sender: sender, emitter: runner})
+	srv.SetHistory(historyControl{store: st})
 
 	// OAuth app credentials are read through providers so they can be set at runtime via the UI
 	// (stored in the vault), seeded from the env vars on first run.
@@ -770,6 +772,91 @@ func (c heldControl) List() []api.HeldMessage {
 
 func (c heldControl) Approve(ctx context.Context, id string) error { return c.resolve(ctx, id, true) }
 func (c heldControl) Deny(ctx context.Context, id string) error    { return c.resolve(ctx, id, false) }
+
+// historyControl adapts the store's message log to the API's search/scrollback controller. It
+// resolves "platform:slug" filters to channel ids and maps stored rows back to "platform:slug" for
+// display, so the API stays in channel-key terms while the store stays in ids.
+type historyControl struct {
+	store store.Store
+}
+
+func (c historyControl) Search(ctx context.Context, p api.SearchParams) ([]api.LoggedMessage, error) {
+	q := store.SearchQuery{Text: p.Text, Author: p.Author, Before: p.Before, Limit: p.Limit}
+	if p.Channel != "" {
+		id, ok, err := c.channelID(ctx, p.Channel)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return []api.LoggedMessage{}, nil // unknown channel: nothing logged for it
+		}
+		q.ChannelID = id
+	}
+	msgs, err := c.store.Messages().Search(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	return c.toLogged(ctx, msgs)
+}
+
+func (c historyControl) History(ctx context.Context, p api.HistoryParams) ([]api.LoggedMessage, error) {
+	id, ok, err := c.channelID(ctx, p.Channel)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return []api.LoggedMessage{}, nil
+	}
+	msgs, err := c.store.Messages().History(ctx, store.HistoryQuery{ChannelID: id, Before: p.Before, Limit: p.Limit})
+	if err != nil {
+		return nil, err
+	}
+	return c.toLogged(ctx, msgs)
+}
+
+// channelID resolves a "platform:slug" key to the channel's stored id; ok is false when no such
+// channel has been seen (so callers return an empty page rather than an error).
+func (c historyControl) channelID(ctx context.Context, key string) (string, bool, error) {
+	ref, err := parseTarget(key)
+	if err != nil {
+		return "", false, err
+	}
+	ch, err := c.store.Channels().GetBySlug(ctx, ref.Platform, ref.Slug)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return "", false, nil
+		}
+		return "", false, err
+	}
+	return ch.ID, true, nil
+}
+
+// toLogged maps stored rows to the wire form, translating each row's channel id back to its
+// "platform:slug" key via a one-shot lookup of the known channels.
+func (c historyControl) toLogged(ctx context.Context, msgs []store.StoredMessage) ([]api.LoggedMessage, error) {
+	if len(msgs) == 0 {
+		return []api.LoggedMessage{}, nil
+	}
+	keyByID := map[string]string{}
+	if chans, err := c.store.Channels().List(ctx); err == nil {
+		for _, ch := range chans {
+			keyByID[ch.ID] = platform.ChannelRef{Platform: ch.Platform, Slug: ch.Slug}.Key()
+		}
+	}
+	out := make([]api.LoggedMessage, 0, len(msgs))
+	for _, m := range msgs {
+		out = append(out, api.LoggedMessage{
+			ID:       m.ID,
+			Channel:  keyByID[m.ChannelID],
+			Platform: string(m.Platform),
+			Author:   m.AuthorName,
+			Body:     m.Body,
+			SentAtMs: m.SentAt.UnixMilli(),
+			Deleted:  m.Deleted,
+		})
+	}
+	return out, nil
+}
 
 func (c heldControl) resolve(ctx context.Context, id string, approve bool) error {
 	m, ok := c.queue.Get(id)

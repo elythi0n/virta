@@ -39,6 +39,7 @@ func roots() []reflect.Type {
 		reflect.TypeOf(api.SendResult{}),
 		reflect.TypeOf(api.QueueState{}),
 		reflect.TypeOf(api.HeldMessage{}),
+		reflect.TypeOf(api.LoggedMessage{}),
 	}
 }
 

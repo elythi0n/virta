@@ -141,6 +141,16 @@ export interface HeldMessage {
   held_at_ms: number;
 }
 
+export interface LoggedMessage {
+  id: string;
+  channel: string;
+  platform: string;
+  author: string;
+  body: string;
+  sent_at_ms: number;
+  deleted?: boolean;
+}
+
 export interface MessageRef {
   platform_message_id: string;
   author_login: string;
