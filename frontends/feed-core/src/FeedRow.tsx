@@ -42,6 +42,20 @@ function renderSegment(seg: Segment, i: number) {
   }
 }
 
+// A concise spoken summary for a row, so a screen reader announces "forsen: hello" rather than the
+// visually-fragmented glyph/timestamp/badge spans. Events lead with their kind; deletions and
+// calm-mode combos are noted in words.
+function rowLabel(m: FeedMessage): string {
+  const type = m.type ?? 'chat';
+  const where = m.source ? `${m.source.label}, ` : '';
+  if (isEventType(type)) {
+    return `${EVENT_LABEL[type] ?? 'Event'}: ${where}${m.author ? m.author + ' ' : ''}${m.body}`.trim();
+  }
+  const deleted = m.deleted ? ' (deleted)' : '';
+  const combo = m.combo && m.combo > 1 ? ` (repeated ${m.combo} times)` : '';
+  return `${where}${m.author}: ${m.body}${deleted}${combo}`;
+}
+
 function SourceTag({ message }: { message: FeedMessage }) {
   if (!message.source) return null;
   return (
@@ -76,7 +90,7 @@ function FeedRow({ message, background, showSource, showTimestamps = true, showD
     const big = isBigEvent(message);
     const count = eventCountLabel(message);
     return (
-      <div className={`${styles.event} ${styles[`ev-${type}`]} ${styles[density]} ${big ? styles.big : ''}`}>
+      <div className={`${styles.event} ${styles[`ev-${type}`]} ${styles[density]} ${big ? styles.big : ''}`} role="article" aria-label={rowLabel(message)}>
         <PlatformGlyph platform={message.platform} className={styles.glyph} />
         {showTimestamps && <span className={styles.ts}>{message.ts}</span>}
         {showSource && <SourceTag message={message} />}
@@ -96,6 +110,8 @@ function FeedRow({ message, background, showSource, showTimestamps = true, showD
   return (
     <div
       className={`${styles.row} ${styles[message.platform]} ${styles[density]} ${message.highlighted ? styles.highlight : ''} ${message.deleted ? styles.deleted : ''}`}
+      role="article"
+      aria-label={rowLabel(message)}
     >
       {message.replyTo && (
         <span className={styles.reply} title={`${message.replyTo.author}: ${message.replyTo.snippet}`}>
@@ -131,7 +147,11 @@ function FeedRow({ message, background, showSource, showTimestamps = true, showD
           message.segments.map(renderSegment)
         )}
       </span>
-      {message.combo && message.combo > 1 && <span className={styles.combo}>×{message.combo}</span>}
+      {message.combo && message.combo > 1 && (
+        <span className={styles.combo} aria-hidden>
+          ×{message.combo}
+        </span>
+      )}
       {actions && <span className={styles.rowActions}>{actions}</span>}
     </div>
   );
