@@ -98,3 +98,34 @@
 .fieldControl {
   flex: none;
 }
+
+.navEmpty {
+  padding: var(--virta-space-8);
+}
+
+.shortcutList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 480px;
+}
+.shortcutRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--virta-space-16);
+  padding: var(--virta-space-8) 0;
+  border-bottom: 1px solid var(--virta-line);
+}
+.kbd {
+  padding: 1px var(--virta-space-8);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-sm);
+  background: var(--virta-bg-0);
+  color: var(--virta-text-2);
+  font-family: var(--virta-font-mono);
+  font-size: var(--virta-type-meta-size);
+}

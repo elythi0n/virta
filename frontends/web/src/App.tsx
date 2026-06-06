@@ -8,6 +8,7 @@ import ShortcutHelp from './shell/ShortcutHelp';
 import { CommandPalette, TooltipProvider, matchesShortcut, type CommandAction } from '@virta/ui-kit';
 import { PANEL_CATALOG, type ViewId } from './shell/views';
 import { loadLayout, saveLayoutDebounced } from './shell/layout';
+import { ActionsProvider } from './actions';
 import { ThemeProvider } from './theme';
 
 export default function App() {
@@ -130,8 +131,9 @@ export default function App() {
 
   return (
     <ThemeProvider value={{ theme, setTheme }}>
-      <TooltipProvider>
-        <div className="app">
+      <ActionsProvider value={actions}>
+        <TooltipProvider>
+          <div className="app">
           <Titlebar onOpenPalette={() => setPaletteOpen(true)} />
           <div className="shell">
             <ActivityBar activeView={activeView} sidebarOpen={sidebarOpen} onSelect={selectView} onOpenSettings={openSettings} />
@@ -141,9 +143,10 @@ export default function App() {
             </div>
           </div>
         </div>
-        <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} actions={actions} placeholder="Search commands…" />
-        <ShortcutHelp open={helpOpen} onOpenChange={setHelpOpen} actions={actions} />
-      </TooltipProvider>
+          <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} actions={actions} placeholder="Search commands…" />
+          <ShortcutHelp open={helpOpen} onOpenChange={setHelpOpen} actions={actions} />
+        </TooltipProvider>
+      </ActionsProvider>
     </ThemeProvider>
   );
 }
