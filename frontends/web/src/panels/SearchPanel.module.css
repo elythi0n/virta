@@ -1,0 +1,116 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--virta-bg-0);
+}
+
+.controls {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-8);
+  padding: var(--virta-space-12);
+  border-bottom: 1px solid var(--virta-line);
+}
+.queryRow {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  color: var(--virta-text-2);
+}
+.queryRow > :global(input) {
+  flex: 1 1 auto;
+}
+.filters {
+  display: flex;
+  gap: var(--virta-space-8);
+}
+.filters > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.results {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+.note {
+  margin: 0;
+  padding: var(--virta-space-16) var(--virta-space-12);
+  text-align: center;
+}
+.count {
+  margin: 0;
+  padding: var(--virta-space-8) var(--virta-space-12);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-2);
+  width: 100%;
+  padding: var(--virta-space-8) var(--virta-space-12);
+  border: 0;
+  border-bottom: 1px solid var(--virta-line);
+  background: none;
+  color: var(--virta-text-0);
+  font-family: var(--virta-font-ui);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--virta-motion-fast) ease;
+}
+.row:hover {
+  background: var(--virta-bg-1);
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  min-width: 0;
+  font-size: var(--virta-type-meta-size);
+}
+.glyph {
+  flex: none;
+  width: 13px;
+  height: 13px;
+}
+.channel {
+  flex: none;
+  color: var(--virta-text-2);
+}
+.author {
+  flex: none;
+  color: var(--virta-text-1);
+  font-weight: 600;
+}
+.time {
+  margin-left: auto;
+  flex: none;
+  color: var(--virta-text-2);
+  font-family: var(--virta-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.body {
+  color: var(--virta-text-0);
+  font-size: var(--virta-type-ui-size);
+  line-height: var(--virta-type-ui-line);
+  overflow-wrap: anywhere;
+}
+.deleted {
+  color: var(--virta-text-2);
+  text-decoration: line-through;
+}
+.mark {
+  background: var(--virta-highlight-bg);
+  color: var(--virta-text-0);
+  border-radius: 2px;
+}

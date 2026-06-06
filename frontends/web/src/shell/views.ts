@@ -32,5 +32,6 @@ export const PANEL_CATALOG: PanelDef[] = [
   { kind: 'x-chat', title: 'X chat', icon: 'x' },
   { kind: 'stream', title: 'Stream', icon: 'stream' },
   { kind: 'mods', title: 'Mod queue', icon: 'mods' },
+  { kind: 'search', title: 'Search', icon: 'search' },
   { kind: 'stats', title: 'Stats', icon: 'stats' },
 ];

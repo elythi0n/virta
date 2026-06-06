@@ -3,6 +3,7 @@ import FeedPanel from './FeedPanel';
 import FiltersPanel from './FiltersPanel';
 import HeldQueuePanel from './HeldQueuePanel';
 import MentionInbox from './MentionInbox';
+import SearchPanel from './SearchPanel';
 import StreamPane from './StreamPane';
 import styles from './Panel.module.css';
 
@@ -26,6 +27,9 @@ export default function Panel({ kind, channels, panelId }: { kind: string; chann
   }
   if (kind === 'mods') {
     return <HeldQueuePanel />;
+  }
+  if (kind === 'search') {
+    return <SearchPanel />;
   }
   return (
     <div className={styles.placeholder}>

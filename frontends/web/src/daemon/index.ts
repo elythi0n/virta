@@ -24,3 +24,5 @@ export type { ProfilesStatus } from './useProfiles';
 export { previewSend, sendMessage } from './send';
 export { listHeld, approveHeld, denyHeld, useHeld } from './held';
 export type { HeldQueue } from './held';
+export { searchMessages, getHistory } from './search';
+export type { SearchParams } from './search';
