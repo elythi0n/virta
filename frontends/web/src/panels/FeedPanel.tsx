@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Feed, parseSegments, PlatformGlyph, useFeedBuffer, type Density, type FeedMessage, type Platform } from '@virta/feed-core';
 import { Button, Dialog, Input, Segmented, Text, Tooltip } from '@virta/ui-kit';
 import Icon from '../Icon';
@@ -6,8 +6,24 @@ import { filterFeed, QUICK_FILTERS, type QuickFilter } from './quickFilter';
 import { applyCalm } from './calmMode';
 import ModRowActions, { type ModAction } from './ModRowActions';
 import ChatSettingsControl from './ChatSettingsControl';
-import { sendMessage, useCapabilities, useChannels, useDaemonStream } from '../daemon';
-import type { ChatSettings } from '../daemon/wire.gen';
+import { getHistory, sendMessage, useCapabilities, useChannels, useDaemonStream } from '../daemon';
+import type { ChatSettings, LoggedMessage } from '../daemon/wire.gen';
+
+// Convert a logged/scrollback row into a feed message for backfill. The stored body is plain text
+// (emotes flattened to names), so segments are re-parsed for mentions/links rather than emote art.
+function loggedToFeed(m: LoggedMessage): FeedMessage {
+  const ts = m.sent_at_ms > 0 ? new Date(m.sent_at_ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+  return {
+    id: m.id,
+    ts,
+    platform: m.platform as Platform,
+    author: m.author,
+    channel: m.channel,
+    deleted: m.deleted,
+    body: m.body,
+    segments: parseSegments(m.body),
+  };
+}
 import { useDensity } from '../density';
 import { useFeedDisplay } from '../feedDisplay';
 import { useTheme } from '../theme';
@@ -182,6 +198,25 @@ export default function FeedPanel({ channels, panelId }: Props) {
   const [chatSettings, setChatSettings] = useState<Record<string, ChatSettings>>({});
   const onChatSettings = useCallback((ch: string, s: ChatSettings) => setChatSettings((prev) => ({ ...prev, [ch]: s })), []);
   const status = useDaemonStream({ onMessage: push, onDeleted: markDeleted, onClear: clearChannel, onChatSettings }, channels);
+
+  // Backfill recent scrollback when a channel-scoped feed opens onto an empty buffer, so it shows
+  // context instead of a blank pane. Only when still empty at resolve (a busy channel fills live,
+  // and the buffer appends, so seeding non-empty would mis-order older lines below newer ones).
+  const emptyRef = useRef(true);
+  emptyRef.current = messages.length === 0;
+  const channelsKey = channels ? channels.join(',') : '';
+  useEffect(() => {
+    if (!channels || channels.length === 0 || status !== 'connected') return;
+    let cancelled = false;
+    Promise.all(channels.map((c) => getHistory(c, '', 50).catch(() => [] as LoggedMessage[]))).then((lists) => {
+      if (cancelled || !emptyRef.current) return;
+      const merged = lists.flat().sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)); // oldest→newest
+      if (merged.length > 0) push(merged.map(loggedToFeed));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [channelsKey, status, push]);
 
   // Per-tab text size: the panel's saved choice, else the global default.
   const [density, setDensity] = useState<Density>(() => loadDensity(panelId) ?? defaultDensity);
