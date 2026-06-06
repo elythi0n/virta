@@ -44,13 +44,20 @@ function ThemeRow({ theme, current, onApply, onExport, onDelete }: {
 export default function ThemeEditor({ currentTheme, onApply }: Props) {
   const [themes, setThemes] = useState<ThemeInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState('');
   const [pasteInput, setPasteInput] = useState('');
   const [pasteError, setPasteError] = useState('');
   const [dragging, setDragging] = useState(false);
 
   const reload = useCallback(() => {
     setLoading(true);
-    listThemes().then(t => { setThemes(t); setLoading(false); }).catch(() => setLoading(false));
+    setLoadErr('');
+    listThemes()
+      .then(t => { setThemes(t); setLoading(false); })
+      .catch((e: unknown) => {
+        setLoadErr(e instanceof Error ? e.message : 'Could not load themes');
+        setLoading(false);
+      });
   }, []);
   useEffect(() => reload(), [reload]);
 
@@ -139,6 +146,11 @@ export default function ThemeEditor({ currentTheme, onApply }: Props) {
         </div>
       )}
 
+      {loadErr && (
+        <Text variant="meta" tone="subtle" as="p" className={styles.error}>
+          {loadErr}
+        </Text>
+      )}
       {loading ? (
         <Text variant="meta" tone="subtle">Loading themes…</Text>
       ) : (

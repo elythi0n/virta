@@ -80,7 +80,7 @@ export default function WebhooksPanel() {
               <div key={ep.id} className={styles.endpoint}>
                 <div className={styles.endMeta}>
                   <span className={styles.endName}>{ep.name}</span>
-                  <span className={styles.endURL}>{ep.url}</span>
+                  <span className={styles.endURL} title={ep.url}>{ep.url}</span>
                   <span className={styles.endEvents}>{ep.events.join(', ')}</span>
                 </div>
                 <div className={styles.endStatus}>
@@ -139,7 +139,7 @@ export default function WebhooksPanel() {
         <div className={styles.logModal}>
           <div className={styles.logHead}>
             <Text variant="ui" as="h4">Delivery log — {log.id}</Text>
-            <button type="button" className={styles.closeBtn} onClick={() => setLog(null)}>×</button>
+            <button type="button" className={styles.closeBtn} aria-label="Close delivery log" onClick={() => setLog(null)}>×</button>
           </div>
           {log.attempts.length === 0 ? (
             <Text variant="meta" tone="subtle">No attempts recorded yet.</Text>
@@ -147,8 +147,8 @@ export default function WebhooksPanel() {
             <table className={styles.logTable}>
               <thead><tr><th>Time</th><th>Status</th><th>Latency</th><th>Error</th></tr></thead>
               <tbody>
-                {[...log.attempts].reverse().map((a, i) => (
-                  <tr key={i} className={(a.status_code ?? 0) >= 200 && (a.status_code ?? 0) < 300 ? styles.rowOk : styles.rowFail}>
+                {[...log.attempts].reverse().map((a) => (
+                  <tr key={`${a.at_ms}-${a.latency_ms}`} className={(a.status_code ?? 0) >= 200 && (a.status_code ?? 0) < 300 ? styles.rowOk : styles.rowFail}>
                     <td>{relTime(a.at_ms)}</td>
                     <td>{a.status_code || '—'}</td>
                     <td>{a.latency_ms}ms</td>

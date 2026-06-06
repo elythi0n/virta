@@ -88,11 +88,19 @@ export default function FiltersPanel() {
       setRules(stored.map(toEdit));
       setMessage('Saved.');
     } catch {
-      setMessage('Couldn’t save — check your regexes and try again.');
+      setMessage("Couldn't save; check your regexes and try again.");
     } finally {
       setSaving(false);
     }
   };
+
+  if (status === 'loading') {
+    return (
+      <div className={styles.empty}>
+        <Text variant="meta" tone="subtle">Loading filters…</Text>
+      </div>
+    );
+  }
 
   if (status === 'offline') {
     return (
@@ -117,10 +125,10 @@ export default function FiltersPanel() {
             </Text>
           )}
           <Button variant="subtle" size="sm" onClick={() => setRules((rs) => [...rs, blank()])}>
-            Add rule
+            + Add rule
           </Button>
           <Button variant="solid" size="sm" disabled={saving} onClick={() => void save()}>
-            Save
+            {saving ? 'Saving…' : 'Save'}
           </Button>
         </div>
       </div>

@@ -234,9 +234,9 @@ export default function Composer({ targets, chatters = [], replyTo = null, onCan
               }
             >
               <div className={styles.signinMenu} role="menu" aria-label="Quick replies">
-                {quickReplies.map((q, i) => (
+                {quickReplies.map((q) => (
                   <button
-                    key={i}
+                    key={q}
                     type="button"
                     className={styles.signinItem}
                     onClick={() => {

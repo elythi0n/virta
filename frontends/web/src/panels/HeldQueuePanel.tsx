@@ -20,7 +20,8 @@ export default function HeldQueuePanel() {
           Nothing held for review.
         </Text>
         <Text variant="meta" tone="subtle">
-          Messages AutoMod holds will appear here to approve or deny.
+          When Twitch AutoMod catches a message, it appears here for you to approve (post it) or
+          deny (drop it). Enable AutoMod in your Twitch Creator Dashboard → Moderation settings.
         </Text>
       </div>
     );

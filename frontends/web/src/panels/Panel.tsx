@@ -10,7 +10,7 @@ export default function Panel({ kind, channels, panelId }: { kind: string; chann
   return (
     <div className={styles.placeholder}>
       <span className={styles.label}>{kind}</span>
-      <span className={styles.hint}>panel content lands in a later step</span>
+      <span className={styles.hint}>This panel kind is not registered. It may be from a plugin that is no longer installed.</span>
     </div>
   );
 }

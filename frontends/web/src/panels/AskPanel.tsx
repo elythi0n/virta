@@ -39,8 +39,11 @@ export default function AskPanel() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
+  const runningRef = useRef(running);
+  runningRef.current = running;
+
   const handleAsk = useCallback(() => {
-    if (!question.trim() || running) return;
+    if (!question.trim() || runningRef.current) return;
     const q = question.trim();
     setQuestion('');
     setRunning(true);
@@ -86,7 +89,7 @@ export default function AskPanel() {
       setTurns(prev => [...prev, { kind: 'error', text: msg }]);
       setRunning(false);
     });
-  }, [question, model, running, scrollBottom]);
+  }, [question, model, scrollBottom]);
 
   if (config && !config.enabled) {
     return (
@@ -94,8 +97,10 @@ export default function AskPanel() {
         <Icon name="chat" size={24} />
         <Text variant="ui" as="h3" className={styles.gateTitle}>Ask pane is disabled</Text>
         <Text variant="meta" tone="subtle">
-          Enable AI features in Settings → Intelligence to ask questions about your chat history.
-          All AI features are opt-in and nothing leaves your machine until you enable and configure a provider.
+          To use Ask, you need two things: message logging enabled (so there's history to query) and
+          an AI provider configured. Head to{' '}
+          <b>Settings → Intelligence</b> to connect a provider — Ollama works offline with no API key.
+          Nothing leaves your machine until you explicitly enable and configure a provider.
         </Text>
       </div>
     );

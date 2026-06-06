@@ -54,18 +54,20 @@ export default function PluginsPanel() {
             No plugins installed yet.
           </Text>
           <Text variant="meta" tone="subtle">
-            Installing plugins from a URL arrives in a later release; the building blocks ship now.
+            Installing plugins from a URL is planned for a future release. The plugin infrastructure
+            (contribution registry, event bus, schema-driven settings) ships in this version.
           </Text>
         </div>
       </section>
 
       <section className={styles.section}>
         <Text variant="meta" tone="subtle" as="h3" className={styles.sectionTitle}>
-          Settings preview
+          Settings preview <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>— demo only</span>
         </Text>
         <Text variant="meta" tone="subtle" as="p" className={styles.note}>
-          A plugin declares a configuration schema and Virta renders the form — no plugin writes its
-          own settings UI. Here's how the upcoming Markets plugin's config will look:
+          A plugin declares a JSON Schema; Virta renders the settings form automatically — no plugin
+          writes its own UI. The example below shows how the upcoming Markets plugin&rsquo;s config
+          would render. This is a demo — the Markets plugin is not yet installed.
         </Text>
         <div className={styles.previewCard}>
           <SchemaForm schema={MARKETS_SCHEMA} value={preview} onChange={setPreview} />

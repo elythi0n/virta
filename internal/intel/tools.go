@@ -266,6 +266,10 @@ func (tb *ToolBelt) ListChannels(ctx context.Context) ([]ChannelInfo, error) {
 // Dispatch routes a tool call by name with JSON-encoded arguments. This is the unified entry
 // point used by both the MCP server and the agent loop, so the call logic lives in one place.
 func (tb *ToolBelt) Dispatch(ctx context.Context, name string, rawArgs json.RawMessage) (any, error) {
+	// Treat nil/empty arguments as an empty JSON object so callers that omit {} don't error.
+	if len(rawArgs) == 0 || string(rawArgs) == "null" {
+		rawArgs = json.RawMessage("{}")
+	}
 	switch name {
 	case "search_messages":
 		var a SearchArgs

@@ -33,7 +33,7 @@ function Placeholder({ title }: { title: string }) {
   return (
     <div className={styles.placeholder}>
       <span className={styles.label}>{title}</span>
-      <span className={styles.hint}>panel content lands in a later step</span>
+      <span className={styles.hint}>Coming in a future release.</span>
     </div>
   );
 }

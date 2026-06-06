@@ -281,7 +281,12 @@ function Integrations() {
 
   const reload = () => {
     setLoading(true);
-    listTokens().then(t => { setTokens(t ?? []); setLoading(false); }).catch(() => setLoading(false));
+    listTokens()
+      .then(t => { setTokens(t ?? []); setLoading(false); })
+      .catch((e: unknown) => {
+        setError(e instanceof Error ? e.message : 'Could not load tokens');
+        setLoading(false);
+      });
   };
   useEffect(() => { reload(); }, []);
 
@@ -392,22 +397,44 @@ function Integrations() {
   );
 }
 
+type IntelCfgState = { enabled?: boolean; selected_model?: string; daily_limit_usd?: number; provider_keys?: Record<string, string> };
+
 function IntelligenceSettings() {
-  const [cfg, setCfg] = useState<{ enabled?: boolean; selected_model?: string; daily_limit_usd?: number; provider_keys?: Record<string, string> } | null>(null);
+  const [cfg, setCfg] = useState<IntelCfgState | null>(null);
   const [models, setModels] = useState<{ provider_id: string; display_name: string; models: { id: string; display_name: string; supports_tools: boolean }[] }[]>([]);
   const [saving, setSaving] = useState(false);
+  const [saveErr, setSaveErr] = useState('');
+  const [unavailable, setUnavailable] = useState(false);
 
   useEffect(() => {
-    getIntelConfig().then(c => setCfg(c as never)).catch(() => {});
+    getIntelConfig()
+      .then(c => setCfg(c as never))
+      .catch(() => setUnavailable(true));
     listModels().then(setModels as never).catch(() => {});
   }, []);
 
-  const save = async (patch: typeof cfg) => {
+  // Merge patch over current state using a functional updater so we always write the latest cfg.
+  const save = async (patch: Partial<IntelCfgState>) => {
     setSaving(true);
-    await setIntelConfig(patch as never).catch(() => {});
-    setSaving(false);
-    setCfg(c => ({ ...c, ...patch }));
+    setSaveErr('');
+    let next: IntelCfgState = {};
+    setCfg(c => { next = { ...c, ...patch }; return next; });
+    try {
+      await setIntelConfig(next as never);
+    } catch (e: unknown) {
+      setSaveErr(e instanceof Error ? e.message : 'Save failed');
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (unavailable) {
+    return (
+      <Placeholder>
+        Intelligence features are not available — is logging enabled and virtad running?
+      </Placeholder>
+    );
+  }
 
   return (
     <>
@@ -419,7 +446,7 @@ function IntelligenceSettings() {
         label="Enable AI features"
         hint="Master kill switch — off means zero external AI calls regardless of other settings."
         value={!!(cfg?.enabled)}
-        onChange={v => void save({ ...cfg, enabled: v })}
+        onChange={v => void save({ enabled: v })}
       />
       {cfg?.enabled && (
         <>
@@ -430,7 +457,7 @@ function IntelligenceSettings() {
               placeholder="sk-ant-… (leave blank to keep current)"
               onBlur={(e) => {
                 const v = e.currentTarget.value.trim();
-                if (v) void save({ ...cfg, provider_keys: { ...cfg.provider_keys, anthropic: v } });
+                if (v) void save({ provider_keys: { ...cfg?.provider_keys, anthropic: v } });
               }}
             />
           </Field>
@@ -439,7 +466,7 @@ function IntelligenceSettings() {
               <Select
                 ariaLabel="Default model"
                 value={cfg?.selected_model ?? ''}
-                onValueChange={v => void save({ ...cfg, selected_model: v })}
+                onValueChange={v => void save({ selected_model: v })}
                 options={models.flatMap(g => g.models.map(m => ({ value: m.id, label: `${g.display_name} — ${m.display_name}` })))}
               />
             </Field>
@@ -449,12 +476,13 @@ function IntelligenceSettings() {
               aria-label="Daily budget"
               type="number"
               defaultValue={String(cfg?.daily_limit_usd ?? 0)}
-              onBlur={(e) => void save({ ...cfg, daily_limit_usd: Number(e.currentTarget.value) })}
+              onBlur={(e) => void save({ daily_limit_usd: Number(e.currentTarget.value) })}
             />
           </Field>
         </>
       )}
       {saving && <Text variant="meta" tone="subtle">Saving…</Text>}
+      {saveErr && <Text variant="meta" tone="subtle" as="p" className={styles.errorNote}>{saveErr}</Text>}
     </>
   );
 }
@@ -517,7 +545,7 @@ function CategoryBody({ id }: { id: CategoryId }) {
         </Placeholder>
       );
     default:
-      return <Placeholder>{CATEGORIES.find((c) => c.id === id)?.label} settings land in a later step.</Placeholder>;
+      return <Placeholder>{CATEGORIES.find((c) => c.id === id)?.label} settings are coming soon.</Placeholder>;
   }
 }
 
