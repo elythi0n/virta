@@ -6,9 +6,11 @@
   "scripts": {
     "lint:tokens": "node scripts/token-lint.mjs",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "bench:feed": "node bench/feed-bench.mjs"
   },
   "devDependencies": {
+    "playwright-core": "^1.60.0",
     "vitest": "^4.1.8"
   }
 }
