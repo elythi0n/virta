@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -240,5 +241,67 @@ func TestModerate_UnsupportedActions(t *testing.T) {
 		if !errors.Is(err, platform.ErrUnsupported) {
 			t.Errorf("%s = %v, want ErrUnsupported", typ, err)
 		}
+	}
+}
+
+// TestAdapter_AuthenticatedSendAndModerate covers the Kick adapter's authenticated path:
+// Authenticate flips capabilities and routes Send/Moderate through the official API with the
+// resolved broadcaster user id; Deauthenticate reverts to read-only.
+func TestAdapter_AuthenticatedSendAndModerate(t *testing.T) {
+	var sendBody map[string]any
+	var sawBan bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/chat":
+			_ = json.NewDecoder(r.Body).Decode(&sendBody)
+			_, _ = w.Write([]byte(`{"data":{"is_sent":true,"message_id":"m1"}}`))
+		case strings.HasSuffix(r.URL.Path, "/moderation/bans"):
+			sawBan = true
+			_, _ = w.Write([]byte(`{}`))
+		default:
+			_, _ = w.Write([]byte(`{}`))
+		}
+	}))
+	defer srv.Close()
+	api := NewAPIClient(srv.Client())
+	api.SetBaseURL(srv.URL)
+
+	a := New(Options{Dial: dialFake(newFakeTransport())})
+	t.Cleanup(func() { _ = a.Close() })
+
+	if a.Capabilities().Send {
+		t.Fatal("anonymous adapter should not advertise Send")
+	}
+	a.Authenticate(
+		func(context.Context) (string, error) { return "tok", nil },
+		api,
+		func(_ context.Context, slug string) (string, error) {
+			if slug != "xqc" {
+				t.Errorf("resolve slug = %q, want xqc (lower-cased)", slug)
+			}
+			return "777", nil
+		})
+	if c := a.Capabilities(); !c.Send || !c.Moderation {
+		t.Fatalf("authenticated capabilities = %+v, want Send + Moderation", c)
+	}
+
+	ch := platform.ChannelRef{Platform: platform.Kick, Slug: "xQc"}
+	if err := a.Send(context.Background(), ch, "gg", platform.SendOpts{}); err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	if sendBody["content"] != "gg" || sendBody["broadcaster_user_id"] != float64(777) {
+		t.Errorf("send body = %+v", sendBody)
+	}
+
+	if err := a.Moderate(context.Background(), platform.ModAction{Type: platform.ModBan, Channel: ch, TargetUserID: "9"}); err != nil {
+		t.Fatalf("Moderate: %v", err)
+	}
+	if !sawBan {
+		t.Error("moderation did not reach the bans endpoint")
+	}
+
+	a.Deauthenticate()
+	if a.Capabilities().Send {
+		t.Error("deauthenticated adapter should not advertise Send")
 	}
 }

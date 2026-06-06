@@ -12,7 +12,9 @@ package kick
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/elythi0n/virta/internal/clock"
@@ -71,7 +73,62 @@ type Adapter struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
+
+	// auth is nil when anonymous (read-only); Authenticate sets it to enable send + moderation.
+	auth atomic.Pointer[kickAuth]
 }
+
+// TokenFunc returns a currently-valid access token for the authenticated account (refreshing as
+// needed). Injected so the adapter never imports the auth manager.
+type TokenFunc func(ctx context.Context) (string, error)
+
+// BroadcasterResolver turns a channel slug into the numeric broadcaster user id the official API
+// needs for sending and moderation. It is a network lookup, so it is injected; live behavior is
+// tracked separately.
+type BroadcasterResolver func(ctx context.Context, slug string) (string, error)
+
+// kickAuth holds the authenticated send/moderate path.
+type kickAuth struct {
+	tokens  TokenFunc
+	api     *APIClient
+	resolve BroadcasterResolver
+
+	mu  sync.Mutex
+	bid map[string]string // slug → broadcaster user id, resolved once
+}
+
+func (au *kickAuth) broadcasterID(ctx context.Context, slug string) (string, error) {
+	au.mu.Lock()
+	id, ok := au.bid[slug]
+	au.mu.Unlock()
+	if ok {
+		return id, nil
+	}
+	if au.resolve == nil {
+		return "", fmt.Errorf("kick: cannot resolve broadcaster id for %q", slug)
+	}
+	id, err := au.resolve(ctx, slug)
+	if err != nil {
+		return "", err
+	}
+	au.mu.Lock()
+	au.bid[slug] = id
+	au.mu.Unlock()
+	return id, nil
+}
+
+// Authenticate switches the adapter to authenticated mode, enabling send and moderation via the
+// official API. tokens and api are required; resolve turns a channel slug into its broadcaster
+// user id. Call Deauthenticate to revert to anonymous read-only.
+func (a *Adapter) Authenticate(tokens TokenFunc, api *APIClient, resolve BroadcasterResolver) {
+	if tokens == nil || api == nil {
+		return
+	}
+	a.auth.Store(&kickAuth{tokens: tokens, api: api, resolve: resolve, bid: map[string]string{}})
+}
+
+// Deauthenticate drops the authenticated path (e.g. on sign-out), reverting to read-only.
+func (a *Adapter) Deauthenticate() { a.auth.Store(nil) }
 
 // New creates an anonymous Kick adapter. It does not connect until the first Join.
 func New(opts Options) *Adapter {
@@ -111,10 +168,14 @@ func New(opts Options) *Adapter {
 func (a *Adapter) Platform() platform.Platform { return platform.Kick }
 
 func (a *Adapter) Capabilities() platform.Capabilities {
-	return platform.Capabilities{
-		ReadAnonymous: true,
-		Stability:     platform.TierUnofficial, // unofficial Pusher read path (docs 04)
+	c := platform.Capabilities{ReadAnonymous: true, Stability: platform.TierUnofficial}
+	if a.auth.Load() != nil {
+		c.ReadAuthed = true
+		c.Send = true
+		c.Moderation = true
+		c.Replies = true
 	}
+	return c
 }
 
 // Join subscribes to a channel's chatroom. When ch.ID is empty the configured resolver turns
@@ -183,13 +244,40 @@ func (a *Adapter) Leave(ch platform.ChannelRef) error {
 	return nil
 }
 
-// Send and Moderate are unsupported on an anonymous connection.
-func (a *Adapter) Send(context.Context, platform.ChannelRef, string, platform.SendOpts) error {
-	return platform.ErrUnsupported
+// Send posts a message via Kick's official API when authenticated; unsupported when anonymous.
+func (a *Adapter) Send(ctx context.Context, ch platform.ChannelRef, text string, opts platform.SendOpts) error {
+	au := a.auth.Load()
+	if au == nil {
+		return platform.ErrUnsupported
+	}
+	bid, err := au.broadcasterID(ctx, strings.ToLower(ch.Slug))
+	if err != nil {
+		return err
+	}
+	tok, err := au.tokens(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = au.api.SendChat(ctx, tok, bid, text, opts.ReplyParentID)
+	return err
 }
 
-func (a *Adapter) Moderate(context.Context, platform.ModAction) error {
-	return platform.ErrUnsupported
+// Moderate performs a moderation action via the official API when authenticated; unsupported
+// when anonymous (and the API itself reports unsupported for actions Kick has no endpoint for).
+func (a *Adapter) Moderate(ctx context.Context, action platform.ModAction) error {
+	au := a.auth.Load()
+	if au == nil {
+		return platform.ErrUnsupported
+	}
+	bid, err := au.broadcasterID(ctx, strings.ToLower(action.Channel.Slug))
+	if err != nil {
+		return err
+	}
+	tok, err := au.tokens(ctx)
+	if err != nil {
+		return err
+	}
+	return au.api.Moderate(ctx, tok, bid, action)
 }
 
 func (a *Adapter) Events() <-chan platform.Event { return a.events }

@@ -7,11 +7,15 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 )
 
 // helixSendURL is Twitch's send-chat endpoint.
 const helixSendURL = "https://api.twitch.tv/helix/chat/messages"
+
+// helixUsersURL is Twitch's users endpoint, used to resolve a login to its numeric id.
+const helixUsersURL = "https://api.twitch.tv/helix/users"
 
 // HelixClient sends chat over Twitch's Helix API on behalf of an authenticated account. The
 // HTTP client and URL are injectable so the request shaping and drop-reason handling are tested
@@ -20,6 +24,7 @@ type HelixClient struct {
 	clientID string
 	http     *http.Client
 	sendURL  string
+	usersURL string
 }
 
 // NewHelixClient builds a Helix client for the given app client id.
@@ -27,8 +32,42 @@ func NewHelixClient(clientID string, hc *http.Client) *HelixClient {
 	if hc == nil {
 		hc = &http.Client{Timeout: 15 * time.Second}
 	}
-	return &HelixClient{clientID: clientID, http: hc, sendURL: helixSendURL}
+	return &HelixClient{clientID: clientID, http: hc, sendURL: helixSendURL, usersURL: helixUsersURL}
 }
+
+// UserID resolves a login to its numeric Twitch user id (needed as the broadcaster id for sends).
+func (c *HelixClient) UserID(ctx context.Context, accessToken, login string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.usersURL+"?login="+url.QueryEscape(login), nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Client-Id", c.clientID)
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("twitch: users: status %d: %s", resp.StatusCode, string(raw))
+	}
+	var out struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return "", fmt.Errorf("twitch: decode users response: %w", err)
+	}
+	if len(out.Data) == 0 || out.Data[0].ID == "" {
+		return "", fmt.Errorf("twitch: no user found for login %q", login)
+	}
+	return out.Data[0].ID, nil
+}
+
+// SetUsersURL overrides the users endpoint (tests point it at a local server).
+func (c *HelixClient) SetUsersURL(u string) { c.usersURL = u }
 
 // SendChat posts a message as senderID into broadcasterID's chat, optionally as a reply. It
 // returns the new message id, or an error — including a dropped message (Twitch accepted the

@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/elythi0n/virta/internal/clock"
@@ -77,7 +78,64 @@ type Adapter struct {
 
 	ctx    context.Context
 	cancel context.CancelFunc
+
+	// auth is nil when anonymous (read-only); Authenticate sets it to enable sending.
+	auth atomic.Pointer[twitchAuth]
 }
+
+// TokenFunc returns a currently-valid access token for the authenticated account (refreshing as
+// needed). It is injected so the adapter never imports the auth manager.
+type TokenFunc func(ctx context.Context) (string, error)
+
+// BroadcasterResolver turns a channel login into the numeric Twitch user id that Helix send and
+// moderation require. Resolution is a network lookup, so it is injected; its live behavior is
+// tracked separately.
+type BroadcasterResolver func(ctx context.Context, login string) (string, error)
+
+// twitchAuth holds the authenticated send path: the account's sender id, a token source, the
+// Helix client, and a broadcaster-id resolver (with a small per-login cache).
+type twitchAuth struct {
+	senderID string
+	tokens   TokenFunc
+	helix    *HelixClient
+	resolve  BroadcasterResolver
+
+	mu  sync.Mutex
+	bid map[string]string // login → broadcaster id, resolved once
+}
+
+func (au *twitchAuth) broadcasterID(ctx context.Context, login string) (string, error) {
+	au.mu.Lock()
+	id, ok := au.bid[login]
+	au.mu.Unlock()
+	if ok {
+		return id, nil
+	}
+	if au.resolve == nil {
+		return "", fmt.Errorf("twitch: cannot resolve broadcaster id for %q", login)
+	}
+	id, err := au.resolve(ctx, login)
+	if err != nil {
+		return "", err
+	}
+	au.mu.Lock()
+	au.bid[login] = id
+	au.mu.Unlock()
+	return id, nil
+}
+
+// Authenticate switches the adapter to authenticated mode for senderID, enabling Send. tokens and
+// helix are required; resolve turns a channel login into its broadcaster id. Idempotent; call
+// Deauthenticate to revert to anonymous read-only.
+func (a *Adapter) Authenticate(senderID string, tokens TokenFunc, helix *HelixClient, resolve BroadcasterResolver) {
+	if tokens == nil || helix == nil {
+		return
+	}
+	a.auth.Store(&twitchAuth{senderID: senderID, tokens: tokens, helix: helix, resolve: resolve, bid: map[string]string{}})
+}
+
+// Deauthenticate drops the authenticated send path (e.g. on sign-out), reverting to read-only.
+func (a *Adapter) Deauthenticate() { a.auth.Store(nil) }
 
 // New creates an anonymous Twitch adapter. It does not connect until the first Join.
 func New(opts Options) *Adapter {
@@ -121,10 +179,13 @@ func New(opts Options) *Adapter {
 func (a *Adapter) Platform() platform.Platform { return platform.Twitch }
 
 func (a *Adapter) Capabilities() platform.Capabilities {
-	return platform.Capabilities{
-		ReadAnonymous: true,
-		Stability:     platform.TierOfficial,
+	c := platform.Capabilities{ReadAnonymous: true, Stability: platform.TierOfficial}
+	if a.auth.Load() != nil {
+		c.ReadAuthed = true
+		c.Send = true
+		c.Replies = true
 	}
+	return c
 }
 
 // Join routes the channel to a shard with spare capacity, opening a new connection when all
@@ -185,11 +246,30 @@ func (a *Adapter) Leave(ch platform.ChannelRef) error {
 	return nil
 }
 
-// Send and Moderate are unsupported on an anonymous connection.
-func (a *Adapter) Send(context.Context, platform.ChannelRef, string, platform.SendOpts) error {
-	return platform.ErrUnsupported
+// Send posts a message to the channel via Helix when authenticated; it is unsupported on an
+// anonymous connection. A /me action is sent as Twitch's in-chat action command.
+func (a *Adapter) Send(ctx context.Context, ch platform.ChannelRef, text string, opts platform.SendOpts) error {
+	au := a.auth.Load()
+	if au == nil {
+		return platform.ErrUnsupported
+	}
+	bid, err := au.broadcasterID(ctx, strings.ToLower(ch.Slug))
+	if err != nil {
+		return err
+	}
+	tok, err := au.tokens(ctx)
+	if err != nil {
+		return err
+	}
+	if opts.Action {
+		text = "/me " + text
+	}
+	_, err = au.helix.SendChat(ctx, tok, bid, au.senderID, text, opts.ReplyParentID)
+	return err
 }
 
+// Moderate is not yet supported (the Helix moderation endpoints are not wired); it reports
+// unsupported so the typed-action layer never silently no-ops.
 func (a *Adapter) Moderate(context.Context, platform.ModAction) error {
 	return platform.ErrUnsupported
 }
