@@ -374,7 +374,26 @@ func (s *Server) handleDiagnostics(w http.ResponseWriter, _ *http.Request) {
 		"clients":            s.hub.clientCount(),
 		"unforwarded_events": s.hub.unforwardedCount(),
 		"log":                s.ring.snapshot(),
+		"crash_dumps":        crashDumps(s.runtimeDir),
 	})
+}
+
+func crashDumps(runtimeDir string) []string {
+	if runtimeDir == "" {
+		return nil
+	}
+	// Avoid importing crash directly so the api package stays light; use a path glob.
+	d, err := os.ReadDir(filepath.Join(runtimeDir, "crashes"))
+	if err != nil {
+		return nil
+	}
+	paths := make([]string, 0, len(d))
+	for _, e := range d {
+		if !e.IsDir() {
+			paths = append(paths, filepath.Join(runtimeDir, "crashes", e.Name()))
+		}
+	}
+	return paths
 }
 
 // withCORS adds CORS headers for an opt-in allowlist of origins (local web tools), and answers
