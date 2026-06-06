@@ -17,6 +17,16 @@ const helixSendURL = "https://api.twitch.tv/helix/chat/messages"
 // helixUsersURL is Twitch's users endpoint, used to resolve a login to its numeric id.
 const helixUsersURL = "https://api.twitch.tv/helix/users"
 
+// Moderation endpoints. Bans cover ban/timeout/unban; the chat-moderation endpoint deletes a
+// message or clears the channel; chat-settings toggles slow/followers/emote/unique mode; automod
+// approves or denies a held message.
+const (
+	helixBansURL         = "https://api.twitch.tv/helix/moderation/bans"
+	helixChatModURL      = "https://api.twitch.tv/helix/moderation/chat"
+	helixChatSettingsURL = "https://api.twitch.tv/helix/chat/settings"
+	helixAutomodURL      = "https://api.twitch.tv/helix/moderation/automod/message"
+)
+
 // HelixClient sends chat over Twitch's Helix API on behalf of an authenticated account. The
 // HTTP client and URL are injectable so the request shaping and drop-reason handling are tested
 // offline; live sends are tracked in live-debt.
@@ -25,6 +35,11 @@ type HelixClient struct {
 	http     *http.Client
 	sendURL  string
 	usersURL string
+
+	bansURL         string
+	chatModURL      string
+	chatSettingsURL string
+	automodURL      string
 }
 
 // NewHelixClient builds a Helix client reading its app client id from clientID on each call.
@@ -32,7 +47,16 @@ func NewHelixClient(clientID func() string, hc *http.Client) *HelixClient {
 	if hc == nil {
 		hc = &http.Client{Timeout: 15 * time.Second}
 	}
-	return &HelixClient{clientID: clientID, http: hc, sendURL: helixSendURL, usersURL: helixUsersURL}
+	return &HelixClient{
+		clientID:        clientID,
+		http:            hc,
+		sendURL:         helixSendURL,
+		usersURL:        helixUsersURL,
+		bansURL:         helixBansURL,
+		chatModURL:      helixChatModURL,
+		chatSettingsURL: helixChatSettingsURL,
+		automodURL:      helixAutomodURL,
+	}
 }
 
 // UserID resolves a login to its numeric Twitch user id (needed as the broadcaster id for sends).

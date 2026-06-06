@@ -124,6 +124,47 @@ func (au *twitchAuth) broadcasterID(ctx context.Context, login string) (string, 
 	return id, nil
 }
 
+// targetUserID returns a numeric Twitch user id for raw, which is either already a numeric id
+// (used directly) or a login resolved via Helix and cached. Moderation endpoints address users by
+// numeric id, while slash commands name them by login, so this absorbs the difference.
+func (au *twitchAuth) targetUserID(ctx context.Context, token, raw string) (string, error) {
+	if raw == "" {
+		return "", fmt.Errorf("twitch: moderation target required")
+	}
+	if isAllDigits(raw) {
+		return raw, nil
+	}
+	login := strings.ToLower(raw)
+	au.mu.Lock()
+	id, ok := au.bid[login]
+	au.mu.Unlock()
+	if ok {
+		return id, nil
+	}
+	id, err := au.helix.UserID(ctx, token, login)
+	if err != nil {
+		return "", err
+	}
+	au.mu.Lock()
+	au.bid[login] = id
+	au.mu.Unlock()
+	return id, nil
+}
+
+// isAllDigits reports whether s is non-empty and entirely ASCII digits — a numeric user id rather
+// than a login.
+func isAllDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
 // Authenticate switches the adapter to authenticated mode for senderID, enabling Send. tokens and
 // helix are required; resolve turns a channel login into its broadcaster id. Idempotent; call
 // Deauthenticate to revert to anonymous read-only.
@@ -184,6 +225,8 @@ func (a *Adapter) Capabilities() platform.Capabilities {
 		c.ReadAuthed = true
 		c.Send = true
 		c.Replies = true
+		c.Moderation = true
+		c.HeldQueue = true
 	}
 	return c
 }
@@ -268,10 +311,98 @@ func (a *Adapter) Send(ctx context.Context, ch platform.ChannelRef, text string,
 	return err
 }
 
-// Moderate is not yet supported (the Helix moderation endpoints are not wired); it reports
-// unsupported so the typed-action layer never silently no-ops.
-func (a *Adapter) Moderate(context.Context, platform.ModAction) error {
-	return platform.ErrUnsupported
+// Moderate performs a typed moderation action via Helix when authenticated; it is unsupported on
+// an anonymous connection. The acting moderator is the authenticated account (its sender id); the
+// channel's broadcaster id and any target user are resolved as needed. Held approve/deny act as
+// the moderator alone and need no channel.
+func (a *Adapter) Moderate(ctx context.Context, action platform.ModAction) error {
+	au := a.auth.Load()
+	if au == nil {
+		return platform.ErrUnsupported
+	}
+	tok, err := au.tokens(ctx)
+	if err != nil {
+		return err
+	}
+	switch action.Type {
+	case platform.ModApproveHeld:
+		return au.helix.ManageHeldMessage(ctx, tok, au.senderID, action.TargetMessageID, true)
+	case platform.ModDenyHeld:
+		return au.helix.ManageHeldMessage(ctx, tok, au.senderID, action.TargetMessageID, false)
+	}
+
+	bid, err := au.broadcasterID(ctx, strings.ToLower(action.Channel.Slug))
+	if err != nil {
+		return err
+	}
+	switch action.Type {
+	case platform.ModBan:
+		uid, err := au.targetUserID(ctx, tok, action.TargetUserID)
+		if err != nil {
+			return err
+		}
+		return au.helix.Ban(ctx, tok, bid, au.senderID, uid, 0, action.Reason)
+	case platform.ModTimeout:
+		uid, err := au.targetUserID(ctx, tok, action.TargetUserID)
+		if err != nil {
+			return err
+		}
+		return au.helix.Ban(ctx, tok, bid, au.senderID, uid, clampTimeout(action.Duration), action.Reason)
+	case platform.ModUnban, platform.ModUntimeout:
+		uid, err := au.targetUserID(ctx, tok, action.TargetUserID)
+		if err != nil {
+			return err
+		}
+		return au.helix.Unban(ctx, tok, bid, au.senderID, uid)
+	case platform.ModDeleteMessage:
+		return au.helix.DeleteMessage(ctx, tok, bid, au.senderID, action.TargetMessageID)
+	case platform.ModClear:
+		return au.helix.ClearChat(ctx, tok, bid, au.senderID)
+	case platform.ModSetSlow, platform.ModSetFollowers, platform.ModSetEmoteOnly, platform.ModSetUniqueChat:
+		return au.helix.UpdateChatSettings(ctx, tok, bid, au.senderID, chatSettingsPatch(action))
+	default:
+		return platform.ErrUnsupported
+	}
+}
+
+// twitchMaxTimeout is Twitch's ceiling for a timeout (14 days, in seconds).
+const twitchMaxTimeout = 1_209_600
+
+// clampTimeout converts a timeout duration to seconds within Twitch's bounds, defaulting a
+// non-positive duration to ten minutes.
+func clampTimeout(d time.Duration) int {
+	secs := int(d / time.Second)
+	if secs <= 0 {
+		return 600
+	}
+	if secs > twitchMaxTimeout {
+		return twitchMaxTimeout
+	}
+	return secs
+}
+
+// chatSettingsPatch maps a set_* toggle to the Helix chat-settings body, including the wait time
+// or follow age only when the mode is being enabled.
+func chatSettingsPatch(a platform.ModAction) map[string]any {
+	switch a.Type {
+	case platform.ModSetSlow:
+		m := map[string]any{"slow_mode": a.Enabled}
+		if a.Enabled {
+			m["slow_mode_wait_time"] = int(a.Duration / time.Second)
+		}
+		return m
+	case platform.ModSetFollowers:
+		m := map[string]any{"follower_mode": a.Enabled}
+		if a.Enabled {
+			m["follower_mode_duration"] = int(a.Duration / time.Minute)
+		}
+		return m
+	case platform.ModSetEmoteOnly:
+		return map[string]any{"emote_mode": a.Enabled}
+	case platform.ModSetUniqueChat:
+		return map[string]any{"unique_chat_mode": a.Enabled}
+	}
+	return map[string]any{}
 }
 
 func (a *Adapter) Events() <-chan platform.Event { return a.events }
