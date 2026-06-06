@@ -17,6 +17,8 @@ export const color = {
   "line": "var(--virta-line)",
   "ok": "var(--virta-ok)",
   "plat-x": "var(--virta-plat-x)",
+  "scrollbar-thumb": "var(--virta-scrollbar-thumb)",
+  "scrollbar-thumb-hover": "var(--virta-scrollbar-thumb-hover)",
   "text-0": "var(--virta-text-0)",
   "text-1": "var(--virta-text-1)",
   "text-2": "var(--virta-text-2)",

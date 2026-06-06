@@ -28,3 +28,33 @@ body {
   min-width: 0;
   height: 100%;
 }
+
+/*
+ * Custom scrollbars: a subtle, rounded, token-driven thumb on a transparent track, consistent
+ * across every scroll surface (feed, side bar, dock panels). WebKit/Chromium webviews use the
+ * pseudo-elements (rounded, inset via a transparent border); Firefox uses the standard
+ * properties. Never the chunky default OS scrollbar.
+ */
+* {
+  scrollbar-color: var(--virta-scrollbar-thumb) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--virta-scrollbar-thumb);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+  border-radius: var(--virta-radius-lg);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--virta-scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
