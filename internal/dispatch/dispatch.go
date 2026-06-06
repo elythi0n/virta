@@ -75,6 +75,18 @@ func (s *Sender) Do(ctx context.Context, ch platform.ChannelRef, input string) (
 	}
 }
 
+// Moderate performs a typed moderation action directly, without parsing a slash command. Mod
+// buttons that already know the action (delete a row, approve/deny a held message) call this
+// instead of formatting a command string. It funnels through the same adapter Moderate path as
+// Do's KindMod branch, so capability and behavior stay in one place.
+func (s *Sender) Moderate(ctx context.Context, action platform.ModAction) error {
+	a, ok := s.adapters[action.Channel.Platform]
+	if !ok {
+		return platform.ErrUnsupported
+	}
+	return a.Moderate(ctx, action)
+}
+
 // TargetState is one channel's pre-send reachability: whether a message can be sent to it right
 // now and, when it can't, a machine reason the frontend maps to copy. It backs the composer's
 // reachable/excluded target chips before anything is sent.

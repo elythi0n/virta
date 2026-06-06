@@ -131,6 +131,15 @@ export interface HealthStatus {
   detail?: string;
 }
 
+export interface HeldMessage {
+  id: string;
+  channel: string;
+  author: string;
+  text: string;
+  reason?: string;
+  held_at_ms: number;
+}
+
 export interface MessageRef {
   platform_message_id: string;
   author_login: string;
@@ -230,4 +239,7 @@ export interface WireEvent {
   stats?: StatsSnapshot;
   profile_id?: string;
   profile_name?: string;
+  held?: HeldMessage;
+  held_id?: string;
+  approved?: boolean;
 }

@@ -23,6 +23,7 @@ import (
 	"github.com/elythi0n/virta/internal/emotes"
 	"github.com/elythi0n/virta/internal/engine"
 	"github.com/elythi0n/virta/internal/filter"
+	"github.com/elythi0n/virta/internal/held"
 	"github.com/elythi0n/virta/internal/id"
 	"github.com/elythi0n/virta/internal/logbook"
 	"github.com/elythi0n/virta/internal/pipeline"
@@ -244,10 +245,13 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	// writes non-ephemeral messages, so logging-off persists nothing (ADR-014).
 	logSink := logbook.NewSink(st.Messages(), clk, log)
 	sweeper := logbook.NewSweeper(logSink, clk)
+	// The held queue is a sink that tracks AutoMod-held messages for the moderation pane; it
+	// clears an entry when a HeldResolvedEvent flows past (platform-driven or after an approve/deny).
+	heldQueue := held.New()
 	runner := pipeline.NewRunner(pipeline.Options{
 		Clock:  clk,
 		Stages: []pipeline.Stage{filterStage, emotes.NewStage(emoteResolver), badges.NewStage(badgeResolver)},
-		Sinks:  []pipeline.Sink{srv.Sink(), statsAgg, logSink},
+		Sinks:  []pipeline.Sink{srv.Sink(), statsAgg, logSink, heldQueue},
 		Logger: log,
 	})
 
@@ -298,6 +302,7 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 		platform.Kick:   kickAdapter,
 	}, gov, sendHelpText)
 	srv.SetSend(sendControl{sender: sender})
+	srv.SetHeld(heldControl{queue: heldQueue, sender: sender, emitter: runner})
 
 	// OAuth app credentials are read through providers so they can be set at runtime via the UI
 	// (stored in the vault), seeded from the env vars on first run.
@@ -737,6 +742,44 @@ const sendHelpText = "Commands: /ban /unban /timeout /untimeout /delete /clear /
 // API's "platform:slug" target strings to and from platform refs.
 type sendControl struct {
 	sender *dispatch.Sender
+}
+
+// heldControl adapts the held queue and dispatch sender to the API's hold-queue controller.
+// Approve and deny look the message up by id, perform the typed moderation action, then emit a
+// HeldResolvedEvent so the queue and every connected client clear the row on the same path a
+// platform-driven resolution would take.
+type heldControl struct {
+	queue   *held.Queue
+	sender  *dispatch.Sender
+	emitter interface{ Submit(platform.Event) }
+}
+
+func (c heldControl) List() []api.HeldMessage {
+	msgs := c.queue.List()
+	out := make([]api.HeldMessage, 0, len(msgs))
+	for _, m := range msgs {
+		out = append(out, api.HeldFrom(m))
+	}
+	return out
+}
+
+func (c heldControl) Approve(ctx context.Context, id string) error { return c.resolve(ctx, id, true) }
+func (c heldControl) Deny(ctx context.Context, id string) error    { return c.resolve(ctx, id, false) }
+
+func (c heldControl) resolve(ctx context.Context, id string, approve bool) error {
+	m, ok := c.queue.Get(id)
+	if !ok {
+		return api.ErrHeldNotFound
+	}
+	action := platform.ModAction{Type: platform.ModDenyHeld, Channel: m.Channel, TargetMessageID: m.ID}
+	if approve {
+		action.Type = platform.ModApproveHeld
+	}
+	if err := c.sender.Moderate(ctx, action); err != nil {
+		return err
+	}
+	c.emitter.Submit(platform.HeldResolvedEvent{Channel: m.Channel, ID: m.ID, Approved: approve})
+	return nil
 }
 
 // parseTarget turns a "platform:slug" target into a ChannelRef, rejecting an unknown platform so

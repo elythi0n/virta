@@ -376,6 +376,32 @@ type ProfileChangedEvent struct {
 	Name      string
 }
 
+// HeldMessage is a chat message a platform's AutoMod (or equivalent) is holding for moderator
+// review: it has not been posted and will be either approved (posted) or denied (dropped). ID is
+// the platform's own handle for the held message, used to resolve it.
+type HeldMessage struct {
+	ID      string
+	Channel ChannelRef
+	Author  Author
+	Text    string
+	Reason  string // why it was held (category/rule), where the platform provides it
+	HeldAt  time.Time
+}
+
+// MessageHeldEvent reports that a message is being held for review (e.g. Twitch
+// automod.message.hold). The engine routes it past the message stages — a held message is not a
+// posted message — and the held queue surfaces it for a moderator to approve or deny.
+type MessageHeldEvent struct{ Held HeldMessage }
+
+// HeldResolvedEvent reports that a held message left the queue: approved (posted) or denied
+// (dropped). It is emitted both when the platform tells us (automod.message.update) and
+// optimistically right after a moderator's approve/deny succeeds, so the queue clears promptly.
+type HeldResolvedEvent struct {
+	Channel  ChannelRef
+	ID       string
+	Approved bool
+}
+
 func (MessageEvent) isEvent()        {}
 func (MessageDeletedEvent) isEvent() {}
 func (ChannelClearEvent) isEvent()   {}
@@ -383,6 +409,8 @@ func (HealthEvent) isEvent()         {}
 func (ChatSettingsEvent) isEvent()   {}
 func (StatsEvent) isEvent()          {}
 func (ProfileChangedEvent) isEvent() {}
+func (MessageHeldEvent) isEvent()    {}
+func (HeldResolvedEvent) isEvent()   {}
 
 // ---- The Adapter port ----
 

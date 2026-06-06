@@ -86,6 +86,25 @@ func TestDispatch_TimeoutModerates(t *testing.T) {
 	}
 }
 
+func TestDispatch_ModerateDirect(t *testing.T) {
+	s, a := newSender(platform.Capabilities{Send: true, Moderation: true})
+	action := platform.ModAction{Type: platform.ModApproveHeld, Channel: ch, TargetMessageID: "h1"}
+	if err := s.Moderate(context.Background(), action); err != nil {
+		t.Fatalf("Moderate: %v", err)
+	}
+	if len(a.mods) != 1 || a.mods[0].Type != platform.ModApproveHeld || a.mods[0].TargetMessageID != "h1" {
+		t.Errorf("moderate = %+v", a.mods)
+	}
+}
+
+func TestDispatch_ModerateUnknownPlatform(t *testing.T) {
+	s, _ := newSender(platform.Capabilities{Send: true, Moderation: true})
+	action := platform.ModAction{Type: platform.ModDenyHeld, Channel: platform.ChannelRef{Platform: platform.Kick, Slug: "x"}}
+	if err := s.Moderate(context.Background(), action); err != platform.ErrUnsupported {
+		t.Errorf("Moderate unknown platform err = %v, want ErrUnsupported", err)
+	}
+}
+
 func TestDispatch_UnknownNotSent(t *testing.T) {
 	s, a := newSender(platform.Capabilities{Send: true, Moderation: true})
 	out, _ := s.Do(context.Background(), ch, "/foo bar")

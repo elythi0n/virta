@@ -53,6 +53,7 @@ type Server struct {
 	authConfig  AuthConfigControl // OAuth-credentials controller, installed via SetAuthConfig
 	authCtl     Auth              // account-auth controller, installed via SetAuth
 	send        Send              // cross-posting controller, installed via SetSend
+	held        Held              // AutoMod hold-queue controller, installed via SetHeld
 	webui       http.Handler      // embedded web UI, installed via SetWebUI (nil = not served)
 
 	token         string
@@ -116,6 +117,9 @@ func New(cfg Config) (*Server, error) {
 	mux.Handle("POST /v1/send", s.auth(http.HandlerFunc(s.handleSend)))
 	mux.Handle("POST /v1/send/preview", s.auth(http.HandlerFunc(s.handleSendPreview)))
 	mux.Handle("POST /v1/send/queue", s.auth(http.HandlerFunc(s.handleSendQueue)))
+	mux.Handle("GET /v1/held", s.auth(http.HandlerFunc(s.handleListHeld)))
+	mux.Handle("POST /v1/held/{id}/approve", s.auth(http.HandlerFunc(s.handleApproveHeld)))
+	mux.Handle("POST /v1/held/{id}/deny", s.auth(http.HandlerFunc(s.handleDenyHeld)))
 	mux.Handle("GET /v1/profiles", s.auth(http.HandlerFunc(s.handleListProfiles)))
 	mux.Handle("POST /v1/profiles", s.auth(http.HandlerFunc(s.handleCreateProfile)))
 	mux.Handle("POST /v1/profiles/{id}/activate", s.auth(http.HandlerFunc(s.handleActivateProfile)))

@@ -41,6 +41,9 @@ type WireEvent struct {
 	Stats             *platform.StatsSnapshot  `json:"stats,omitempty"`
 	ProfileID         string                   `json:"profile_id,omitempty"`
 	ProfileName       string                   `json:"profile_name,omitempty"`
+	Held              *HeldMessage             `json:"held,omitempty"`     // a newly held message ("held")
+	HeldID            string                   `json:"held_id,omitempty"`  // resolved held id ("held_resolved")
+	Approved          *bool                    `json:"approved,omitempty"` // whether a resolved held message was approved
 }
 
 // replayEntry is one encoded event retained in the resume ring.
@@ -269,6 +272,13 @@ func toWire(ev platform.Event) (we WireEvent, key string, broadcastAll bool) {
 	case platform.ProfileChangedEvent:
 		// Adapter-wide: every client re-renders against the new profile.
 		return WireEvent{Type: "profile_changed", SchemaVersion: schemaVersion, ProfileID: e.ProfileID, ProfileName: e.Name}, "", true
+	case platform.MessageHeldEvent:
+		h := HeldFrom(e.Held)
+		return WireEvent{Type: "held", SchemaVersion: schemaVersion, Channel: &e.Held.Channel, Held: &h}, channelKey(e.Held.Channel), false
+	case platform.HeldResolvedEvent:
+		ch := e.Channel
+		approved := e.Approved
+		return WireEvent{Type: "held_resolved", SchemaVersion: schemaVersion, Channel: &ch, HeldID: e.ID, Approved: &approved}, channelKey(ch), false
 	default:
 		return WireEvent{}, "", false
 	}
