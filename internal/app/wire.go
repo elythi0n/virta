@@ -40,6 +40,7 @@ import (
 	"github.com/elythi0n/virta/internal/store/postgres"
 	"github.com/elythi0n/virta/internal/store/sqlite"
 	"github.com/elythi0n/virta/internal/streams"
+	"github.com/elythi0n/virta/internal/velocity"
 	"github.com/elythi0n/virta/internal/webui"
 )
 
@@ -248,9 +249,13 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	// The held queue is a sink that tracks AutoMod-held messages for the moderation pane; it
 	// clears an entry when a HeldResolvedEvent flows past (platform-driven or after an approve/deny).
 	heldQueue := held.New()
+	// The velocity stage marks overload messages as sampled so calm-mode UIs can thin a flooded
+	// channel; it runs after badges so subscriber/mod badges (priority lanes) are resolved. It only
+	// annotates, so the logger and other sinks still receive every message.
+	velocityStage := velocity.NewStage(velocity.DefaultThreshold)
 	runner := pipeline.NewRunner(pipeline.Options{
 		Clock:  clk,
-		Stages: []pipeline.Stage{filterStage, emotes.NewStage(emoteResolver), badges.NewStage(badgeResolver)},
+		Stages: []pipeline.Stage{filterStage, emotes.NewStage(emoteResolver), badges.NewStage(badgeResolver), velocityStage},
 		Sinks:  []pipeline.Sink{srv.Sink(), statsAgg, logSink, heldQueue},
 		Logger: log,
 	})

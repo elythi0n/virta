@@ -181,6 +181,7 @@ type Annotations struct {
 	Highlight string `json:"highlight,omitempty"`  // id of the rule that highlighted it ("" = not highlighted)
 	Masked    bool   `json:"masked,omitempty"`     // profanity was masked in Segments
 	FirstTime bool   `json:"first_time,omitempty"` // chatter's first message (platform tag, or first seen this session)
+	Sampled   bool   `json:"sampled,omitempty"`    // velocity overload: display-only hint that calm-mode UIs may thin this row; every sink still receives it
 }
 
 // Annotate returns the message's annotations, allocating them on first use, so stages can set

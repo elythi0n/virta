@@ -14,6 +14,7 @@ export interface Annotations {
   highlight?: string;
   masked?: boolean;
   first_time?: boolean;
+  sampled?: boolean;
 }
 
 export interface AuthConfig {
