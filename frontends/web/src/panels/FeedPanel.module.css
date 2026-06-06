@@ -56,6 +56,7 @@
   gap: var(--virta-space-8);
 }
 .iconBtn {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -80,6 +81,26 @@
   border-color: transparent;
   background: var(--virta-accent);
   color: var(--virta-bg-0);
+}
+
+/* Count of messages calm mode is currently thinning under overload (an amber overlay so it reads
+   on both the idle and the pressed-accent calm button). */
+.calmCount {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: var(--virta-warn);
+  color: var(--virta-bg-0);
+  font-family: var(--virta-font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 14px;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 1px var(--virta-bg-0);
 }
 
 .filterbar {

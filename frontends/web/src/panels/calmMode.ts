@@ -18,3 +18,21 @@ export function collapseCombos(messages: FeedMessage[]): FeedMessage[] {
   }
   return out;
 }
+
+// Calm mode for a flooded channel: drop the messages the daemon's velocity stage marked as
+// sampled, then collapse the remaining repeats. The daemon keeps priority lanes (mods, subs,
+// first-timers, events) unmarked, so those always survive. Display-only, like collapseCombos:
+// the buffer and the daemon's sinks still hold every message. Returns the thinned view plus how
+// many sampled rows were hidden, so the UI can show a count.
+export function applyCalm(messages: FeedMessage[]): { visible: FeedMessage[]; thinned: number } {
+  let thinned = 0;
+  const kept: FeedMessage[] = [];
+  for (const m of messages) {
+    if (m.sampled) {
+      thinned++;
+      continue;
+    }
+    kept.push(m);
+  }
+  return { visible: collapseCombos(kept), thinned };
+}

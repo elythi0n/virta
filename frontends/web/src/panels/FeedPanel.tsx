@@ -3,7 +3,7 @@ import { Feed, parseSegments, PlatformGlyph, useFeedBuffer, type Density, type F
 import { Button, Dialog, Input, Segmented, Text, Tooltip } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { filterFeed, QUICK_FILTERS, type QuickFilter } from './quickFilter';
-import { collapseCombos } from './calmMode';
+import { applyCalm } from './calmMode';
 import ModRowActions, { type ModAction } from './ModRowActions';
 import ChatSettingsControl from './ChatSettingsControl';
 import { sendMessage, useCapabilities, useChannels, useDaemonStream } from '../daemon';
@@ -215,9 +215,10 @@ export default function FeedPanel({ channels, panelId }: Props) {
   const [background, setBackground] = useState(() => hex(14, 15, 18));
 
   // Client-side view filter over the buffered feed; the full buffer keeps streaming underneath.
-  const visible = useMemo(() => {
+  const { visible, thinned } = useMemo(() => {
     const filtered = filterFeed(messages, quick, query);
-    return calm ? collapseCombos(filtered) : filtered;
+    if (!calm) return { visible: filtered, thinned: 0 };
+    return applyCalm(filtered);
   }, [messages, quick, query, calm]);
 
   // Recent chatters (newest first, unique) for the composer's @mention autocomplete.
@@ -313,7 +314,16 @@ export default function FeedPanel({ channels, panelId }: Props) {
               ]}
             />
           )}
-          <Tooltip content={calm ? 'Calm mode on (collapsing repeats)' : 'Calm mode (collapse repeats)'} side="bottom">
+          <Tooltip
+            content={
+              calm
+                ? thinned > 0
+                  ? `Calm mode on (collapsing repeats, ${thinned} thinned)`
+                  : 'Calm mode on (collapsing repeats)'
+                : 'Calm mode (collapse repeats)'
+            }
+            side="bottom"
+          >
             <button
               type="button"
               className={styles.iconBtn}
@@ -322,6 +332,7 @@ export default function FeedPanel({ channels, panelId }: Props) {
               onClick={toggleCalm}
             >
               <Icon name="collapse" size={16} />
+              {calm && thinned > 0 && <span className={styles.calmCount}>{thinned}</span>}
             </button>
           </Tooltip>
           <Tooltip content={hud ? 'Preview only' : 'Show controls'} side="bottom">

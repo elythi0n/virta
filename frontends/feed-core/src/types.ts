@@ -36,6 +36,9 @@ export interface FeedMessage {
   highlighted?: boolean;
   /** Calm mode: how many identical consecutive messages this row stands in for (≥2 = a combo). */
   combo?: number;
+  /** Velocity overload: the daemon marked this ordinary message as thinnable. Calm-mode views may
+   *  hide it; it still exists in the buffer and reached every sink. */
+  sampled?: boolean;
   /** The message this one replies to (rendered as a quoted context line). */
   replyTo?: { author: string; snippet: string };
   author: string;
