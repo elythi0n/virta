@@ -60,7 +60,7 @@ function Placeholder({ children }: { children: ReactNode }) {
 function Appearance() {
   const { theme, setTheme } = useTheme();
   const { density, setDensity } = useDensity();
-  const { showTimestamps, setShowTimestamps } = useFeedDisplay();
+  const { showTimestamps, setShowTimestamps, mentionNames, setMentionNames } = useFeedDisplay();
   return (
     <>
       <Field label="Theme" hint="Color palette for the whole app.">
@@ -91,6 +91,14 @@ function Appearance() {
             { value: 'on', label: 'On' },
             { value: 'off', label: 'Off' },
           ]}
+        />
+      </Field>
+      <Field label="Highlight my names" hint="Comma-separated. Messages mentioning these collect in the Mentions inbox.">
+        <Input
+          aria-label="Highlight names"
+          placeholder="e.g. yourname, your_handle"
+          defaultValue={mentionNames.join(', ')}
+          onBlur={(e) => setMentionNames(e.currentTarget.value.split(',').map((s) => s.trim()).filter(Boolean))}
         />
       </Field>
     </>

@@ -1,0 +1,8 @@
+.empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: var(--virta-space-16);
+  text-align: center;
+  background: var(--virta-bg-0);
+}

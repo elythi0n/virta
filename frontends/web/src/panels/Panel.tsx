@@ -1,4 +1,5 @@
 import FeedPanel from './FeedPanel';
+import MentionInbox from './MentionInbox';
 import StreamPane from './StreamPane';
 import styles from './Panel.module.css';
 
@@ -10,6 +11,9 @@ export default function Panel({ kind, channels, panelId }: { kind: string; chann
   }
   if (kind === 'watch') {
     return <StreamPane channel={channels?.[0]} />;
+  }
+  if (kind === 'mentions') {
+    return <MentionInbox />;
   }
   return (
     <div className={styles.placeholder}>

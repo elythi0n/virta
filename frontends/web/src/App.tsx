@@ -22,6 +22,21 @@ export default function App() {
   const [theme, setTheme] = useState('graphite-dark');
   const [density, setDensity] = useState<Density>('cozy');
   const [showTimestamps, setShowTimestamps] = useState(true);
+  const [mentionNames, setMentionNamesState] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('virta.mentionNames') ?? '[]');
+    } catch {
+      return [];
+    }
+  });
+  const setMentionNames = useCallback((names: string[]) => {
+    setMentionNamesState(names);
+    try {
+      localStorage.setItem('virta.mentionNames', JSON.stringify(names));
+    } catch {
+      // storage unavailable; names just won't persist across reloads
+    }
+  }, []);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [newFeedOpen, setNewFeedOpen] = useState(false);
@@ -203,7 +218,7 @@ export default function App() {
   return (
     <ThemeProvider value={{ theme, setTheme }}>
       <DensityProvider value={{ density, setDensity }}>
-        <FeedDisplayProvider value={{ showTimestamps, setShowTimestamps }}>
+        <FeedDisplayProvider value={{ showTimestamps, setShowTimestamps, mentionNames, setMentionNames }}>
         <ActionsProvider value={actions}>
           <TooltipProvider>
           <div className="app">
