@@ -23,11 +23,11 @@ const clientBuffer = 256
 // Bounded, so memory is constant; a client gone longer than this window misses the gap.
 const replayBuffer = 1024
 
-// wireEvent is the JSON envelope sent to clients. Exactly the fields relevant to Type are
+// WireEvent is the JSON envelope sent to clients. Exactly the fields relevant to Type are
 // populated. Seq is a per-server monotonic sequence number: clients track the highest they've
 // processed and present it as the resume cursor (delivery on resume is at-least-once — dedupe
 // by Seq).
-type wireEvent struct {
+type WireEvent struct {
 	Type              string                   `json:"type"`
 	SchemaVersion     int                      `json:"schema_version"`
 	Seq               uint64                   `json:"seq"`
@@ -239,20 +239,20 @@ func channelKey(ch platform.ChannelRef) string { return ch.Key() }
 // toWire converts a pipeline event into its wire envelope, the channel key used for
 // per-client filtering, and whether it should be broadcast to everyone regardless of filter
 // (adapter-wide health has no single channel).
-func toWire(ev platform.Event) (we wireEvent, key string, broadcastAll bool) {
+func toWire(ev platform.Event) (we WireEvent, key string, broadcastAll bool) {
 	switch e := ev.(type) {
 	case platform.MessageEvent:
 		m := e.Message
-		return wireEvent{Type: "message", SchemaVersion: schemaVersion, Message: &m}, channelKey(m.Channel), false
+		return WireEvent{Type: "message", SchemaVersion: schemaVersion, Message: &m}, channelKey(m.Channel), false
 	case platform.MessageDeletedEvent:
 		ch := e.Channel
-		return wireEvent{Type: "message_deleted", SchemaVersion: schemaVersion, Channel: &ch, PlatformMessageID: e.PlatformMessageID, MessageID: e.MessageID}, channelKey(ch), false
+		return WireEvent{Type: "message_deleted", SchemaVersion: schemaVersion, Channel: &ch, PlatformMessageID: e.PlatformMessageID, MessageID: e.MessageID}, channelKey(ch), false
 	case platform.ChannelClearEvent:
 		ch := e.Channel
-		return wireEvent{Type: "channel_clear", SchemaVersion: schemaVersion, Channel: &ch, TargetUserID: e.TargetUserID}, channelKey(ch), false
+		return WireEvent{Type: "channel_clear", SchemaVersion: schemaVersion, Channel: &ch, TargetUserID: e.TargetUserID}, channelKey(ch), false
 	case platform.HealthEvent:
 		st := e.Status
-		we = wireEvent{Type: "state", SchemaVersion: schemaVersion, State: &st}
+		we = WireEvent{Type: "state", SchemaVersion: schemaVersion, State: &st}
 		if e.Channel != nil {
 			we.Channel = e.Channel
 			return we, channelKey(*e.Channel), false
@@ -261,15 +261,15 @@ func toWire(ev platform.Event) (we wireEvent, key string, broadcastAll bool) {
 	case platform.ChatSettingsEvent:
 		ch := e.Channel
 		s := e.Settings
-		return wireEvent{Type: "chat_settings", SchemaVersion: schemaVersion, Channel: &ch, Settings: &s}, channelKey(ch), false
+		return WireEvent{Type: "chat_settings", SchemaVersion: schemaVersion, Channel: &ch, Settings: &s}, channelKey(ch), false
 	case platform.StatsEvent:
 		ch := e.Channel
 		st := e.Stats
-		return wireEvent{Type: "stats", SchemaVersion: schemaVersion, Channel: &ch, Stats: &st}, channelKey(ch), false
+		return WireEvent{Type: "stats", SchemaVersion: schemaVersion, Channel: &ch, Stats: &st}, channelKey(ch), false
 	case platform.ProfileChangedEvent:
 		// Adapter-wide: every client re-renders against the new profile.
-		return wireEvent{Type: "profile_changed", SchemaVersion: schemaVersion, ProfileID: e.ProfileID, ProfileName: e.Name}, "", true
+		return WireEvent{Type: "profile_changed", SchemaVersion: schemaVersion, ProfileID: e.ProfileID, ProfileName: e.Name}, "", true
 	default:
-		return wireEvent{}, "", false
+		return WireEvent{}, "", false
 	}
 }
