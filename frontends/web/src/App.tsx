@@ -4,6 +4,7 @@ import Dock from './dock/Dock';
 import ActivityBar from './shell/ActivityBar';
 import SideBar from './shell/SideBar';
 import Titlebar from './shell/Titlebar';
+import ConnectionAlert from './shell/ConnectionAlert';
 import ShortcutHelp from './shell/ShortcutHelp';
 import NewFeedDialog from './shell/NewFeedDialog';
 import { CommandPalette, TooltipProvider, matchesShortcut, type CommandAction } from '@virta/ui-kit';
@@ -154,8 +155,15 @@ export default function App() {
           <TooltipProvider>
           <div className="app">
           <Titlebar onOpenPalette={() => setPaletteOpen(true)} />
+          <ConnectionAlert />
           <div className="shell">
-            <ActivityBar activeView={activeView} sidebarOpen={sidebarOpen} onSelect={selectView} onOpenSettings={openSettings} />
+            <ActivityBar
+              activeView={activeView}
+              sidebarOpen={sidebarOpen}
+              onSelect={selectView}
+              onOpenSettings={openSettings}
+              onOpenPlugins={() => openPanel('plugins', 'Plugins')}
+            />
             {sidebarOpen && <SideBar view={activeView} openPanel={openPanel} onNewFeed={() => setNewFeedOpen(true)} />}
             <div className="dock-host">
               <Dock onReady={onReady} />

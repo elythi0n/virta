@@ -26,8 +26,13 @@ export function useChannels() {
     }
   }, []);
 
+  // Poll so the joined list and connection state stay current (channels join/leave elsewhere, and
+  // the daemon can come or go) — this is what lets the connection banner appear and clear on its
+  // own. Channel state changes rarely, so a slow interval is plenty.
   useEffect(() => {
     void refresh();
+    const id = setInterval(() => void refresh(), 5000);
+    return () => clearInterval(id);
   }, [refresh]);
 
   const join = useCallback(

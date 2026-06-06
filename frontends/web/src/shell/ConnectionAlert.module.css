@@ -1,0 +1,35 @@
+.alert {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--virta-space-8);
+  padding: var(--virta-space-4) var(--virta-space-12);
+  background: color-mix(in srgb, var(--virta-warn) 16%, var(--virta-bg-1));
+  border-bottom: 1px solid color-mix(in srgb, var(--virta-warn) 45%, transparent);
+  color: var(--virta-text-0);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 500;
+}
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--virta-warn);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dot {
+    animation: none;
+  }
+}

@@ -37,8 +37,7 @@
 
 /* Interactive bits opt out of the window drag region. */
 .profileBtn,
-.search,
-.live {
+.search {
   -webkit-app-region: no-drag;
 }
 
@@ -127,9 +126,3 @@
   color: var(--virta-text-2);
 }
 
-.live {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--virta-space-4);
-  padding-left: var(--virta-space-8);
-}
