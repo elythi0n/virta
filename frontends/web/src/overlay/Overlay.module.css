@@ -1,0 +1,11 @@
+/* Transparent overlay; OBS browser source should have "Allow transparency" checked. */
+.root {
+  width: 100vw;
+  height: 100vh;
+  background: transparent;
+  overflow: hidden;
+  /* Flip so newest messages appear at the bottom, scrolling upward. */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}

@@ -7,6 +7,7 @@ package api
 import (
 	"context"
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -52,12 +53,14 @@ type Server struct {
 	accounts    Accounts          // connected-accounts controller, installed via SetAccounts
 	authConfig  AuthConfigControl // OAuth-credentials controller, installed via SetAuthConfig
 	authCtl     Auth              // account-auth controller, installed via SetAuth
-	send        Send              // cross-posting controller, installed via SetSend
-	held        Held              // AutoMod hold-queue controller, installed via SetHeld
-	history     History           // message-log search/scrollback controller, installed via SetHistory
-	tokens      Tokens            // scoped API-token controller, installed via SetTokens
-	webui       http.Handler      // embedded web UI, installed via SetWebUI (nil = not served)
-	corsOrigins []string          // opt-in CORS allowlist for local web tools (empty = CORS off)
+	send              Send              // cross-posting controller, installed via SetSend
+	held              Held              // AutoMod hold-queue controller, installed via SetHeld
+	history           History           // message-log search/scrollback controller, installed via SetHistory
+	tokens            Tokens            // scoped API-token controller, installed via SetTokens
+	portability       Portability       // profile import/export controller, installed via SetPortability
+	webui             http.Handler      // embedded web UI, installed via SetWebUI (nil = not served)
+	corsOrigins       []string          // opt-in CORS allowlist for local web tools (empty = CORS off)
+	integrationReport any               // native-integration report forwarded from the desktop shell
 
 	token         string
 	runtimeDir    string
@@ -114,6 +117,11 @@ func New(cfg Config) (*Server, error) {
 	// SPA can authenticate. Empty addr means "this origin". Remote clients are refused; serving a
 	// UI beyond loopback needs the hosted auth layer (ADR-031, deferred).
 	mux.HandleFunc("GET /__discovery", s.handleDiscovery)
+	mux.HandleFunc("GET /__integration", s.handleDesktopIntegration)
+	// /overlay: the transparent feed-only build for an OBS browser source (zero-install).
+	// Served from the embedded web assets. The token must be passed as a query param:
+	// http://127.0.0.1:<port>/overlay?token=<token>&channels=twitch:forsen
+	mux.HandleFunc("GET /overlay", s.handleOverlay)
 	// SPA fallback: anything not matched above is served from the embedded web UI (if present).
 	mux.HandleFunc("/", s.handleWebUI)
 
@@ -132,6 +140,10 @@ func (s *Server) Sink() pipeline.Sink { return s.hub }
 
 // Token returns the bearer token clients must present.
 func (s *Server) Token() string { return s.token }
+
+// SetIntegrationReport installs the native-integration report (resolved by the desktop shell) so
+// the web UI can read the active rungs from /__integration without coupling to the shell.
+func (s *Server) SetIntegrationReport(report any) { s.integrationReport = report }
 
 // SetWebUI installs the embedded web UI handler so the daemon serves the app itself. Passing nil
 // (no UI compiled into the binary) leaves the SPA route answering "not built".
@@ -156,6 +168,53 @@ func (s *Server) handleWebUI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.webui.ServeHTTP(w, r)
+}
+
+// handleOverlay rewrites to overlay.html so the token-gated transparent feed renders at /overlay.
+func (s *Server) handleOverlay(w http.ResponseWriter, r *http.Request) {
+	if !s.tokenOK(r) {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	if s.webui == nil {
+		http.Error(w, "overlay not built", http.StatusNotFound)
+		return
+	}
+	r2 := r.Clone(r.Context())
+	r2.URL.Path = "/overlay.html"
+	s.webui.ServeHTTP(w, r2)
+}
+
+// handleDesktopIntegration serves the shell's native-integration report (resolved by the desktop
+// shell and forwarded here). When no report is installed (the daemon runs standalone) this returns
+// a minimal "web fallback" document.
+func (s *Server) handleDesktopIntegration(w http.ResponseWriter, r *http.Request) {
+	if !isLoopback(r.RemoteAddr) {
+		http.NotFound(w, r)
+		return
+	}
+	if s.integrationReport != nil {
+		writeJSON(w, s.integrationReport)
+		return
+	}
+	writeJSON(w, map[string]any{
+		"os": "unknown",
+		"features": []map[string]any{
+			{"id": "window", "rung": "browser"},
+			{"id": "theme", "rung": "native"},
+			{"id": "quicklaunch", "rung": "in_app"},
+			{"id": "hotkeys", "rung": "in_app", "detail": "browser"},
+			{"id": "notifications", "rung": "in_app"},
+			{"id": "tray", "rung": "none"},
+			{"id": "sounds", "rung": "visual"},
+		},
+	})
+}
+
+// tokenOK checks whether a request presents the root token (used internally by overlay/integration).
+func (s *Server) tokenOK(r *http.Request) bool {
+	tok := presentedToken(r)
+	return tok != "" && subtle.ConstantTimeCompare([]byte(tok), []byte(s.token)) == 1
 }
 
 func isLoopback(remoteAddr string) bool {
@@ -289,6 +348,8 @@ func (s *Server) routes() []route {
 		{"GET", "/v1/tokens", ScopeAdmin, s.handleListTokens, "List API tokens"},
 		{"POST", "/v1/tokens", ScopeAdmin, s.handleMintToken, "Mint a scoped API token"},
 		{"DELETE", "/v1/tokens/{id}", ScopeAdmin, s.handleRevokeToken, "Revoke an API token"},
+		{"GET", "/v1/profiles/{id}/export", ScopeControl, s.handleExportProfile, "Export a profile to a portable JSON"},
+		{"POST", "/v1/profiles/import", ScopeControl, s.handleImportProfile, "Import a profile from a portable JSON"},
 		{"GET", "/dev", ScopeRead, s.handleDev, "Developer event probe page"},
 	}
 }

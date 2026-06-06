@@ -35,6 +35,13 @@ export default defineConfig({
   // The ui-kit/feed-core workspace packages share this app's React; dedupe avoids a second copy
   // (which would break Radix's hooks/context).
   resolve: { dedupe: ['react', 'react-dom'] },
+  // Multi-page: the main app (/) and the transparent overlay (/overlay.html → served by virtad
+  // at /overlay). Both share the same ui-kit/feed-core packages.
+  build: {
+    rollupOptions: {
+      input: { app: 'index.html', overlay: 'overlay.html' },
+    },
+  },
   server: {
     // fs.allow opens the sibling ui-kit/ so the dev server can serve the shared tokens.css.
     fs: { allow: ['..'] },

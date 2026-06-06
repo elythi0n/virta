@@ -1,26 +1,23 @@
 // reply-bot is a minimal Go bot that connects to a running virtad, listens for "!ping" in any
-// chat, and replies with "pong!". Run it with:
+// chat, and replies with "pong!". Uses only the standard library.
 //
-//	VIRTA_TOKEN=vk_... VIRTA_ADDR=127.0.0.1:50432 go run .
+// Run: VIRTA_TOKEN=vk_... VIRTA_ADDR=127.0.0.1:50432 go run main.go
 //
-// The token needs the `read` and `send` scopes (mint one in Settings → Integrations).
-// This example requires a Go installation but no other dependencies beyond the standard library.
+// Needs `read` + `send` scopes. Mint a token in Settings → Integrations.
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
-
-	"golang.org/x/net/websocket"
 )
 
-// WireEvent is a subset of the daemon's event envelope (see /v1/openapi.json for the full spec).
 type WireEvent struct {
 	Type    string   `json:"type"`
 	Seq     int64    `json:"seq"`
@@ -28,15 +25,16 @@ type WireEvent struct {
 }
 
 type Message struct {
-	Platform string   `json:"platform"`
-	Channel  Channel  `json:"channel"`
-	Author   Author   `json:"author"`
-	Segments []Seg    `json:"segments"`
+	Platform string  `json:"platform"`
+	Channel  Channel `json:"channel"`
+	Segments []Seg   `json:"segments"`
 }
 
 type Channel struct{ Slug string `json:"slug"` }
-type Author struct{ DisplayName, Login string }
-type Seg struct{ Type, Text string }
+type Seg struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
+}
 
 func main() {
 	addr := os.Getenv("VIRTA_ADDR")
@@ -44,52 +42,45 @@ func main() {
 	if addr == "" || token == "" {
 		log.Fatal("Set VIRTA_ADDR and VIRTA_TOKEN")
 	}
-
-	wsURL := "ws://" + addr + "/v1/stream?token=" + url.QueryEscape(token)
-	origin := "http://" + addr
-	ws, err := websocket.Dial(wsURL, "", origin)
+	conn, err := wsConnect(addr, token)
 	if err != nil {
 		log.Fatalf("connect: %v", err)
 	}
-	defer ws.Close()
-
-	// Subscribe to all channels.
+	defer conn.Close()
 	sub, _ := json.Marshal(map[string]any{"action": "subscribe"})
-	if _, err := ws.Write(sub); err != nil {
+	if err := wsWriteText(conn, sub); err != nil {
 		log.Fatalf("subscribe: %v", err)
 	}
-	log.Printf("Connected to %s — watching for !ping", addr)
-
+	log.Printf("Connected — watching for !ping")
 	var lastSeq int64
 	for {
-		var ev WireEvent
-		if err := websocket.JSON.Receive(ws, &ev); err != nil {
+		msg, err := wsReadText(conn)
+		if err != nil {
 			log.Fatalf("receive: %v", err)
 		}
+		var ev WireEvent
+		if err := json.Unmarshal(msg, &ev); err != nil {
+			continue
+		}
 		if ev.Seq <= lastSeq {
-			continue // replay dedup
+			continue
 		}
 		lastSeq = ev.Seq
 		if ev.Type != "message" || ev.Message == nil {
 			continue
 		}
-		body := msgBody(ev.Message)
-		if !strings.Contains(strings.ToLower(body), "!ping") {
+		var body strings.Builder
+		for _, s := range ev.Message.Segments {
+			if s.Type == "text" {
+				body.WriteString(s.Text)
+			}
+		}
+		if !strings.Contains(strings.ToLower(body.String()), "!ping") {
 			continue
 		}
-		channel := ev.Message.Message.Channel.Slug // simplified
-		go reply(addr, token, "twitch:"+channel, "pong!")
+		ch := ev.Message.Platform + ":" + ev.Message.Channel.Slug
+		go reply(addr, token, ch, "pong!")
 	}
-}
-
-func msgBody(m *Message) string {
-	var b strings.Builder
-	for _, s := range m.Segments {
-		if s.Type == "text" {
-			b.WriteString(s.Text)
-		}
-	}
-	return b.String()
 }
 
 func reply(addr, token, channel, text string) {
@@ -104,4 +95,63 @@ func reply(addr, token, channel, text string) {
 	}
 	defer resp.Body.Close()
 	fmt.Fprintf(os.Stderr, "replied in %s -> %d\n", channel, resp.StatusCode)
+}
+
+func wsConnect(addr, token string) (net.Conn, error) {
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		return nil, err
+	}
+	hs := fmt.Sprintf(
+		"GET /v1/stream?token=%s HTTP/1.1\r\nHost: %s\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n",
+		token, addr)
+	if _, err := conn.Write([]byte(hs)); err != nil {
+		return nil, err
+	}
+	rd := bufio.NewReader(conn)
+	for {
+		line, err := rd.ReadString('\n')
+		if err != nil {
+			return nil, err
+		}
+		if line == "\r\n" {
+			break
+		}
+	}
+	return conn, nil
+}
+
+func wsWriteText(conn net.Conn, msg []byte) error {
+	l := len(msg)
+	frame := []byte{0x81}
+	switch {
+	case l < 126:
+		frame = append(frame, byte(l)|0x80)
+	case l < 65536:
+		frame = append(frame, 126|0x80, byte(l>>8), byte(l))
+	}
+	mask := []byte{0x37, 0xfa, 0x21, 0x3d}
+	frame = append(frame, mask...)
+	for i, b := range msg {
+		frame = append(frame, b^mask[i%4])
+	}
+	_, err := conn.Write(frame)
+	return err
+}
+
+func wsReadText(conn net.Conn) ([]byte, error) {
+	rd := bufio.NewReader(conn)
+	_, _ = rd.ReadByte()
+	b1, _ := rd.ReadByte()
+	paylen := int(b1 & 0x7f)
+	if paylen == 126 {
+		hi, _ := rd.ReadByte()
+		lo, _ := rd.ReadByte()
+		paylen = int(hi)<<8 | int(lo)
+	}
+	buf := make([]byte, paylen)
+	for i := range buf {
+		buf[i], _ = rd.ReadByte()
+	}
+	return buf, nil
 }

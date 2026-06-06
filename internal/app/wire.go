@@ -319,6 +319,7 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 		_ = tokenStore.LoadFromJSON(raw.Data)
 	}
 	srv.SetTokens(tokenStoreWrapper{store: tokenStore, settings: st.Settings()})
+	srv.SetPortability(portabilityControl{profiles: st.Profiles(), accounts: st.Accounts()})
 
 	// OAuth app credentials are read through providers so they can be set at runtime via the UI
 	// (stored in the vault), seeded from the env vars on first run.
@@ -938,6 +939,34 @@ func (t tokenStoreWrapper) persist() {
 		return
 	}
 	_ = t.settings.Put(context.Background(), store.Setting{Scope: "api.tokens", Data: data})
+}
+
+// portabilityControl exports and imports workspace profiles as portable JSON. Accounts appear as
+// refs only (platform + login) — secrets live in the keychain and are never exported.
+type portabilityControl struct {
+	profiles store.ProfileRepo
+	accounts store.AccountRepo
+}
+
+func (c portabilityControl) ExportProfile(ctx context.Context, id string) (api.ProfileExport, error) {
+	p, err := c.profiles.Get(ctx, id)
+	if err != nil {
+		return api.ProfileExport{}, err
+	}
+	accts, _ := c.accounts.List(ctx)
+	refs := make([]api.AccountRef, 0, len(accts))
+	for _, a := range accts {
+		refs = append(refs, api.AccountRef{Platform: string(a.Platform), Login: a.Login})
+	}
+	return api.ProfileExport{SchemaVersion: 1, Name: p.Name, Doc: p.Doc, AccountRefs: refs}, nil
+}
+
+func (c portabilityControl) ImportProfile(ctx context.Context, p api.ProfileExport) (api.ProfileInfo, error) {
+	created, err := c.profiles.Create(ctx, p.Name, p.Doc)
+	if err != nil {
+		return api.ProfileInfo{}, err
+	}
+	return api.ProfileInfo{ID: created.ID, Name: created.Name, Default: created.IsDefault}, nil
 }
 
 // parseTarget turns a "platform:slug" target into a ChannelRef, rejecting an unknown platform so

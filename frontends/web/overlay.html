@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en" data-theme="graphite-dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Virta overlay</title>
+    <style>
+      /* Transparent root so OBS "Allow transparency" lets the stream show through. */
+      html, body { margin: 0; background: transparent; overflow: hidden; }
+    </style>
+  </head>
+  <body>
+    <div id="overlay"></div>
+    <script type="module" src="/src/overlay/main.tsx"></script>
+  </body>
+</html>
