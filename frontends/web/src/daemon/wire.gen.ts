@@ -156,6 +156,17 @@ export interface StatsSnapshot {
   top_emotes?: EmoteCount[];
 }
 
+export interface StreamInfo {
+  platform: string;
+  slug: string;
+  live: boolean;
+  viewer_count: number;
+  title?: string;
+  category?: string;
+  thumbnail_url?: string;
+  started_at?: string;
+}
+
 export interface UnifiedMessage {
   id: string;
   platform_message_id: string;

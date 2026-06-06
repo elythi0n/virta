@@ -20,6 +20,8 @@ type Channels interface {
 	List() []ChannelInfo
 	// Capabilities reports each platform's current capabilities, keyed by platform name.
 	Capabilities() map[string]Capabilities
+	// Streams returns live stream metadata (viewer count, title, thumbnail) for joined channels.
+	Streams() []StreamInfo
 }
 
 // Capabilities mirrors a platform adapter's current capabilities for the wire, so a frontend can

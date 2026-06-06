@@ -97,6 +97,7 @@ func New(cfg Config) (*Server, error) {
 	mux.Handle("GET /v1/stream", s.auth(http.HandlerFunc(s.handleStream)))
 	mux.Handle("GET /v1/channels", s.auth(http.HandlerFunc(s.handleListChannels)))
 	mux.Handle("GET /v1/capabilities", s.auth(http.HandlerFunc(s.handleCapabilities)))
+	mux.Handle("GET /v1/streams", s.auth(http.HandlerFunc(s.handleListStreams)))
 	mux.Handle("POST /v1/channels", s.auth(http.HandlerFunc(s.handleJoinChannel)))
 	mux.Handle("DELETE /v1/channels", s.auth(http.HandlerFunc(s.handleLeaveChannel)))
 	mux.Handle("POST /v1/send", s.auth(http.HandlerFunc(s.handleSend)))

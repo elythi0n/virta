@@ -38,6 +38,7 @@ import (
 	"github.com/elythi0n/virta/internal/store"
 	"github.com/elythi0n/virta/internal/store/postgres"
 	"github.com/elythi0n/virta/internal/store/sqlite"
+	"github.com/elythi0n/virta/internal/streams"
 	"github.com/elythi0n/virta/internal/webui"
 )
 
@@ -228,6 +229,10 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	// back to the frontend's text chips.
 	badgeResolver := badges.NewResolver(badges.NewTwitch(nil, ""))
 
+	// Live stream metadata (viewer count, title, thumbnail) per channel, resolved anonymously
+	// (Twitch GraphQL, Kick's channel API) and served over GET /v1/streams for the streams rail.
+	streamResolver := streams.NewResolver(streams.NewTwitch(nil, ""), streams.NewKick(nil, ""))
+
 	// The pipeline annotates each message — filter rules (hide/highlight/mask) first, then
 	// emote overlays — and fans events out to the API hub (and, later, the logger and other
 	// sinks). The filter stage starts with an empty ruleset (no surprise masking); profiles and
@@ -269,7 +274,7 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	// logging policy on activation and persists live channel changes. Profiles activate at Start.
 	logCtl := loggingControl{eng: eng, sink: logSink, sweeper: sweeper}
 	mgr := profiles.New(st.Profiles(), eng, filterStage, logCtl, runner, clk)
-	srv.SetChannels(channelControl{eng: eng, emotes: emoteResolver, badges: badgeResolver, profiles: mgr})
+	srv.SetChannels(channelControl{eng: eng, emotes: emoteResolver, badges: badgeResolver, streams: streamResolver, profiles: mgr})
 	srv.SetProfiles(profileControl{mgr: mgr, repo: st.Profiles()})
 
 	// Outbound sends are paced per channel and cross-posted through the typed-action layer. Kick
@@ -407,6 +412,7 @@ type channelControl struct {
 	eng      *engine.Engine
 	emotes   *emotes.Resolver
 	badges   *badges.Resolver
+	streams  *streams.Resolver
 	profiles *profiles.Manager
 }
 
@@ -429,6 +435,7 @@ func (c channelControl) Join(ctx context.Context, plat, slug, mode string) error
 	// known, but are wired so they light up the moment it is.
 	go func() { _ = c.emotes.Refresh(context.Background(), ref) }()
 	go c.badges.Refresh(context.Background(), ref)
+	go func() { _ = c.streams.Refresh(context.Background(), ref) }()
 	return nil
 }
 
@@ -506,6 +513,28 @@ func (c channelControl) List() []api.ChannelInfo {
 			State:    string(s.Health.State),
 			Reason:   string(s.Health.Reason),
 		})
+	}
+	return out
+}
+
+func (c channelControl) Streams() []api.StreamInfo {
+	statuses := c.eng.Channels()
+	out := make([]api.StreamInfo, 0, len(statuses))
+	for _, s := range statuses {
+		ref := s.Channel
+		c.streams.EnsureFresh(ref) // background re-fetch when stale; never blocks the response
+		si := api.StreamInfo{Platform: string(ref.Platform), Slug: ref.Slug}
+		if info := c.streams.Snapshot(streams.Key(ref)); info != nil {
+			si.Live = info.Live
+			si.ViewerCount = info.ViewerCount
+			si.Title = info.Title
+			si.Category = info.Category
+			si.ThumbnailURL = info.ThumbnailURL
+			if !info.StartedAt.IsZero() {
+				si.StartedAt = info.StartedAt.Format(time.RFC3339)
+			}
+		}
+		out = append(out, si)
 	}
 	return out
 }
