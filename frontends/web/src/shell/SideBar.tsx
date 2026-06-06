@@ -2,7 +2,6 @@ import { Button, Text } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { PANEL_CATALOG, type ViewId } from './views';
 import AddChannel from './AddChannel';
-import Sources from './Sources';
 import StreamsSidebar from './StreamsSidebar';
 import styles from './SideBar.module.css';
 
@@ -19,7 +18,6 @@ type Props = {
 const TITLES: Record<ViewId, string> = {
   panels: 'Panels',
   streams: 'Streams',
-  sources: 'Sources',
 };
 
 export default function SideBar({ view, openPanel, openChannel, openStream, listFeeds, mergeChannelIntoFeed, onNewFeed }: Props) {
@@ -62,8 +60,6 @@ export default function SideBar({ view, openPanel, openChannel, openStream, list
             mergeChannelIntoFeed={mergeChannelIntoFeed}
           />
         )}
-
-        {view === 'sources' && <Sources />}
       </div>
     </aside>
   );

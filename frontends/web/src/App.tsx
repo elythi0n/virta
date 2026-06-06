@@ -277,7 +277,7 @@ export default function App() {
       { id: 'new-feed', title: 'New Feed…', group: 'Open', keywords: ['set', 'channels', 'unified'], perform: () => setNewFeedOpen(true) },
       { id: 'open-settings', title: 'Open Settings', group: 'Open', shortcut: 'mod+,', perform: openSettings },
       { id: 'view-panels', title: 'Show Panels', group: 'View', perform: () => { setActiveView('panels'); setSidebarOpen(true); } },
-      { id: 'view-sources', title: 'Show Sources', group: 'View', perform: () => { setActiveView('sources'); setSidebarOpen(true); } },
+      { id: 'view-streams', title: 'Show Streams', group: 'View', perform: () => { setActiveView('streams'); setSidebarOpen(true); } },
       { id: 'toggle-sidebar', title: 'Toggle Side Bar', group: 'View', keywords: ['hide', 'show'], shortcut: 'mod+b', perform: () => setSidebarOpen((o) => !o) },
       { id: 'theme-system', title: 'Appearance: Follow system', group: 'Preferences', perform: () => setMode('system') },
       { id: 'theme-dark', title: 'Appearance: Dark', group: 'Preferences', perform: () => setMode('dark') },

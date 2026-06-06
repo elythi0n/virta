@@ -74,7 +74,7 @@ export default function NewFeedDialog({
         />
         {channels.length === 0 ? (
           <Text tone="subtle" variant="ui" as="p">
-            Join channels in Sources first, then build a feed from them.
+            Add channels from the Streams view first, then build a feed from them.
           </Text>
         ) : (
           <ul className={styles.list}>

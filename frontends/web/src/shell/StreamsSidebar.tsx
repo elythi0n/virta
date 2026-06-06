@@ -33,7 +33,7 @@ type Props = {
 // the name to open chat (the primary platform); right-click for those plus opening a specific
 // platform or merging chat into an existing feed.
 export default function StreamsSidebar({ openChannel, openStream, listFeeds, mergeChannelIntoFeed }: Props) {
-  const { channels, status } = useChannels();
+  const { channels, status, leave } = useChannels();
   const streams = useStreams();
   const { stats } = useStats();
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -68,6 +68,7 @@ export default function StreamsSidebar({ openChannel, openStream, listFeeds, mer
           openStream={openStream}
           feeds={listFeeds()}
           mergeChannelIntoFeed={mergeChannelIntoFeed}
+          onRemove={() => g.variants.forEach((v) => void leave(v.platform, v.slug))}
         />
       ))}
     </ul>
@@ -83,6 +84,7 @@ function StreamCard({
   openStream,
   feeds,
   mergeChannelIntoFeed,
+  onRemove,
 }: {
   group: StreamGroup;
   stat?: { messagesPerSec: number; uniqueChatters: number; topEmote?: string };
@@ -92,6 +94,7 @@ function StreamCard({
   openStream: (key: string, label: string) => void;
   feeds: { id: string; title: string }[];
   mergeChannelIntoFeed: (panelId: string, channelKey: string) => void;
+  onRemove: () => void;
 }) {
   const { primary, display, variants, live, viewers } = group;
   const info = primary.info;
@@ -121,6 +124,13 @@ function StreamCard({
       items: feeds.map((f) => ({ kind: 'item', label: f.title, onSelect: () => mergeChannelIntoFeed(f.id, primary.key) })),
     });
   }
+  menuItems.push({ kind: 'separator' });
+  menuItems.push({
+    kind: 'item',
+    label: variants.length > 1 ? 'Remove from streams (all platforms)' : 'Remove from streams',
+    danger: true,
+    onSelect: onRemove,
+  });
 
   return (
     <li className={styles.item} data-live={live}>
