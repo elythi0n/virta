@@ -141,11 +141,10 @@ func (r compiledRule) scopeMatches(msg *platform.UnifiedMessage) bool {
 // (which use case-insensitive substring matching — you highlight your name wherever it
 // appears). A rule with no text terms "hits" on scope alone (e.g. hide-by-author). Masking, by
 // contrast, matches whole words only (see collectSpans).
-func (r compiledRule) textHit(text string) bool {
+func (r compiledRule) textHit(text, lower string) bool {
 	if len(r.keywords) == 0 && len(r.regexes) == 0 {
 		return true
 	}
-	lower := strings.ToLower(text)
 	for kw := range r.keywords { // keys are already lowercased by Compile
 		if strings.Contains(lower, kw) {
 			return true
@@ -158,6 +157,9 @@ func (r compiledRule) textHit(text string) bool {
 	}
 	return false
 }
+
+// needsText reports whether textHit has to inspect the message body (vs hitting on scope alone).
+func (r compiledRule) needsText() bool { return len(r.keywords) > 0 || len(r.regexes) > 0 }
 
 // Stage applies the current ruleset to each message.
 type Stage struct{ rs atomic.Pointer[Ruleset] }
@@ -189,7 +191,21 @@ func (s *Stage) Annotate(_ context.Context, msg *platform.UnifiedMessage) error 
 	if rs == nil || len(rs.rules) == 0 {
 		return nil
 	}
-	text := msg.PlainText()
+	// The flattened body is only needed by hide/highlight rules that carry text terms, so it is
+	// computed (and lower-cased) at most once, lazily — a mask-only ruleset never touches it.
+	var text, lower string
+	textReady := false
+	hit := func(r compiledRule) bool {
+		if !r.needsText() {
+			return true
+		}
+		if !textReady {
+			text = msg.PlainText()
+			lower = strings.ToLower(text)
+			textReady = true
+		}
+		return r.textHit(text, lower)
+	}
 	for i := range rs.rules {
 		r := rs.rules[i]
 		if !r.scopeMatches(msg) {
@@ -197,11 +213,11 @@ func (s *Stage) Annotate(_ context.Context, msg *platform.UnifiedMessage) error 
 		}
 		switch r.action {
 		case ActionHide:
-			if r.textHit(text) {
+			if hit(r) {
 				msg.Annotate().Hidden = true
 			}
 		case ActionHighlight:
-			if r.textHit(text) {
+			if hit(r) {
 				msg.Annotate().Highlight = r.id
 			}
 		case ActionMask:

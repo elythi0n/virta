@@ -115,12 +115,24 @@ func TestResolver_SnapshotNeverNil(t *testing.T) {
 
 func TestApplyEmotes_PreservesMultipleSpaces(t *testing.T) {
 	set := merge([]platform.EmoteRef{emote(platform.Emote7TV, "Kappa")})
-	segs := applyEmotes("a  Kappa   b", set)
+	segs, changed := applyEmotes("a  Kappa   b", set)
+	if !changed {
+		t.Fatal("expected an emote match")
+	}
 	var got string
 	for _, s := range segs {
 		got += s.Text
 	}
 	if got != "a  Kappa   b" {
 		t.Errorf("reassembled = %q, want exact spacing preserved", got)
+	}
+}
+
+// TestApplyEmotes_NoMatchIsZeroChange: text with no emote returns (nil, false) so the caller can
+// keep the original segment without rebuilding.
+func TestApplyEmotes_NoMatchIsZeroChange(t *testing.T) {
+	set := merge([]platform.EmoteRef{emote(platform.Emote7TV, "Kappa")})
+	if segs, changed := applyEmotes("just some words", set); changed || segs != nil {
+		t.Errorf("no-match = (%v, %v), want (nil, false)", segs, changed)
 	}
 }

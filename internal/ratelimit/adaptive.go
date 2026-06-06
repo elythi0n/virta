@@ -39,7 +39,6 @@ type Adaptive struct {
 type adaptiveState struct {
 	base     Limit     // what recovery restores toward
 	cur      Limit     // current (possibly tightened) limit
-	lastHit  time.Time // most recent 429
 	lastStep time.Time // most recent tighten or recovery step
 }
 
@@ -129,7 +128,7 @@ func (a *Adaptive) hit(key string, wait time.Duration) {
 	if st.cur.Burst > 1 {
 		st.cur.Burst /= 2
 	}
-	st.lastHit, st.lastStep = now, now
+	st.lastStep = now
 	cur := st.cur
 	a.mu.Unlock()
 

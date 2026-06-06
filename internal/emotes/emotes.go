@@ -141,22 +141,60 @@ func (s *Stage) Annotate(_ context.Context, msg *platform.UnifiedMessage) error 
 	if set.Len() == 0 {
 		return nil
 	}
-	out := make([]platform.Segment, 0, len(msg.Segments))
-	for _, seg := range msg.Segments {
-		if seg.Kind != platform.SegText {
+	// Rebuild the segment slice only once a text segment actually contains an emote. The common
+	// case (a message with no custom emote) then allocates nothing and leaves Segments untouched.
+	var out []platform.Segment
+	changed := false
+	for i, seg := range msg.Segments {
+		if seg.Kind == platform.SegText {
+			if repl, didChange := applyEmotes(seg.Text, set); didChange {
+				if !changed {
+					out = make([]platform.Segment, 0, len(msg.Segments)+2)
+					out = append(out, msg.Segments[:i]...)
+					changed = true
+				}
+				out = append(out, repl...)
+				continue
+			}
+		}
+		if changed {
 			out = append(out, seg)
+		}
+	}
+	if changed {
+		msg.Segments = out
+	}
+	return nil
+}
+
+// containsEmote reports whether any whole space-delimited word in text matches an emote, doing
+// only map lookups so the no-match path allocates nothing.
+func containsEmote(text string, set *Set) bool {
+	for i := 0; i < len(text); {
+		if text[i] == ' ' {
+			i++
 			continue
 		}
-		out = append(out, applyEmotes(seg.Text, set)...)
+		j := i
+		for j < len(text) && text[j] != ' ' {
+			j++
+		}
+		if _, ok := set.Lookup(text[i:j]); ok {
+			return true
+		}
+		i = j
 	}
-	msg.Segments = out
-	return nil
+	return false
 }
 
 // applyEmotes splits text on spaces (preserving them exactly) and turns each whole word that
 // matches an emote name into an emote segment, coalescing the rest into text segments so the
-// pieces still concatenate back to the original text.
-func applyEmotes(text string, set *Set) []platform.Segment {
+// pieces still concatenate back to the original text. It returns (nil, false) when no word
+// matched, so the caller can keep the original segment without allocating.
+func applyEmotes(text string, set *Set) ([]platform.Segment, bool) {
+	if !containsEmote(text, set) {
+		return nil, false
+	}
 	var segs []platform.Segment
 	var buf strings.Builder
 	flush := func() {
@@ -186,5 +224,5 @@ func applyEmotes(text string, set *Set) []platform.Segment {
 		i = j
 	}
 	flush()
-	return segs
+	return segs, true
 }

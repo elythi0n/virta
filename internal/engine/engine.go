@@ -39,8 +39,12 @@ type Engine struct {
 	mu       sync.Mutex
 	adapters map[platform.Platform]platform.Adapter
 	joined   map[string]platform.ChannelRef // channelKey → ref, for listing
-	seen     map[string]map[string]struct{} // channelKey → author ids seen this session
 	closed   bool
+
+	// seen is guarded by its own mutex, not mu, so the per-message first-time check on the hot
+	// path never contends with control-plane operations (Join/Leave/Channels/Register/Close).
+	seenMu sync.Mutex
+	seen   map[string]map[string]struct{} // channelKey → author ids seen this session
 
 	wg sync.WaitGroup // adapter event forwarders
 }
@@ -120,7 +124,7 @@ func (e *Engine) markFirstTime(m *platform.UnifiedMessage) {
 		return
 	}
 	key := channelKey(m.Channel)
-	e.mu.Lock()
+	e.seenMu.Lock()
 	set := e.seen[key]
 	if set == nil {
 		set = make(map[string]struct{})
@@ -131,7 +135,7 @@ func (e *Engine) markFirstTime(m *platform.UnifiedMessage) {
 	if first {
 		set[author] = struct{}{}
 	}
-	e.mu.Unlock()
+	e.seenMu.Unlock()
 	if first {
 		m.Annotate().FirstTime = true
 	}
@@ -166,8 +170,10 @@ func (e *Engine) Leave(ch platform.ChannelRef) error {
 	e.mu.Lock()
 	a, ok := e.adapters[ch.Platform]
 	delete(e.joined, channelKey(ch))
-	delete(e.seen, channelKey(ch)) // release the first-time-chatter set (re-join resets it)
 	e.mu.Unlock()
+	e.seenMu.Lock()
+	delete(e.seen, channelKey(ch)) // release the first-time-chatter set (re-join resets it)
+	e.seenMu.Unlock()
 	if !ok {
 		return fmt.Errorf("engine: no adapter registered for platform %q", ch.Platform)
 	}
