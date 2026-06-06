@@ -24,8 +24,8 @@ func realTokens(t *testing.T) *Tokens {
 func TestCSS_EmitsTokens(t *testing.T) {
 	css := realTokens(t).CSS()
 	for _, want := range []string{
-		`--virta-font-ui: "Geist"`,
-		`--virta-font-mono: "Geist Mono"`,
+		`--virta-font-ui: "Geist Variable"`,
+		`--virta-font-mono: "Geist Mono Variable"`,
 		"--virta-space-8: 8px;",
 		"--virta-radius-sm: 5px;",
 		"--virta-radius-lg: 8px;",
@@ -44,7 +44,7 @@ func TestCSS_EmitsTokens(t *testing.T) {
 func TestTS_EmitsConstsAndThemeUnion(t *testing.T) {
 	ts := realTokens(t).TS()
 	for _, want := range []string{
-		`export const fonts = { ui: "Geist", mono: "Geist Mono" } as const;`,
+		`export const fonts = { ui: "Geist Variable", mono: "Geist Mono Variable" } as const;`,
 		"export const space = [2, 4, 8, 12, 16, 24, 32] as const;",
 		`"bg-0": "var(--virta-bg-0)"`,
 		`"plat-twitch": "var(--virta-plat-twitch)"`,

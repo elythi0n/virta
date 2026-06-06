@@ -1,6 +1,6 @@
 // Generated from tokens.json by cmd/tokengen. Do not edit by hand.
 
-export const fonts = { ui: "Geist", mono: "Geist Mono" } as const;
+export const fonts = { ui: "Geist Variable", mono: "Geist Mono Variable" } as const;
 
 export const space = [2, 4, 8, 12, 16, 24, 32] as const;
 

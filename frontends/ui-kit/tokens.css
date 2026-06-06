@@ -1,7 +1,7 @@
 /* Generated from tokens.json by cmd/tokengen. Do not edit by hand. */
 :root {
-  --virta-font-ui: "Geist", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --virta-font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --virta-font-ui: "Geist Variable", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --virta-font-mono: "Geist Mono Variable", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --virta-type-chat-comfortable-size: 15px;
   --virta-type-chat-comfortable-line: 23px;
   --virta-type-chat-comfortable-weight: 400;
