@@ -19,3 +19,9 @@ export { default as Select } from './Select';
 export type { SelectOption, SelectGroup } from './Select';
 
 export { default as Tooltip, TooltipProvider } from './Tooltip';
+
+// Brand mark (a glow-on-dark raster, designed for dark surfaces). Reach for the
+// 256px variant in app chrome and the 512px variant where it renders larger or
+// on high-DPI displays; the unscaled master lives beside these.
+export { default as logoUrl } from './assets/virta-logo-512.png';
+export { default as logoUrlSmall } from './assets/virta-logo-256.png';
