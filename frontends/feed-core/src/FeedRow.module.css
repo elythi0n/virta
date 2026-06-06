@@ -200,6 +200,10 @@
   color: var(--virta-text-2);
   font-style: italic;
 }
+/* Mod view: a deleted message's original text, struck through (the row is already faded). */
+.struck {
+  text-decoration: line-through;
+}
 
 /* Event bands: non-chat message types (sub, raid, …) get a tinted, accented row. */
 .event {

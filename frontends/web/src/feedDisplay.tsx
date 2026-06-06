@@ -6,6 +6,9 @@ type FeedDisplayValue = {
   /** Names that mark a message as a mention of you (drives the Mentions inbox + highlighting). */
   mentionNames: string[];
   setMentionNames: (v: string[]) => void;
+  /** Mod view: show a deleted message's original text (struck) instead of a tombstone. */
+  showDeleted: boolean;
+  setShowDeleted: (v: boolean) => void;
 };
 
 const FeedDisplayContext = createContext<FeedDisplayValue>({
@@ -13,6 +16,8 @@ const FeedDisplayContext = createContext<FeedDisplayValue>({
   setShowTimestamps: () => {},
   mentionNames: [],
   setMentionNames: () => {},
+  showDeleted: false,
+  setShowDeleted: () => {},
 });
 
 export const FeedDisplayProvider = FeedDisplayContext.Provider;

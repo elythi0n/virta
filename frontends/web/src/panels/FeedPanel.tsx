@@ -176,7 +176,7 @@ type Props = {
 export default function FeedPanel({ channels, panelId }: Props) {
   const { theme } = useTheme();
   const { density: defaultDensity } = useDensity();
-  const { showTimestamps } = useFeedDisplay();
+  const { showTimestamps, showDeleted } = useFeedDisplay();
   const { channels: joined } = useChannels();
   const { messages, push, markDeleted, clearChannel } = useFeedBuffer({ max: MAX_MESSAGES });
   const [chatSettings, setChatSettings] = useState<Record<string, ChatSettings>>({});
@@ -378,6 +378,7 @@ export default function FeedPanel({ channels, panelId }: Props) {
           showSource={showSource}
           density={density}
           showTimestamps={showTimestamps}
+          showDeleted={showDeleted}
           renderActions={renderActions}
         />
       </div>

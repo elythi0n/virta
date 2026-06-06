@@ -60,6 +60,11 @@ export default function App() {
   }, []);
   const [density, setDensity] = useState<Density>('cozy');
   const [showTimestamps, setShowTimestamps] = useState(true);
+  const [showDeleted, setShowDeletedState] = useState(() => loadBool('virta.showDeleted'));
+  const setShowDeleted = useCallback((v: boolean) => {
+    setShowDeletedState(v);
+    saveBool('virta.showDeleted', v);
+  }, []);
   const [mentionNames, setMentionNamesState] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem('virta.mentionNames') ?? '[]');
@@ -286,7 +291,7 @@ export default function App() {
     <ThemeProvider value={{ mode, setMode, theme }}>
       <A11yProvider value={{ reduceMotion, setReduceMotion, dyslexicFont, setDyslexicFont }}>
       <DensityProvider value={{ density, setDensity }}>
-        <FeedDisplayProvider value={{ showTimestamps, setShowTimestamps, mentionNames, setMentionNames }}>
+        <FeedDisplayProvider value={{ showTimestamps, setShowTimestamps, mentionNames, setMentionNames, showDeleted, setShowDeleted }}>
         <ActionsProvider value={actions}>
           <TooltipProvider>
           <div className="app">

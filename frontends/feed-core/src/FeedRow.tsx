@@ -59,6 +59,8 @@ type FeedRowProps = {
   showSource?: boolean;
   /** Show the per-row timestamp. */
   showTimestamps?: boolean;
+  /** Show a deleted message's original text (struck) instead of the tombstone (mod view). */
+  showDeleted?: boolean;
   /** Optional hover-revealed actions for a chat row (e.g. moderator buttons); return null to omit. */
   renderActions?: (m: FeedMessage) => ReactNode;
   density: Density;
@@ -67,7 +69,7 @@ type FeedRowProps = {
 // The single most-rendered element. Bespoke and memoized so streaming a new message never
 // re-renders the rows above it. Chat rows carry a platform rail, optional source tag, badges, the
 // author, and segments; non-chat types render as a tinted event band; deletions fade and strike.
-function FeedRow({ message, background, showSource, showTimestamps = true, renderActions, density }: FeedRowProps) {
+function FeedRow({ message, background, showSource, showTimestamps = true, showDeleted = false, renderActions, density }: FeedRowProps) {
   const type = message.type ?? 'chat';
 
   if (isEventType(type)) {
@@ -121,7 +123,13 @@ function FeedRow({ message, background, showSource, showTimestamps = true, rende
         {message.author}
       </span>
       <span className={`${styles.body} ${type === 'action' ? styles.action : ''}`}>
-        {message.deleted ? <span className={styles.tombstone}>message deleted</span> : message.segments.map(renderSegment)}
+        {message.deleted && !showDeleted ? (
+          <span className={styles.tombstone}>message deleted</span>
+        ) : message.deleted ? (
+          <span className={styles.struck}>{message.segments.map(renderSegment)}</span>
+        ) : (
+          message.segments.map(renderSegment)
+        )}
       </span>
       {message.combo && message.combo > 1 && <span className={styles.combo}>×{message.combo}</span>}
       {actions && <span className={styles.rowActions}>{actions}</span>}

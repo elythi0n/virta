@@ -146,6 +146,18 @@ function Accessibility() {
   );
 }
 
+function ChatSettings() {
+  const { showDeleted, setShowDeleted } = useFeedDisplay();
+  return (
+    <OnOff
+      label="Show deleted messages"
+      hint="Mod view: keep deleted messages visible (struck through) instead of a tombstone."
+      value={showDeleted}
+      onChange={setShowDeleted}
+    />
+  );
+}
+
 function Shortcuts() {
   const actions = useActions();
   const bound = actions.filter((a) => a.shortcut);
@@ -181,6 +193,8 @@ function CategoryBody({ id }: { id: CategoryId }) {
       return <Appearance />;
     case 'accessibility':
       return <Accessibility />;
+    case 'chat':
+      return <ChatSettings />;
     case 'shortcuts':
       return <Shortcuts />;
     case 'about':
