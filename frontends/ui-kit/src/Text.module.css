@@ -1,0 +1,54 @@
+.text {
+  margin: 0;
+  font-family: var(--virta-font-ui);
+}
+
+.v-ui {
+  font-size: var(--virta-type-ui-size);
+  line-height: var(--virta-type-ui-line);
+  font-weight: var(--virta-type-ui-weight);
+}
+.v-meta {
+  font-size: var(--virta-type-meta-size);
+  line-height: var(--virta-type-meta-line);
+  font-weight: var(--virta-type-meta-weight);
+}
+.v-title {
+  font-size: var(--virta-type-title-size);
+  line-height: var(--virta-type-title-line);
+  font-weight: var(--virta-type-title-weight);
+}
+.v-mono {
+  font-family: var(--virta-font-mono);
+  font-size: var(--virta-type-mono-size);
+  line-height: var(--virta-type-mono-line);
+  font-weight: var(--virta-type-mono-weight);
+}
+.v-chat-compact {
+  font-size: var(--virta-type-chat-compact-size);
+  line-height: var(--virta-type-chat-compact-line);
+  font-weight: var(--virta-type-chat-compact-weight);
+}
+.v-chat-cozy {
+  font-size: var(--virta-type-chat-cozy-size);
+  line-height: var(--virta-type-chat-cozy-line);
+  font-weight: var(--virta-type-chat-cozy-weight);
+}
+.v-chat-comfortable {
+  font-size: var(--virta-type-chat-comfortable-size);
+  line-height: var(--virta-type-chat-comfortable-line);
+  font-weight: var(--virta-type-chat-comfortable-weight);
+}
+
+.tone-default {
+  color: var(--virta-text-0);
+}
+.tone-muted {
+  color: var(--virta-text-1);
+}
+.tone-subtle {
+  color: var(--virta-text-2);
+}
+.tone-inherit {
+  color: inherit;
+}

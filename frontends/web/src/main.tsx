@@ -1,4 +1,4 @@
-import '../../ui-kit/tokens.css';
+import '@virta/ui-kit/tokens.css';
 import '@fontsource-variable/geist/wght.css';
 import '@fontsource-variable/geist-mono/wght.css';
 import 'dockview/dist/styles/dockview.css';

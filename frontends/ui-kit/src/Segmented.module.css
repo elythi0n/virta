@@ -1,0 +1,33 @@
+.segmented {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  background: var(--virta-bg-0);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-md);
+}
+
+.seg {
+  padding: var(--virta-space-4) var(--virta-space-12);
+  border: 0;
+  border-radius: var(--virta-radius-sm);
+  background: none;
+  color: var(--virta-text-2);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  cursor: pointer;
+  transition:
+    background var(--virta-motion-fast) ease,
+    color var(--virta-motion-fast) ease;
+}
+.seg:hover {
+  color: var(--virta-text-1);
+}
+.seg.on {
+  background: var(--virta-bg-2);
+  color: var(--virta-text-0);
+}
+.seg:focus-visible {
+  outline: 2px solid var(--virta-accent);
+  outline-offset: 1px;
+}

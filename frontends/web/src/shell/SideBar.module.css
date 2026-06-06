@@ -11,9 +11,6 @@
 .head {
   flex: none;
   padding: var(--virta-space-12) var(--virta-space-16) var(--virta-space-8);
-  color: var(--virta-text-2);
-  font-size: var(--virta-type-meta-size);
-  line-height: var(--virta-type-meta-line);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -32,35 +29,23 @@
   padding: 0;
 }
 
-.row {
+/* A catalog row rendered as a full-width, left-aligned ghost button. */
+.rowBtn {
+  width: 100%;
+  justify-content: flex-start;
+}
+.rowLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+}
+
+.sourceRow {
   display: flex;
   align-items: center;
   gap: var(--virta-space-8);
   width: 100%;
   padding: var(--virta-space-8);
-  border: 0;
-  border-radius: var(--virta-radius-sm);
-  background: none;
-  color: var(--virta-text-1);
-  font-family: var(--virta-font-ui);
-  font-size: var(--virta-type-ui-size);
-  line-height: var(--virta-type-ui-line);
-  text-align: left;
-  cursor: pointer;
-  transition:
-    background var(--virta-motion-fast) ease,
-    color var(--virta-motion-fast) ease;
-}
-button.row:hover {
-  background: var(--virta-bg-2);
-  color: var(--virta-text-0);
-}
-button.row:focus-visible {
-  outline: 2px solid var(--virta-accent);
-  outline-offset: -2px;
-}
-.row.static {
-  cursor: default;
 }
 
 .glyph {
@@ -81,59 +66,16 @@ button.row:focus-visible {
   flex: none;
 }
 
-.state {
-  color: var(--virta-text-2);
-  font-size: var(--virta-type-meta-size);
-}
-
 .note {
   margin: var(--virta-space-12) var(--virta-space-8) 0;
-  color: var(--virta-text-2);
-  font-size: var(--virta-type-meta-size);
-  line-height: var(--virta-type-meta-line);
 }
 
 .field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-8);
   padding: var(--virta-space-8);
 }
-
 .fieldLabel {
   display: block;
-  margin-bottom: var(--virta-space-8);
-  color: var(--virta-text-2);
-  font-size: var(--virta-type-meta-size);
-}
-
-.segmented {
-  display: inline-flex;
-  padding: 2px;
-  gap: 2px;
-  background: var(--virta-bg-0);
-  border: 1px solid var(--virta-line);
-  border-radius: var(--virta-radius-md);
-}
-
-.seg {
-  padding: var(--virta-space-4) var(--virta-space-12);
-  border: 0;
-  border-radius: var(--virta-radius-sm);
-  background: none;
-  color: var(--virta-text-2);
-  font-family: var(--virta-font-ui);
-  font-size: var(--virta-type-ui-size);
-  cursor: pointer;
-  transition:
-    background var(--virta-motion-fast) ease,
-    color var(--virta-motion-fast) ease;
-}
-.seg:hover {
-  color: var(--virta-text-1);
-}
-.seg.on {
-  background: var(--virta-bg-2);
-  color: var(--virta-text-0);
-}
-.seg:focus-visible {
-  outline: 2px solid var(--virta-accent);
-  outline-offset: 1px;
 }

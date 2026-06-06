@@ -5,5 +5,8 @@ import react from '@vitejs/plugin-react';
 // tokens.css (the single source of design tokens) from outside this root.
 export default defineConfig({
   plugins: [react()],
+  // The ui-kit workspace package shares this app's React; dedupe avoids a second copy
+  // (which would break Radix's hooks/context).
+  resolve: { dedupe: ['react', 'react-dom'] },
   server: { fs: { allow: ['..'] } },
 });

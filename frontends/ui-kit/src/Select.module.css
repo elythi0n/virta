@@ -1,0 +1,95 @@
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--virta-space-8);
+  height: 32px;
+  min-width: 140px;
+  padding: 0 var(--virta-space-8) 0 var(--virta-space-12);
+  background: var(--virta-bg-0);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-sm);
+  color: var(--virta-text-0);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  line-height: var(--virta-type-ui-line);
+  cursor: pointer;
+  transition: border-color var(--virta-motion-fast) ease;
+}
+.trigger:hover {
+  border-color: var(--virta-text-2);
+}
+.trigger:focus-visible {
+  outline: 2px solid var(--virta-accent);
+  outline-offset: 1px;
+}
+.trigger[data-placeholder] {
+  color: var(--virta-text-2);
+}
+.triggerIcon {
+  color: var(--virta-text-2);
+}
+
+.content {
+  min-width: var(--radix-select-trigger-width);
+  max-height: var(--radix-select-content-available-height);
+  background: var(--virta-bg-1);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-md);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.4);
+  overflow: hidden;
+  z-index: 50;
+}
+.viewport {
+  padding: var(--virta-space-4);
+}
+
+.item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 var(--virta-space-24) 0 var(--virta-space-8);
+  border-radius: var(--virta-radius-sm);
+  color: var(--virta-text-1);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  line-height: var(--virta-type-ui-line);
+  user-select: none;
+  outline: none;
+  cursor: pointer;
+}
+.item[data-highlighted] {
+  background: var(--virta-bg-2);
+  color: var(--virta-text-0);
+}
+.item[data-state='checked'] {
+  color: var(--virta-text-0);
+}
+.item[data-disabled] {
+  color: var(--virta-text-2);
+  pointer-events: none;
+}
+.indicator {
+  position: absolute;
+  right: var(--virta-space-8);
+  display: inline-flex;
+  align-items: center;
+  color: var(--virta-accent);
+}
+
+.groupLabel {
+  padding: var(--virta-space-8) var(--virta-space-8) var(--virta-space-4);
+  color: var(--virta-text-2);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  line-height: var(--virta-type-meta-line);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.separator {
+  height: 1px;
+  margin: var(--virta-space-4) 0;
+  background: var(--virta-line);
+}

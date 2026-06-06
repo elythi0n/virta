@@ -3,7 +3,7 @@ import styles from './Panel.module.css';
 type Row = { id: number; ts: string; plat: 'twitch' | 'kick'; author: string; body: string };
 
 // A long synthetic feed to eyeball scroll smoothness and verify the body keeps rendering
-// through a drag/resize. Real virtualization and live data arrive with feed-core (M4.2).
+// through a drag/resize. Real virtualization and live data arrive with the feed renderer.
 const SAMPLE = [
   'gg that was clean',
   'no shot he hit that',

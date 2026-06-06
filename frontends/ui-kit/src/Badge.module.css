@@ -1,0 +1,35 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 var(--virta-space-8);
+  border: 1px solid transparent;
+  border-radius: var(--virta-radius-sm);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  line-height: var(--virta-type-meta-line);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.tone-neutral {
+  background: var(--virta-bg-2);
+  color: var(--virta-text-1);
+  border-color: var(--virta-line);
+}
+.tone-accent {
+  background: color-mix(in srgb, var(--virta-accent) 16%, transparent);
+  color: var(--virta-accent);
+}
+.tone-ok {
+  background: color-mix(in srgb, var(--virta-ok) 16%, transparent);
+  color: var(--virta-ok);
+}
+.tone-warn {
+  background: color-mix(in srgb, var(--virta-warn) 16%, transparent);
+  color: var(--virta-warn);
+}
+.tone-danger {
+  background: color-mix(in srgb, var(--virta-danger) 16%, transparent);
+  color: var(--virta-danger);
+}

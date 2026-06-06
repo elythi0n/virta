@@ -1,0 +1,18 @@
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.live {
+  background: var(--virta-ok);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--virta-ok) 24%, transparent);
+}
+.idle {
+  background: var(--virta-warn);
+}
+.offline {
+  background: var(--virta-text-2);
+}
