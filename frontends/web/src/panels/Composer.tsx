@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Button, Input, Popover, Text } from '@virta/ui-kit';
 import { PlatformGlyph, type Platform } from '@virta/feed-core';
 import Icon from '../Icon';
+import { useFeedDisplay } from '../feedDisplay';
 import { previewSend, sendMessage, useEmotes } from '../daemon';
 import SignInDialog, { type SignInPlatform } from '../shell/SignInDialog';
 import type { SendTarget } from '../daemon/wire.gen';
@@ -34,6 +35,8 @@ export default function Composer({ targets, chatters = [], replyTo = null, onCan
   const [sending, setSending] = useState(false);
   const [signIn, setSignIn] = useState<SignInPlatform | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
+  const { quickReplies } = useFeedDisplay();
   const [results, setResults] = useState<Record<string, string>>({});
   const [reload, setReload] = useState(0);
 
@@ -218,6 +221,36 @@ export default function Composer({ targets, chatters = [], replyTo = null, onCan
               }
             }}
           />
+          {quickReplies.length > 0 && (
+            <Popover
+              open={qrOpen}
+              onOpenChange={setQrOpen}
+              align="end"
+              side="top"
+              trigger={
+                <button type="button" className={styles.quickBtn} aria-label="Quick replies" disabled={offline}>
+                  <Icon name="zap" size={16} />
+                </button>
+              }
+            >
+              <div className={styles.signinMenu} role="menu" aria-label="Quick replies">
+                {quickReplies.map((q, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    className={styles.signinItem}
+                    onClick={() => {
+                      setText(q);
+                      pendingCaret.current = q.length;
+                      setQrOpen(false);
+                    }}
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            </Popover>
+          )}
           <Button variant="solid" size="md" disabled={!canSend} onClick={() => void submit()}>
             Send
           </Button>

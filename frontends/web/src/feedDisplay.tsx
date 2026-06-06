@@ -9,6 +9,9 @@ type FeedDisplayValue = {
   /** Mod view: show a deleted message's original text (struck) instead of a tombstone. */
   showDeleted: boolean;
   setShowDeleted: (v: boolean) => void;
+  /** Saved canned messages, offered as quick replies in the composer. */
+  quickReplies: string[];
+  setQuickReplies: (v: string[]) => void;
 };
 
 const FeedDisplayContext = createContext<FeedDisplayValue>({
@@ -18,6 +21,8 @@ const FeedDisplayContext = createContext<FeedDisplayValue>({
   setMentionNames: () => {},
   showDeleted: false,
   setShowDeleted: () => {},
+  quickReplies: [],
+  setQuickReplies: () => {},
 });
 
 export const FeedDisplayProvider = FeedDisplayContext.Provider;

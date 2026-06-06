@@ -147,14 +147,26 @@ function Accessibility() {
 }
 
 function ChatSettings() {
-  const { showDeleted, setShowDeleted } = useFeedDisplay();
+  const { showDeleted, setShowDeleted, quickReplies, setQuickReplies } = useFeedDisplay();
   return (
-    <OnOff
-      label="Show deleted messages"
-      hint="Mod view: keep deleted messages visible (struck through) instead of a tombstone."
-      value={showDeleted}
-      onChange={setShowDeleted}
-    />
+    <>
+      <OnOff
+        label="Show deleted messages"
+        hint="Mod view: keep deleted messages visible (struck through) instead of a tombstone."
+        value={showDeleted}
+        onChange={setShowDeleted}
+      />
+      <Field label="Quick replies" hint="One canned message per line; offered in the composer's ⚡ menu.">
+        <textarea
+          className={styles.textarea}
+          aria-label="Quick replies"
+          rows={4}
+          placeholder={'gg!\nThanks for the follow'}
+          defaultValue={quickReplies.join('\n')}
+          onBlur={(e) => setQuickReplies(e.currentTarget.value.split('\n').map((s) => s.trim()).filter(Boolean))}
+        />
+      </Field>
+    </>
   );
 }
 

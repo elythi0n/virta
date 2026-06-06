@@ -65,6 +65,21 @@ export default function App() {
     setShowDeletedState(v);
     saveBool('virta.showDeleted', v);
   }, []);
+  const [quickReplies, setQuickRepliesState] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('virta.quickReplies') ?? '[]');
+    } catch {
+      return [];
+    }
+  });
+  const setQuickReplies = useCallback((v: string[]) => {
+    setQuickRepliesState(v);
+    try {
+      localStorage.setItem('virta.quickReplies', JSON.stringify(v));
+    } catch {
+      // storage unavailable; snippets just won't persist
+    }
+  }, []);
   const [mentionNames, setMentionNamesState] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem('virta.mentionNames') ?? '[]');
@@ -291,7 +306,9 @@ export default function App() {
     <ThemeProvider value={{ mode, setMode, theme }}>
       <A11yProvider value={{ reduceMotion, setReduceMotion, dyslexicFont, setDyslexicFont }}>
       <DensityProvider value={{ density, setDensity }}>
-        <FeedDisplayProvider value={{ showTimestamps, setShowTimestamps, mentionNames, setMentionNames, showDeleted, setShowDeleted }}>
+        <FeedDisplayProvider
+          value={{ showTimestamps, setShowTimestamps, mentionNames, setMentionNames, showDeleted, setShowDeleted, quickReplies, setQuickReplies }}
+        >
         <ActionsProvider value={actions}>
           <TooltipProvider>
           <div className="app">

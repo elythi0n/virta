@@ -79,6 +79,33 @@
   color: var(--virta-text-0);
 }
 
+.quickBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 32px;
+  flex: none;
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-sm);
+  background: var(--virta-bg-0);
+  color: var(--virta-text-2);
+  cursor: pointer;
+  transition:
+    border-color var(--virta-motion-fast) ease,
+    background var(--virta-motion-fast) ease,
+    color var(--virta-motion-fast) ease;
+}
+.quickBtn:hover:not(:disabled) {
+  border-color: var(--virta-text-2);
+  background: var(--virta-bg-2);
+  color: var(--virta-text-0);
+}
+.quickBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .acWrap {
   position: relative;
 }
