@@ -120,6 +120,45 @@ export default function App() {
     api.addPanel({ id, component: 'panel', params: { kind: 'feed', channels: [channelKey], title: label }, title: label });
   }, []);
 
+  // Open a channel's embedded player. Stable id per channel so it focuses rather than duplicates.
+  const openStream = useCallback((channelKey: string, label: string) => {
+    const api = apiRef.current;
+    if (!api) return;
+    const id = `watch-${channelKey}`;
+    const existing = api.getPanel(id);
+    if (existing) {
+      existing.api.setActive();
+      return;
+    }
+    api.addPanel({ id, component: 'panel', params: { kind: 'watch', channels: [channelKey], title: label }, title: label });
+  }, []);
+
+  // Existing scoped feeds (the "unified chats"), so the streams rail can merge a channel into one.
+  const listFeeds = useCallback((): { id: string; title: string }[] => {
+    const api = apiRef.current;
+    if (!api) return [];
+    return api.panels
+      .filter((p) => {
+        const params = p.params as { kind?: string; channels?: unknown } | undefined;
+        return params?.kind === 'feed' && Array.isArray(params.channels);
+      })
+      .map((p) => ({ id: p.id, title: p.title ?? p.id }));
+  }, []);
+
+  // Merge a channel into an existing feed by adding it to that panel's channel set.
+  const mergeChannelIntoFeed = useCallback((panelId: string, channelKey: string) => {
+    const api = apiRef.current;
+    if (!api) return;
+    const panel = api.getPanel(panelId);
+    if (!panel) return;
+    const params = (panel.params ?? {}) as { kind?: string; channels?: string[]; title?: string };
+    const channels = Array.isArray(params.channels) ? params.channels : [];
+    if (!channels.includes(channelKey)) {
+      panel.api.updateParameters({ ...params, channels: [...channels, channelKey] });
+    }
+    panel.api.setActive();
+  }, []);
+
   // Every shell action is registered here so the palette (and later, the keymap and menus)
   // dispatch through one list rather than each surface wiring its own handler.
   const actions = useMemo<CommandAction[]>(() => {
@@ -179,7 +218,15 @@ export default function App() {
               onOpenPlugins={() => openPanel('plugins', 'Plugins')}
             />
             {sidebarOpen && (
-              <SideBar view={activeView} openPanel={openPanel} openChannel={openChannel} onNewFeed={() => setNewFeedOpen(true)} />
+              <SideBar
+                view={activeView}
+                openPanel={openPanel}
+                openChannel={openChannel}
+                openStream={openStream}
+                listFeeds={listFeeds}
+                mergeChannelIntoFeed={mergeChannelIntoFeed}
+                onNewFeed={() => setNewFeedOpen(true)}
+              />
             )}
             <div className="dock-host">
               <Dock onReady={onReady} />

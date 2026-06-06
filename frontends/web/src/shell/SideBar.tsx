@@ -9,6 +9,9 @@ type Props = {
   view: ViewId;
   openPanel: (kind: string, title: string) => void;
   openChannel: (channelKey: string, label: string) => void;
+  openStream: (channelKey: string, label: string) => void;
+  listFeeds: () => { id: string; title: string }[];
+  mergeChannelIntoFeed: (panelId: string, channelKey: string) => void;
   onNewFeed: () => void;
 };
 
@@ -18,7 +21,7 @@ const TITLES: Record<ViewId, string> = {
   sources: 'Sources',
 };
 
-export default function SideBar({ view, openPanel, openChannel, onNewFeed }: Props) {
+export default function SideBar({ view, openPanel, openChannel, openStream, listFeeds, mergeChannelIntoFeed, onNewFeed }: Props) {
   return (
     <aside className={styles.side} aria-label={TITLES[view]}>
       <Text as="header" variant="meta" tone="subtle" className={styles.head}>
@@ -47,7 +50,14 @@ export default function SideBar({ view, openPanel, openChannel, onNewFeed }: Pro
           </>
         )}
 
-        {view === 'streams' && <StreamsSidebar openChannel={openChannel} />}
+        {view === 'streams' && (
+          <StreamsSidebar
+            openChannel={openChannel}
+            openStream={openStream}
+            listFeeds={listFeeds}
+            mergeChannelIntoFeed={mergeChannelIntoFeed}
+          />
+        )}
 
         {view === 'sources' && <Sources />}
       </div>

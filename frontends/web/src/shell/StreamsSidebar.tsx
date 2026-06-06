@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { PlatformGlyph, type Platform } from '@virta/feed-core';
-import { StatusDot, Text, type DotStatus } from '@virta/ui-kit';
+import { ContextMenu, StatusDot, Text, type ContextMenuEntry, type DotStatus } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { useChannels, useStats, useStreams } from '../daemon';
 import styles from './StreamsSidebar.module.css';
@@ -17,12 +17,19 @@ const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/,
 type Props = {
   /** Open a feed scoped to a single channel ("platform:slug"). */
   openChannel: (channelKey: string, label: string) => void;
+  /** Open a channel's embedded player. */
+  openStream: (channelKey: string, label: string) => void;
+  /** Existing scoped feeds a channel can be merged into. */
+  listFeeds: () => { id: string; title: string }[];
+  /** Merge a channel into an existing feed. */
+  mergeChannelIntoFeed: (panelId: string, channelKey: string) => void;
 };
 
 // The live channel rail, Twitch-style: each joined channel as a card with a live preview
 // thumbnail, a LIVE badge, and the viewer count when streaming; expand a row for the chat activity
-// (msg/s, unique chatters) from the daemon's stats stream. Click a channel to open its own feed.
-export default function StreamsSidebar({ openChannel }: Props) {
+// (msg/s, unique chatters) from the daemon's stats stream. Click the preview to watch, the name to
+// open chat, or right-click for those plus merging into an existing feed.
+export default function StreamsSidebar({ openChannel, openStream, listFeeds, mergeChannelIntoFeed }: Props) {
   const { channels, status } = useChannels();
   const streams = useStreams();
   const { stats } = useStats();
@@ -51,10 +58,26 @@ export default function StreamsSidebar({ openChannel }: Props) {
         const st = stats[key];
         const live = info?.live ?? false;
         const open = expanded === key;
+        const feeds = listFeeds();
+        const menuItems: ContextMenuEntry[] = [
+          { kind: 'item', label: 'Open stream', onSelect: () => openStream(key, c.slug) },
+          { kind: 'item', label: 'Open chat', onSelect: () => openChannel(key, c.slug) },
+        ];
+        if (feeds.length > 0) {
+          menuItems.push({
+            kind: 'submenu',
+            label: 'Open chat into',
+            items: feeds.map((f) => ({ kind: 'item', label: f.title, onSelect: () => mergeChannelIntoFeed(f.id, key) })),
+          });
+        }
         return (
           <li key={key} className={styles.item} data-live={live}>
+            <ContextMenu
+              items={menuItems}
+              trigger={
+                <div className={styles.card}>
             {live && (
-              <button type="button" className={styles.thumb} onClick={() => openChannel(key, c.slug)} aria-label={`Open ${c.slug}`}>
+              <button type="button" className={styles.thumb} onClick={() => openStream(key, c.slug)} aria-label={`Watch ${c.slug}`}>
                 {info?.thumbnail_url ? (
                   <img className={styles.thumbImg} src={info.thumbnail_url} alt="" loading="lazy" />
                 ) : (
@@ -118,6 +141,9 @@ export default function StreamsSidebar({ openChannel }: Props) {
                 </div>
               </dl>
             )}
+                </div>
+              }
+            />
           </li>
         );
       })}

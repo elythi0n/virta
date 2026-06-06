@@ -21,6 +21,9 @@
 .item[data-live='true'] {
   border-color: color-mix(in srgb, var(--virta-line) 60%, var(--virta-accent));
 }
+.card {
+  display: block;
+}
 
 /* Live preview thumbnail (16:9), with LIVE + viewer overlays. */
 .thumb {

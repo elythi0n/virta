@@ -34,6 +34,16 @@
   color: var(--virta-danger);
 }
 
+.chevron {
+  margin-left: auto;
+  padding-left: var(--virta-space-12);
+  color: var(--virta-text-2);
+}
+.item[data-state='open'] {
+  background: var(--virta-bg-2);
+  color: var(--virta-text-0);
+}
+
 .separator {
   height: 1px;
   margin: var(--virta-space-4) 0;
