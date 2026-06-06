@@ -48,6 +48,7 @@ type Server struct {
 	channels Channels // join/leave controller, installed via SetChannels
 	profiles Profiles // profile controller, installed via SetProfiles
 	authCtl  Auth     // account-auth controller, installed via SetAuth
+	send     Send     // cross-posting controller, installed via SetSend
 
 	token         string
 	runtimeDir    string
@@ -96,6 +97,8 @@ func New(cfg Config) (*Server, error) {
 	mux.Handle("GET /v1/channels", s.auth(http.HandlerFunc(s.handleListChannels)))
 	mux.Handle("POST /v1/channels", s.auth(http.HandlerFunc(s.handleJoinChannel)))
 	mux.Handle("DELETE /v1/channels", s.auth(http.HandlerFunc(s.handleLeaveChannel)))
+	mux.Handle("POST /v1/send", s.auth(http.HandlerFunc(s.handleSend)))
+	mux.Handle("POST /v1/send/preview", s.auth(http.HandlerFunc(s.handleSendPreview)))
 	mux.Handle("GET /v1/profiles", s.auth(http.HandlerFunc(s.handleListProfiles)))
 	mux.Handle("POST /v1/profiles", s.auth(http.HandlerFunc(s.handleCreateProfile)))
 	mux.Handle("POST /v1/profiles/{id}/activate", s.auth(http.HandlerFunc(s.handleActivateProfile)))

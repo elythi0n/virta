@@ -1,8 +1,10 @@
 package app_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"path/filepath"
 	"testing"
@@ -86,6 +88,80 @@ func TestDaemon_AssemblesAndServes(t *testing.T) {
 	}
 	if _, err := api.ReadDiscovery(cfg.RuntimeDir); err == nil {
 		t.Error("discovery file present after shutdown")
+	}
+}
+
+// authedJSON issues an authenticated POST with a JSON body and returns the status and body.
+func authedJSON(t *testing.T, disc api.Discovery, path string, body any) (int, []byte) {
+	t.Helper()
+	b, _ := json.Marshal(body)
+	req, _ := http.NewRequest(http.MethodPost, "http://"+disc.Addr+path, bytes.NewReader(b))
+	req.Header.Set("Authorization", "Bearer "+disc.Token)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("%s: %v", path, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	out, _ := io.ReadAll(resp.Body)
+	return resp.StatusCode, out
+}
+
+// TestDaemon_SendReportsSignedOutTargetsExcluded drives the assembled send path: with both
+// platforms anonymous (not signed in), preview reports neither can send, and a cross-post
+// excludes both rather than erroring — the partial-send guarantee, end to end.
+func TestDaemon_SendReportsSignedOutTargetsExcluded(t *testing.T) {
+	cfg := tempConfig(t)
+	d, err := app.NewDaemon(cfg)
+	if err != nil {
+		t.Fatalf("NewDaemon: %v", err)
+	}
+	if err := d.Start(); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = d.Close(ctx)
+	})
+	disc, err := api.ReadDiscovery(cfg.RuntimeDir)
+	if err != nil {
+		t.Fatalf("ReadDiscovery: %v", err)
+	}
+	channels := []string{"twitch:forsen", "kick:xqc"}
+
+	code, body := authedJSON(t, disc, "/v1/send/preview", map[string]any{"channels": channels})
+	if code != http.StatusOK {
+		t.Fatalf("preview status = %d (%s)", code, body)
+	}
+	var prev struct {
+		Targets []api.SendTarget `json:"targets"`
+	}
+	_ = json.Unmarshal(body, &prev)
+	if len(prev.Targets) != 2 {
+		t.Fatalf("preview targets = %+v", prev.Targets)
+	}
+	for _, tg := range prev.Targets {
+		if tg.CanSend || tg.Reason != "auth_required" {
+			t.Errorf("anonymous target should not be sendable: %+v", tg)
+		}
+	}
+
+	code, body = authedJSON(t, disc, "/v1/send", map[string]any{"channels": channels, "text": "gg"})
+	if code != http.StatusOK {
+		t.Fatalf("send status = %d (%s) — a signed-out target must not fail the request", code, body)
+	}
+	var sent struct {
+		Results []api.SendResult `json:"results"`
+	}
+	_ = json.Unmarshal(body, &sent)
+	if len(sent.Results) != 2 {
+		t.Fatalf("send results = %+v", sent.Results)
+	}
+	for _, r := range sent.Results {
+		if r.Status != api.SendExcluded || r.Reason != "auth_required" {
+			t.Errorf("signed-out target should be excluded, got %+v", r)
+		}
 	}
 }
 

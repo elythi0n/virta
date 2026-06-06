@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/elythi0n/virta/internal/api"
@@ -17,6 +18,7 @@ import (
 	twitchauth "github.com/elythi0n/virta/internal/auth/twitch"
 	"github.com/elythi0n/virta/internal/clock"
 	"github.com/elythi0n/virta/internal/config"
+	"github.com/elythi0n/virta/internal/dispatch"
 	"github.com/elythi0n/virta/internal/emotes"
 	"github.com/elythi0n/virta/internal/engine"
 	"github.com/elythi0n/virta/internal/filter"
@@ -27,6 +29,7 @@ import (
 	"github.com/elythi0n/virta/internal/platform/kick"
 	"github.com/elythi0n/virta/internal/platform/twitch"
 	"github.com/elythi0n/virta/internal/profiles"
+	"github.com/elythi0n/virta/internal/ratelimit"
 	"github.com/elythi0n/virta/internal/secrets"
 	"github.com/elythi0n/virta/internal/secrets/filevault"
 	"github.com/elythi0n/virta/internal/secrets/keychain"
@@ -240,7 +243,8 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	// deletions, and routes channel join/leave to the right adapter. Register the read-only
 	// anonymous Twitch adapter (no credentials needed); more platforms register here later.
 	eng := engine.New(runner, gen)
-	eng.Register(twitch.New(twitch.Options{Clock: clk}))
+	twitchAdapter := twitch.New(twitch.Options{Clock: clk})
+	eng.Register(twitchAdapter)
 	// Kick needs a slug→chatroom-id resolver, cached forever in the channels table. The direct
 	// lookup uses a stock client today (a uTLS Chrome-fingerprint upgrade is tracked); when it's
 	// blocked the resolver falls back to the official API and trips its breaker.
@@ -250,7 +254,8 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 		kick.NewOfficialFetcher(nil),
 		clk,
 	)
-	eng.Register(kick.New(kick.Options{Clock: clk, Resolver: kickResolver}))
+	kickAdapter := kick.New(kick.Options{Clock: clk, Resolver: kickResolver})
+	eng.Register(kickAdapter)
 
 	// The profile manager owns the active workspace: it drives the engine, filter stage, and
 	// logging policy on activation and persists live channel changes. Profiles activate at Start.
@@ -258,6 +263,19 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	mgr := profiles.New(st.Profiles(), eng, filterStage, logCtl, runner, clk)
 	srv.SetChannels(channelControl{eng: eng, emotes: emoteResolver, profiles: mgr})
 	srv.SetProfiles(profileControl{mgr: mgr, repo: st.Profiles()})
+
+	// Outbound sends are paced per channel and cross-posted through the typed-action layer. Kick
+	// is seeded conservatively (its limits are undocumented and adapt on 429); Twitch starts at
+	// its standard rate. A message to several channels reaches every signed-in one and reports a
+	// signed-out one as excluded rather than failing the whole send.
+	limit := ratelimit.Limit{Burst: 20, Window: 30 * time.Second}
+	gov := ratelimit.NewAdaptive(ratelimit.New(clk, limit), clk, limit)
+	gov.SetSeed("kick:", limit)
+	sender := dispatch.New(map[platform.Platform]dispatch.Adapter{
+		platform.Twitch: twitchAdapter,
+		platform.Kick:   kickAdapter,
+	}, gov, sendHelpText)
+	srv.SetSend(sendControl{sender: sender})
 
 	// Twitch sign-in via Device Code Grant. Tokens live in the vault; the account row in the
 	// store. Disabled (sign-in returns a clear error) when no client id is configured.
@@ -419,6 +437,85 @@ func (c channelControl) List() []api.ChannelInfo {
 		})
 	}
 	return out
+}
+
+// sendHelpText is shown for /help: the slash commands the composer understands.
+const sendHelpText = "Commands: /ban /unban /timeout /untimeout /delete /clear /slow /followers " +
+	"/emoteonly /uniquechat /me /help"
+
+// sendControl adapts the dispatch sender to the API's cross-posting controller, translating the
+// API's "platform:slug" target strings to and from platform refs.
+type sendControl struct {
+	sender *dispatch.Sender
+}
+
+// parseTarget turns a "platform:slug" target into a ChannelRef, rejecting an unknown platform so
+// the API answers 400 rather than attempting a send.
+func parseTarget(s string) (platform.ChannelRef, error) {
+	plat, slug, ok := strings.Cut(s, ":")
+	if !ok || slug == "" {
+		return platform.ChannelRef{}, fmt.Errorf("%w: %q", api.ErrUnknownPlatform, s)
+	}
+	p, ok := parsePlatform(plat)
+	if !ok {
+		return platform.ChannelRef{}, fmt.Errorf("%w: %q", api.ErrUnknownPlatform, plat)
+	}
+	return platform.ChannelRef{Platform: p, Slug: slug}, nil
+}
+
+func parseTargets(targets []string) ([]platform.ChannelRef, error) {
+	refs := make([]platform.ChannelRef, 0, len(targets))
+	for _, t := range targets {
+		ref, err := parseTarget(t)
+		if err != nil {
+			return nil, err
+		}
+		refs = append(refs, ref)
+	}
+	return refs, nil
+}
+
+func (c sendControl) Preview(targets []string) ([]api.SendTarget, error) {
+	refs, err := parseTargets(targets)
+	if err != nil {
+		return nil, err
+	}
+	states := c.sender.Targets(refs)
+	out := make([]api.SendTarget, 0, len(states))
+	for _, st := range states {
+		out = append(out, api.SendTarget{Channel: st.Channel.Key(), CanSend: st.CanSend, Reason: string(st.Reason)})
+	}
+	return out, nil
+}
+
+func (c sendControl) Send(ctx context.Context, targets []string, text string) ([]api.SendResult, error) {
+	refs, err := parseTargets(targets)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]api.SendResult, 0, len(refs))
+	for _, ts := range c.sender.SendMany(ctx, refs, text) {
+		r := api.SendResult{Channel: ts.Channel.Key()}
+		if !ts.Reachable {
+			r.Status, r.Reason = api.SendExcluded, string(ts.Reason)
+			out = append(out, r)
+			continue
+		}
+		// A burst send dispatches inline, so its result is ready immediately; a paced send isn't
+		// yet, so it's reported as queued and its final state surfaces over the event stream.
+		select {
+		case e := <-ts.Sent:
+			if e != nil {
+				r.Status, r.Reason = api.SendDropped, "send_failed"
+			} else {
+				r.Status = api.SendSent
+			}
+		default:
+			r.Status = api.SendQueued
+		}
+		out = append(out, r)
+	}
+	return out, nil
 }
 
 // parsePlatform validates a platform string against the known platforms, so an unknown one is
