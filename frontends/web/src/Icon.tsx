@@ -1,4 +1,4 @@
-export type IconName = 'sources' | 'panels' | 'settings' | 'chat' | 'stream' | 'mods' | 'stats' | 'x' | 'popout' | 'search' | 'chevron-down' | 'plus' | 'text-size';
+export type IconName = 'sources' | 'panels' | 'settings' | 'chat' | 'stream' | 'mods' | 'stats' | 'x' | 'popout' | 'search' | 'chevron-down' | 'plus' | 'text-size' | 'plugins';
 
 // Stroke icons on a 24px grid (Lucide geometry). Inner markup only; the wrapper sets sizing,
 // stroke, and currentColor so a single icon adapts to any context.
@@ -21,6 +21,8 @@ const PATHS: Record<IconName, string> = {
   'chevron-down': '<path d="m6 9 6 6 6-6"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   'text-size': '<path d="m3 16 4.5-11 4.5 11"/><path d="M4.5 13h6"/><path d="M21 14h-5"/><path d="M16 16v-3.5a2.5 2.5 0 0 1 5 0V16"/>',
+  plugins:
+    '<path d="M15.5 7.5V5a2 2 0 0 0-2-2h-3a2 2 0 0 0-2 2v2.5"/><path d="M5 9.5h14a1 1 0 0 1 1 1V12a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6v-1.5a1 1 0 0 1 1-1Z"/><path d="M9 18v2"/><path d="M15 18v2"/>',
 };
 
 export default function Icon({ name, size = 20 }: { name: IconName; size?: number }) {

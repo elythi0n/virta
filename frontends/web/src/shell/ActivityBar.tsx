@@ -8,9 +8,10 @@ type Props = {
   sidebarOpen: boolean;
   onSelect: (v: ViewId) => void;
   onOpenSettings: () => void;
+  onOpenPlugins: () => void;
 };
 
-export default function ActivityBar({ activeView, sidebarOpen, onSelect, onOpenSettings }: Props) {
+export default function ActivityBar({ activeView, sidebarOpen, onSelect, onOpenSettings, onOpenPlugins }: Props) {
   const isActive = (id: ViewId) => sidebarOpen && activeView === id;
 
   const viewItem = (v: ViewDef) => {
@@ -33,7 +34,12 @@ export default function ActivityBar({ activeView, sidebarOpen, onSelect, onOpenS
     <nav className={styles.bar} aria-label="Primary">
       <div className={styles.group}>{PRIMARY_VIEWS.map(viewItem)}</div>
       <div className={styles.group}>
-        {/* Settings is an action, not a view: it opens a dock panel rather than the side bar. */}
+        {/* Plugins and Settings are actions, not views: each opens a dock panel, not the side bar. */}
+        <Tooltip content="Plugins" side="right">
+          <button className={styles.item} aria-label="Plugins" onClick={onOpenPlugins}>
+            <Icon name="plugins" />
+          </button>
+        </Tooltip>
         <Tooltip content="Settings" side="right">
           <button className={styles.item} aria-label="Settings" onClick={onOpenSettings}>
             <Icon name="settings" />
