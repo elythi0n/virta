@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Feed, parseSegments, useFeedBuffer, type FeedMessage, type Platform } from '@virta/feed-core';
 import { Segmented, StatusDot, Text } from '@virta/ui-kit';
-import { useDaemonStream, type ConnectionStatus } from '../daemon';
+import { useChannels, useDaemonStream, type ConnectionStatus } from '../daemon';
 import { useDensity } from '../density';
 import { useTheme } from '../theme';
+import Composer from './Composer';
 import styles from './FeedPanel.module.css';
 
 // Build a hex string from channels so no raw hex literal lives in the source (token-lint).
@@ -90,8 +91,13 @@ type Props = {
 export default function FeedPanel({ channels }: Props) {
   const { theme } = useTheme();
   const { density } = useDensity();
+  const { channels: joined } = useChannels();
   const { messages, push } = useFeedBuffer({ max: MAX_MESSAGES });
   const status = useDaemonStream(push, channels);
+
+  // The composer posts to this feed's channels — the set, or every joined channel for the unified
+  // feed.
+  const targets = channels ?? joined.map((c) => `${c.platform}:${c.slug}`);
   const [rate, setRate] = useState<Rate>('live');
   const [background, setBackground] = useState(() => hex(14, 15, 18));
 
@@ -140,6 +146,7 @@ export default function FeedPanel({ channels }: Props) {
       <div className={styles.feedWrap}>
         <Feed messages={messages} background={background} showSource={showSource} density={density} />
       </div>
+      <Composer targets={targets} />
     </div>
   );
 }

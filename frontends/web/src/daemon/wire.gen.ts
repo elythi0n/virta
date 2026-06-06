@@ -118,6 +118,12 @@ export interface ProfileInfo {
   default: boolean;
 }
 
+export interface QueueState {
+  channel: string;
+  queued: number;
+  next_in_ms: number;
+}
+
 export type ReasonCode = string;
 
 export interface Segment {
@@ -129,6 +135,18 @@ export interface Segment {
 }
 
 export type SegmentKind = string;
+
+export interface SendResult {
+  channel: string;
+  status: string;
+  reason?: string;
+}
+
+export interface SendTarget {
+  channel: string;
+  can_send: boolean;
+  reason?: string;
+}
 
 export interface StatsSnapshot {
   window_seconds: number;

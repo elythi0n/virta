@@ -1,0 +1,40 @@
+.composer {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-8);
+  padding: var(--virta-space-8) var(--virta-space-12);
+  border-top: 1px solid var(--virta-line);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--virta-space-4);
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 var(--virta-space-8);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-sm);
+  background: var(--virta-bg-2);
+  color: var(--virta-text-1);
+  font-size: var(--virta-type-meta-size);
+}
+.off {
+  opacity: 0.55;
+  background: none;
+  color: var(--virta-text-2);
+}
+
+.row {
+  display: flex;
+  gap: var(--virta-space-8);
+  align-items: center;
+}
+
+.note {
+  margin: 0;
+}

@@ -12,3 +12,4 @@ export { startTwitchDevice, twitchDeviceStatus, startKickAuth, kickAuthStatus, p
 export { listProfiles, createProfile, activateProfile } from './profiles';
 export { useProfiles } from './useProfiles';
 export type { ProfilesStatus } from './useProfiles';
+export { previewSend, sendMessage } from './send';

@@ -30,6 +30,9 @@ func roots() []reflect.Type {
 		reflect.TypeOf(api.DeviceSession{}),
 		reflect.TypeOf(api.AuthSession{}),
 		reflect.TypeOf(api.ProfileInfo{}),
+		reflect.TypeOf(api.SendTarget{}),
+		reflect.TypeOf(api.SendResult{}),
+		reflect.TypeOf(api.QueueState{}),
 	}
 }
 
