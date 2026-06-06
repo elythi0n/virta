@@ -10,6 +10,7 @@ export interface StreamHandlers {
   onChatSettings?: (channelKey: string, settings: ChatSettings) => void;
   onHeld?: (held: HeldMessage) => void;
   onHeldResolved?: (channelKey: string, id: string, approved: boolean) => void;
+  onPlugin?: (stream: string, data: unknown) => void;
 }
 
 // Connects to the daemon for the panel's lifetime, routing live messages, deletions, and clears to
@@ -31,6 +32,7 @@ export function useDaemonStream(handlers: StreamHandlers, channels?: string[]): 
       onChatSettings: (c, s) => ref.current.onChatSettings?.(c, s),
       onHeld: (h) => ref.current.onHeld?.(h),
       onHeldResolved: (c, id, approved) => ref.current.onHeldResolved?.(c, id, approved),
+      onPlugin: (stream, data) => ref.current.onPlugin?.(stream, data),
       onStatus: setStatus,
       channels: key ? key.split(',') : undefined,
     });

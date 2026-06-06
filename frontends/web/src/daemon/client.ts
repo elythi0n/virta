@@ -24,6 +24,8 @@ export interface DaemonClientOptions {
   onHeld?: (held: HeldMessage) => void;
   /** A held message was resolved (approved or denied) and should leave the queue. */
   onHeldResolved?: (channelKey: string, id: string, approved: boolean) => void;
+  /** A plugin DataSource published on a namespaced stream ("plugin.<id>.<name>"). */
+  onPlugin?: (stream: string, data: unknown) => void;
   onStatus: (status: ConnectionStatus) => void;
   /** Channel keys ("platform:slug") to receive; empty = all. */
   channels?: string[];
@@ -90,6 +92,8 @@ export function createDaemonClient(opts: DaemonClientOptions): DaemonClient {
         opts.onHeld?.(event.held);
       } else if (event.type === 'held_resolved' && event.channel) {
         opts.onHeldResolved?.(channelKey(event.channel.platform, event.channel.slug), event.held_id ?? '', !!event.approved);
+      } else if (event.type === 'plugin' && event.stream) {
+        opts.onPlugin?.(event.stream, event.data);
       }
     };
     ws.onerror = () => ws.close();

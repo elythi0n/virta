@@ -253,4 +253,6 @@ export interface WireEvent {
   held?: HeldMessage;
   held_id?: string;
   approved?: boolean;
+  stream?: string;
+  data?: unknown;
 }

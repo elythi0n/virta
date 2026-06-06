@@ -44,6 +44,8 @@ type WireEvent struct {
 	Held              *HeldMessage             `json:"held,omitempty"`     // a newly held message ("held")
 	HeldID            string                   `json:"held_id,omitempty"`  // resolved held id ("held_resolved")
 	Approved          *bool                    `json:"approved,omitempty"` // whether a resolved held message was approved
+	Stream            string                   `json:"stream,omitempty"`   // plugin DataSource stream ("plugin")
+	Data              json.RawMessage          `json:"data,omitempty"`     // opaque plugin payload ("plugin")
 }
 
 // replayEntry is one encoded event retained in the resume ring.
@@ -279,6 +281,9 @@ func toWire(ev platform.Event) (we WireEvent, key string, broadcastAll bool) {
 		ch := e.Channel
 		approved := e.Approved
 		return WireEvent{Type: "held_resolved", SchemaVersion: schemaVersion, Channel: &ch, HeldID: e.ID, Approved: &approved}, channelKey(ch), false
+	case platform.PluginEvent:
+		// Namespaced plugin data, broadcast to everyone; panels filter by stream.
+		return WireEvent{Type: "plugin", SchemaVersion: schemaVersion, Stream: e.Stream, Data: e.Data}, "", true
 	default:
 		return WireEvent{}, "", false
 	}
