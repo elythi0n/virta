@@ -5,6 +5,7 @@ import FeedPanel from './FeedPanel';
 import FiltersPanel from './FiltersPanel';
 import HeldQueuePanel from './HeldQueuePanel';
 import MentionInbox from './MentionInbox';
+import PluginsPanel from './PluginsPanel';
 import SearchPanel from './SearchPanel';
 import StreamPane from './StreamPane';
 import styles from './Panel.module.css';
@@ -49,7 +50,7 @@ export const PANELS: PanelContribution[] = [
   { kind: 'stats', title: 'Stats', icon: 'stats', render: () => <Placeholder title="Stats" /> },
   // Opened programmatically, not from the catalog.
   { kind: 'watch', title: 'Stream', icon: 'stream', catalog: false, render: (p) => <StreamPane channel={p.channels?.[0]} /> },
-  { kind: 'plugins', title: 'Plugins', icon: 'plugins', catalog: false, render: () => <Placeholder title="Plugins" /> },
+  { kind: 'plugins', title: 'Plugins', icon: 'plugins', catalog: false, render: () => <PluginsPanel /> },
 ];
 
 // The catalog is just the contributions that opt into being listed — derived, never a second list.

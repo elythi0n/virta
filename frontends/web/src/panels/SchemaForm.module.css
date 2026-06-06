@@ -1,0 +1,43 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-16);
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-4);
+}
+.label {
+  color: var(--virta-text-0);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  font-weight: 600;
+}
+.req {
+  color: var(--virta-warn);
+}
+.hint {
+  color: var(--virta-text-2);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+}
+.textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: var(--virta-space-8) var(--virta-space-12);
+  background: var(--virta-bg-0);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-sm);
+  color: var(--virta-text-0);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  line-height: var(--virta-type-ui-line);
+  resize: vertical;
+}
+.textarea:focus-visible {
+  outline: 2px solid var(--virta-accent);
+  outline-offset: 1px;
+  border-color: var(--virta-accent);
+}
