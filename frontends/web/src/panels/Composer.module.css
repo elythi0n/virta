@@ -38,3 +38,25 @@
 .note {
   margin: 0;
 }
+
+.signinMenu {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 160px;
+}
+.signinItem {
+  padding: var(--virta-space-8);
+  border: 0;
+  border-radius: var(--virta-radius-sm);
+  background: none;
+  color: var(--virta-text-1);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  text-align: left;
+  cursor: pointer;
+}
+.signinItem:hover {
+  background: var(--virta-bg-2);
+  color: var(--virta-text-0);
+}

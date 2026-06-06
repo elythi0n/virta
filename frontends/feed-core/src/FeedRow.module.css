@@ -75,13 +75,15 @@
   gap: 2px;
 }
 .badge {
-  padding: 0 var(--virta-space-4);
-  border: 1px solid currentColor;
+  display: inline-flex;
+  align-items: center;
+  padding: 1px var(--virta-space-4);
+  border: 1px solid color-mix(in srgb, currentColor 55%, transparent);
   border-radius: var(--virta-radius-sm);
-  font-size: 9px;
+  background: color-mix(in srgb, currentColor 16%, transparent);
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.04em;
-  opacity: 0.95;
 }
 .badgeImg {
   width: 18px;
