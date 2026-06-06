@@ -70,6 +70,7 @@ export function createDaemonClient(opts: DaemonClientOptions): DaemonClient {
         lastSeq = event.seq;
       }
       if (event.type === 'message' && event.message) {
+        if (event.message.annotations?.hidden) return; // a filter hid it; never render
         opts.onMessage(toFeedMessage(event.message));
       } else if (event.type === 'message_deleted') {
         opts.onDeleted?.({ id: event.message_id || undefined, platformMessageId: event.platform_message_id || undefined });

@@ -32,6 +32,8 @@ export interface FeedMessage {
   authorId?: string;
   /** Set when a moderator deletes this message (or a clear/timeout removes it). */
   deleted?: boolean;
+  /** Set when a filter highlight rule matched; the row renders with a highlight rail + tint. */
+  highlighted?: boolean;
   author: string;
   /** Platform-provided author color (hex); contrast-clamped before use. */
   authorColor?: string;

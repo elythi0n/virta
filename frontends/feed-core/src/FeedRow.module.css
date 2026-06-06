@@ -139,6 +139,15 @@
   font-style: italic;
 }
 
+/* A filter highlight: tinted band + a warm rail, overriding the platform rail color. */
+.highlight {
+  background: var(--virta-highlight-bg);
+  border-left-color: var(--virta-highlight-rail);
+}
+.highlight:hover {
+  background: color-mix(in srgb, var(--virta-highlight-bg) 80%, var(--virta-bg-1));
+}
+
 .deleted {
   opacity: 0.5;
 }

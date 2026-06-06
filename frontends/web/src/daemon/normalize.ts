@@ -57,6 +57,7 @@ export function toFeedMessage(m: UnifiedMessage): FeedMessage {
     author: m.author.display_name || m.author.login,
     authorColor: m.author.color || undefined,
     channel: channelKey(m.channel.platform, m.channel.slug),
+    highlighted: !!m.annotations?.highlight,
     source: { slug: m.channel.slug, label: m.channel.display_name || m.channel.slug },
     badges: m.author.badges?.map((b) => ({ set: b.set, title: b.title, url: b.url })),
     body: m.segments.map((s) => s.text).join(''),
