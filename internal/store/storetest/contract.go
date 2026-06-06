@@ -236,6 +236,59 @@ func RunContract(t *testing.T, newStore func(t *testing.T) store.Store) {
 		}
 	})
 
+	t.Run("messages: full-text search by text, channel, and author", func(t *testing.T) {
+		s := newStore(t)
+		base := time.Date(2026, 6, 5, 12, 0, 0, 0, time.UTC)
+		mk := func(id, ch, uid, name, body string, at time.Time) platform.UnifiedMessage {
+			return platform.UnifiedMessage{
+				ID: id, Channel: platform.ChannelRef{ID: ch, Platform: platform.Twitch},
+				Platform: platform.Twitch, Type: platform.TypeChat,
+				Author:     platform.Author{ID: uid, DisplayName: name},
+				Segments:   []platform.Segment{{Kind: platform.SegText, Text: body}},
+				ReceivedAt: at, SentAt: at,
+			}
+		}
+		msgs := []platform.UnifiedMessage{
+			mk("msg-0001", "ch-a", "u1", "Alice", "hello world", base),
+			mk("msg-0002", "ch-a", "u2", "Bob", "goodbye world", base.Add(time.Second)),
+			mk("msg-0003", "ch-b", "u1", "Alice", "hello there", base.Add(2*time.Second)),
+		}
+		if err := s.Messages().Append(ctx, msgs); err != nil {
+			t.Fatalf("Append: %v", err)
+		}
+
+		// "hello" matches across channels, newest-first.
+		hits, err := s.Messages().Search(ctx, store.SearchQuery{Text: "hello", Limit: 10})
+		if err != nil {
+			t.Fatalf("Search: %v", err)
+		}
+		if got := ids(hits); len(got) != 2 || got[0] != "msg-0003" || got[1] != "msg-0001" {
+			t.Fatalf("search hello = %v, want [msg-0003 msg-0001]", got)
+		}
+		// Narrowed to one channel.
+		inA, _ := s.Messages().Search(ctx, store.SearchQuery{Text: "hello", ChannelID: "ch-a", Limit: 10})
+		if got := ids(inA); len(got) != 1 || got[0] != "msg-0001" {
+			t.Errorf("search hello in ch-a = %v, want [msg-0001]", got)
+		}
+		// Narrowed by author display name (case-insensitive).
+		byBob, _ := s.Messages().Search(ctx, store.SearchQuery{Text: "world", Author: "bob", Limit: 10})
+		if got := ids(byBob); len(got) != 1 || got[0] != "msg-0002" {
+			t.Errorf("search world by Bob = %v, want [msg-0002]", got)
+		}
+		// Cursor pages older matches only.
+		before, _ := s.Messages().Search(ctx, store.SearchQuery{Text: "world", Before: "msg-0002", Limit: 10})
+		if got := ids(before); len(got) != 1 || got[0] != "msg-0001" {
+			t.Errorf("search world before msg-0002 = %v, want [msg-0001]", got)
+		}
+		// Empty text and no-match return nothing.
+		if empty, _ := s.Messages().Search(ctx, store.SearchQuery{Text: "  ", Limit: 10}); len(empty) != 0 {
+			t.Errorf("empty-text search = %v, want none", ids(empty))
+		}
+		if none, _ := s.Messages().Search(ctx, store.SearchQuery{Text: "zzznomatch", Limit: 10}); len(none) != 0 {
+			t.Errorf("no-match search = %v, want none", ids(none))
+		}
+	})
+
 	t.Run("messages: Append refuses ephemeral (logging-off invariant)", func(t *testing.T) {
 		s := newStore(t)
 		ch := "chan_e"

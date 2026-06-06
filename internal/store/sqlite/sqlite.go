@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"unicode"
 
 	_ "modernc.org/sqlite" // registers the "sqlite" database/sql driver
 
@@ -43,8 +44,63 @@ func Open(path string, clk clock.Clock, gen id.Generator) (*DB, error) {
 	dia := sqlcommon.Dialect{
 		Rebind:   func(q string) string { return q }, // SQLite uses ? placeholders as written
 		IsUnique: isUnique,
+		Search:   searchSQL,
 	}
 	return &DB{Core: sqlcommon.New(sqldb, clk, gen, dia)}, nil
+}
+
+// searchSQL builds the SQLite full-text query: an FTS5 MATCH over the messages_fts shadow table,
+// joined back to messages for the full row and the non-text filters (channel, author, cursor).
+func searchSQL(q store.SearchQuery, limit int) (string, []any) {
+	var sb strings.Builder
+	sb.WriteString(`SELECT m.id, m.channel_id, m.platform, m.type, m.author_uid, m.author_name, m.body, m.segments, m.sent_at, m.received_at, m.deleted
+	                FROM messages_fts f JOIN messages m ON m.rowid = f.rowid
+	                WHERE messages_fts MATCH ?`)
+	args := []any{ftsQuery(q.Text)}
+	if q.ChannelID != "" {
+		sb.WriteString(" AND m.channel_id = ?")
+		args = append(args, q.ChannelID)
+	}
+	if q.Author != "" {
+		sb.WriteString(" AND (m.author_uid = ? OR m.author_name = ? COLLATE NOCASE)")
+		args = append(args, q.Author, q.Author)
+	}
+	if q.Before != "" {
+		sb.WriteString(" AND m.id < ?")
+		args = append(args, q.Before)
+	}
+	// Order by rowid, not the ULID id: rowid is monotonic with insertion (and so with the id) but
+	// is an integer the bounded LIMIT heap can rank without joining every match to fetch its id,
+	// which keeps a broad-term search fast on a large log.
+	sb.WriteString(" ORDER BY m.rowid DESC LIMIT ?")
+	args = append(args, limit)
+	return sb.String(), args
+}
+
+// ftsQuery turns free user text into a safe FTS5 MATCH expression: each whitespace-separated word
+// is reduced to letters/digits and quoted as a term (implicit AND between them), and the final
+// term is prefix-matched so partial words match as the user types. Returns a query that matches
+// nothing when the input has no usable characters, rather than an FTS syntax error.
+func ftsQuery(s string) string {
+	var terms []string
+	for _, f := range strings.Fields(s) {
+		clean := strings.Map(func(r rune) rune {
+			if unicode.IsLetter(r) || unicode.IsDigit(r) {
+				return r
+			}
+			return ' '
+		}, f)
+		clean = strings.TrimSpace(clean)
+		if clean == "" {
+			continue
+		}
+		terms = append(terms, `"`+clean+`"`)
+	}
+	if len(terms) == 0 {
+		return `""`
+	}
+	terms[len(terms)-1] += "*" // prefix-match the last term
+	return strings.Join(terms, " ")
 }
 
 // buildDSN turns a file path into a modernc DSN with the pragmas we want: WAL journaling,

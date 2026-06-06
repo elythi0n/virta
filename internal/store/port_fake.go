@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -405,6 +406,41 @@ func (r memMessages) History(_ context.Context, q HistoryQuery) ([]StoredMessage
 			continue
 		}
 		if q.Before != "" && sm.ID >= q.Before {
+			continue
+		}
+		sm.Segments = cloneJSON(sm.Segments)
+		matched = append(matched, sm)
+	}
+	sort.Slice(matched, func(i, j int) bool { return matched[i].ID > matched[j].ID })
+	if len(matched) > limit {
+		matched = matched[:limit]
+	}
+	return matched, nil
+}
+
+func (r memMessages) Search(_ context.Context, q SearchQuery) ([]StoredMessage, error) {
+	needle := strings.ToLower(strings.TrimSpace(q.Text))
+	if needle == "" {
+		return nil, nil
+	}
+	limit := q.Limit
+	if limit <= 0 || limit > 1000 {
+		limit = 100
+	}
+	r.m.mu.Lock()
+	defer r.m.mu.Unlock()
+	matched := make([]StoredMessage, 0)
+	for _, sm := range r.m.messages {
+		if q.ChannelID != "" && sm.ChannelID != q.ChannelID {
+			continue
+		}
+		if q.Author != "" && !strings.EqualFold(sm.AuthorUID, q.Author) && !strings.EqualFold(sm.AuthorName, q.Author) {
+			continue
+		}
+		if q.Before != "" && sm.ID >= q.Before {
+			continue
+		}
+		if !strings.Contains(strings.ToLower(sm.Body), needle) {
 			continue
 		}
 		sm.Segments = cloneJSON(sm.Segments)

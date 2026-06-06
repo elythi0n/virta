@@ -169,6 +169,17 @@ type HistoryQuery struct {
 	Limit     int    // page size (implementation clamps to a sane max)
 }
 
+// SearchQuery selects logged messages whose body matches Text, newest-first before a cursor,
+// optionally narrowed to one channel and/or author. Backends use a full-text index (SQLite FTS5,
+// Postgres tsvector), so matching is by token/prefix rather than raw substring.
+type SearchQuery struct {
+	Text      string // full-text terms (required; empty returns no rows)
+	ChannelID string // "" = across every logged channel
+	Author    string // "" = any; matches the author's uid or display name
+	Before    string // ULID cursor; "" = most recent match
+	Limit     int    // page size (implementation clamps to a sane max)
+}
+
 // MessageRepo persists and queries logged messages. Active only when logging is enabled;
 // see the package doc for the Ephemeral choke point.
 type MessageRepo interface {
@@ -176,6 +187,9 @@ type MessageRepo interface {
 	// batch) if any message is marked Ephemeral — this invariant: logging off means nothing is written.
 	Append(ctx context.Context, msgs []platform.UnifiedMessage) error
 	History(ctx context.Context, q HistoryQuery) ([]StoredMessage, error)
+	// Search returns logged messages whose body matches q.Text, newest-first, optionally narrowed
+	// to a channel and/or author. Backed by a full-text index so it stays fast on large logs.
+	Search(ctx context.Context, q SearchQuery) ([]StoredMessage, error)
 	// MarkDeleted flags a logged message as deleted by its engine ULID. The engine
 	// resolves platform deletion ids to ULIDs via its per-channel map before calling this.
 	MarkDeleted(ctx context.Context, id string) error

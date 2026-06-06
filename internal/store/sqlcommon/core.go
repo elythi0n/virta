@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/elythi0n/virta/internal/clock"
@@ -26,6 +27,10 @@ type Dialect struct {
 	Rebind func(string) string
 	// IsUnique reports whether err is a unique-constraint violation.
 	IsUnique func(error) bool
+	// Search builds the backend's full-text search SQL (with native placeholders) selecting the
+	// standard message columns newest-first, plus its args. It is the one query that differs per
+	// backend (SQLite FTS5 join vs Postgres tsvector match); the shared layer scans the result.
+	Search func(q store.SearchQuery, limit int) (sql string, args []any)
 }
 
 // Core is a database/sql-backed implementation of the store repositories.
@@ -543,6 +548,34 @@ func (r messageRepo) History(ctx context.Context, q store.HistoryQuery) ([]store
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
+	return scanStoredMessages(rows)
+}
+
+// Search runs the dialect's full-text query and scans the matching rows. An empty Text returns no
+// rows (rather than every message); a backend without a Search builder reports it unsupported.
+func (r messageRepo) Search(ctx context.Context, q store.SearchQuery) ([]store.StoredMessage, error) {
+	if strings.TrimSpace(q.Text) == "" {
+		return nil, nil
+	}
+	if r.c.dia.Search == nil {
+		return nil, fmt.Errorf("sqlcommon: full-text search not supported by this backend")
+	}
+	limit := q.Limit
+	if limit <= 0 || limit > 1000 {
+		limit = 100
+	}
+	// The builder emits native placeholders for its backend, so the query runs without rebinding.
+	sqlStr, args := r.c.dia.Search(q, limit)
+	rows, err := r.c.db.QueryContext(ctx, sqlStr, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	return scanStoredMessages(rows)
+}
+
+// scanStoredMessages reads the standard message column set (shared by History and Search).
+func scanStoredMessages(rows *sql.Rows) ([]store.StoredMessage, error) {
 	var out []store.StoredMessage
 	for rows.Next() {
 		var m store.StoredMessage

@@ -27,7 +27,41 @@ CREATE TABLE channels (id TEXT PRIMARY KEY, platform TEXT NOT NULL, platform_id 
 CREATE TABLE messages (id TEXT PRIMARY KEY, channel_id TEXT NOT NULL, platform TEXT NOT NULL, type TEXT NOT NULL, author_uid TEXT NOT NULL DEFAULT '', author_name TEXT NOT NULL DEFAULT '', body TEXT NOT NULL DEFAULT '', segments TEXT NOT NULL DEFAULT '[]', sent_at INTEGER NOT NULL DEFAULT 0, received_at INTEGER NOT NULL DEFAULT 0, deleted INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE emote_sets (key TEXT PRIMARY KEY, data TEXT NOT NULL, fetched_at INTEGER NOT NULL);
 CREATE TABLE emote_files (url_hash TEXT PRIMARY KEY, path TEXT NOT NULL, bytes INTEGER NOT NULL, fetched_at INTEGER NOT NULL);
+CREATE VIRTUAL TABLE messages_fts USING fts5(body, content='messages', content_rowid='rowid');
+CREATE TRIGGER messages_fts_ai AFTER INSERT ON messages BEGIN
+    INSERT INTO messages_fts (rowid, body) VALUES (new.rowid, new.body);
+END;
+CREATE TRIGGER messages_fts_ad AFTER DELETE ON messages BEGIN
+    INSERT INTO messages_fts (messages_fts, rowid, body) VALUES ('delete', old.rowid, old.body);
+END;
+CREATE TRIGGER messages_fts_au AFTER UPDATE ON messages BEGIN
+    INSERT INTO messages_fts (messages_fts, rowid, body) VALUES ('delete', old.rowid, old.body);
+    INSERT INTO messages_fts (rowid, body) VALUES (new.rowid, new.body);
+END;
 `
+
+// ftsSearch mirrors the SQLite backend's full-text builder so the shared core runs the same search
+// contract here (the real builder lives in the sqlite package, which can't be imported from this
+// shared package).
+func ftsSearch(q store.SearchQuery, limit int) (string, []any) {
+	sql := `SELECT m.id, m.channel_id, m.platform, m.type, m.author_uid, m.author_name, m.body, m.segments, m.sent_at, m.received_at, m.deleted
+	        FROM messages_fts f JOIN messages m ON m.rowid = f.rowid WHERE messages_fts MATCH ?`
+	args := []any{`"` + strings.ToLower(strings.TrimSpace(q.Text)) + `"*`}
+	if q.ChannelID != "" {
+		sql += " AND m.channel_id = ?"
+		args = append(args, q.ChannelID)
+	}
+	if q.Author != "" {
+		sql += " AND (m.author_uid = ? OR m.author_name = ? COLLATE NOCASE)"
+		args = append(args, q.Author, q.Author)
+	}
+	if q.Before != "" {
+		sql += " AND m.id < ?"
+		args = append(args, q.Before)
+	}
+	sql += " ORDER BY m.rowid DESC LIMIT ?"
+	return sql, append(args, limit)
+}
 
 func newCore(t *testing.T) store.Store {
 	t.Helper()
@@ -43,6 +77,7 @@ func newCore(t *testing.T) store.Store {
 	dia := sqlcommon.Dialect{
 		Rebind:   func(q string) string { return q },
 		IsUnique: func(e error) bool { return e != nil && strings.Contains(e.Error(), "UNIQUE constraint failed") },
+		Search:   ftsSearch,
 	}
 	return wrap{sqlcommon.New(db, clock.NewFake(time.Date(2026, 6, 5, 12, 0, 0, 0, time.UTC)), id.NewFake("rec"), dia)}
 }

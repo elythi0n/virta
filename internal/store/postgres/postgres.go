@@ -37,8 +37,37 @@ func Open(dsn string, clk clock.Clock, gen id.Generator) (*DB, error) {
 		_ = sqldb.Close()
 		return nil, err
 	}
-	dia := sqlcommon.Dialect{Rebind: rebind, IsUnique: isUnique}
+	dia := sqlcommon.Dialect{Rebind: rebind, IsUnique: isUnique, Search: searchSQL}
 	return &DB{Core: sqlcommon.New(sqldb, clk, gen, dia)}, nil
+}
+
+// searchSQL builds the Postgres full-text query: a tsvector match (the generated body_tsv column
+// is GIN-indexed) with websearch_to_tsquery so user input is parsed leniently, plus the optional
+// channel/author/cursor filters. Placeholders are positional ($N) as Postgres expects.
+func searchSQL(q store.SearchQuery, limit int) (string, []any) {
+	var sb strings.Builder
+	sb.WriteString(`SELECT id, channel_id, platform, type, author_uid, author_name, body, segments, sent_at, received_at, deleted
+	                FROM messages WHERE body_tsv @@ websearch_to_tsquery('english', $1)`)
+	args := []any{q.Text}
+	n := 2
+	if q.ChannelID != "" {
+		fmt.Fprintf(&sb, " AND channel_id = $%d", n)
+		args = append(args, q.ChannelID)
+		n++
+	}
+	if q.Author != "" {
+		fmt.Fprintf(&sb, " AND (author_uid = $%d OR lower(author_name) = lower($%d))", n, n+1)
+		args = append(args, q.Author, q.Author)
+		n += 2
+	}
+	if q.Before != "" {
+		fmt.Fprintf(&sb, " AND id < $%d", n)
+		args = append(args, q.Before)
+		n++
+	}
+	fmt.Fprintf(&sb, " ORDER BY id DESC LIMIT $%d", n)
+	args = append(args, limit)
+	return sb.String(), args
 }
 
 // Migrate brings the schema to the current version. Safe to call repeatedly.
