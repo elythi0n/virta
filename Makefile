@@ -14,13 +14,23 @@ LDFLAGS     := -s -w \
 PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64
 
 .PHONY: all ci build run lint fmt fmt-check vet test test-race cover cross app fixtures \
-        test-live-twitch test-live-kick test-live-x test-live-llm soak docker clean tidy
+        tokens tokens-check test-live-twitch test-live-kick test-live-x test-live-llm soak docker clean tidy
 
 all: ci
 
 ## ci: the full local gate — must be green before any step is "done".
-ci: fmt-check vet lint test-race cover cross
+ci: fmt-check vet lint test-race cover cross tokens-check
 	@echo "✓ make ci green"
+
+## tokens: regenerate the design-system token artifacts (tokens.css, tokens.ts) from tokens.json.
+tokens:
+	go run ./cmd/tokengen
+
+## tokens-check: fail if the generated token artifacts are stale (run `make tokens` and commit).
+tokens-check:
+	@go run ./cmd/tokengen
+	@git diff --quiet -- frontends/ui-kit/tokens.css frontends/ui-kit/tokens.ts || \
+		{ echo "token artifacts are stale; run 'make tokens' and commit"; exit 1; }
 
 ## build: compile everything.
 build:

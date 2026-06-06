@@ -1,0 +1,86 @@
+/* Generated from tokens.json by cmd/tokengen. Do not edit by hand. */
+:root {
+  --virta-font-ui: "Geist", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --virta-font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --virta-type-chat-comfortable-size: 15px;
+  --virta-type-chat-comfortable-line: 23px;
+  --virta-type-chat-comfortable-weight: 400;
+  --virta-type-chat-compact-size: 13px;
+  --virta-type-chat-compact-line: 19px;
+  --virta-type-chat-compact-weight: 400;
+  --virta-type-chat-cozy-size: 14px;
+  --virta-type-chat-cozy-line: 21px;
+  --virta-type-chat-cozy-weight: 400;
+  --virta-type-meta-size: 11px;
+  --virta-type-meta-line: 16px;
+  --virta-type-meta-weight: 400;
+  --virta-type-mono-size: 12px;
+  --virta-type-mono-line: 18px;
+  --virta-type-mono-weight: 400;
+  --virta-type-title-size: 15px;
+  --virta-type-title-line: 22px;
+  --virta-type-title-weight: 600;
+  --virta-type-ui-size: 13px;
+  --virta-type-ui-line: 20px;
+  --virta-type-ui-weight: 400;
+  --virta-space-2: 2px;
+  --virta-space-4: 4px;
+  --virta-space-8: 8px;
+  --virta-space-12: 12px;
+  --virta-space-16: 16px;
+  --virta-space-24: 24px;
+  --virta-space-32: 32px;
+  --virta-radius-lg: 8px;
+  --virta-radius-md: 6px;
+  --virta-radius-sm: 5px;
+  --virta-motion-base: 160ms;
+  --virta-motion-fast: 120ms;
+  --virta-plat-kick: #53FC18;
+  --virta-plat-twitch: #9146FF;
+  --virta-accent: #5B8CFF;
+  --virta-bg-0: #0E0F12;
+  --virta-bg-1: #15171C;
+  --virta-bg-2: #1C1F26;
+  --virta-danger: #F85149;
+  --virta-highlight-bg: #3D2E12;
+  --virta-highlight-rail: #D29922;
+  --virta-line: #262A33;
+  --virta-ok: #3FB950;
+  --virta-plat-x: #E7E9EA;
+  --virta-text-0: #E8EAF0;
+  --virta-text-1: #9AA1AE;
+  --virta-text-2: #5C6370;
+  --virta-warn: #D29922;
+}
+[data-theme="graphite-dark"] {
+  --virta-accent: #5B8CFF;
+  --virta-bg-0: #0E0F12;
+  --virta-bg-1: #15171C;
+  --virta-bg-2: #1C1F26;
+  --virta-danger: #F85149;
+  --virta-highlight-bg: #3D2E12;
+  --virta-highlight-rail: #D29922;
+  --virta-line: #262A33;
+  --virta-ok: #3FB950;
+  --virta-plat-x: #E7E9EA;
+  --virta-text-0: #E8EAF0;
+  --virta-text-1: #9AA1AE;
+  --virta-text-2: #5C6370;
+  --virta-warn: #D29922;
+}
+[data-theme="light"] {
+  --virta-accent: #3B6FE0;
+  --virta-bg-0: #FAFBFC;
+  --virta-bg-1: #F1F3F5;
+  --virta-bg-2: #E7EAED;
+  --virta-danger: #CF222E;
+  --virta-highlight-bg: #FFF4D6;
+  --virta-highlight-rail: #9A6700;
+  --virta-line: #D5D9DF;
+  --virta-ok: #1A7F37;
+  --virta-plat-x: #0F1419;
+  --virta-text-0: #1A1D23;
+  --virta-text-1: #5C6370;
+  --virta-text-2: #9AA1AE;
+  --virta-warn: #9A6700;
+}
