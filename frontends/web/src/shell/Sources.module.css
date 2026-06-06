@@ -23,11 +23,16 @@
   flex: none;
 }
 
+/* The platform select takes its own row, then the channel name + Join share the next — so the
+   join form never overflows the narrow sidebar. */
 .add {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--virta-space-8);
   align-items: center;
+}
+.add > :first-child {
+  grid-column: 1 / -1;
 }
 
 .list {

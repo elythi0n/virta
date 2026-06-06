@@ -1,10 +1,12 @@
 .trigger {
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--virta-space-8);
   height: 32px;
-  min-width: 140px;
+  min-width: 120px;
+  max-width: 100%;
   padding: 0 var(--virta-space-8) 0 var(--virta-space-12);
   background: var(--virta-bg-0);
   border: 1px solid var(--virta-line);
