@@ -14,16 +14,20 @@ import (
 
 func TestDelivery_HMACAndHeaders(t *testing.T) {
 	const secret = "s3cr3t"
-	var got struct {
+	type capture struct {
 		method, sig, ts, id string
 		body                 []byte
 	}
+	received := make(chan capture, 1)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		got.method = r.Method
-		got.sig = r.Header.Get("X-Virta-Signature")
-		got.ts = r.Header.Get("X-Virta-Timestamp")
-		got.id = r.Header.Get("X-Virta-Delivery-Id")
-		got.body, _ = io.ReadAll(r.Body)
+		body, _ := io.ReadAll(r.Body)
+		received <- capture{
+			method: r.Method,
+			sig:    r.Header.Get("X-Virta-Signature"),
+			ts:     r.Header.Get("X-Virta-Timestamp"),
+			id:     r.Header.Get("X-Virta-Delivery-Id"),
+			body:   body,
+		}
 		w.WriteHeader(200)
 	}))
 	defer srv.Close()
@@ -34,21 +38,25 @@ func TestDelivery_HMACAndHeaders(t *testing.T) {
 
 	d := Delivery{ID: "d1", Type: "event.raid", CreatedAt: time.Now(), Data: []byte(`{"platform":"twitch"}`)}
 	mgr.Dispatch(d)
-	time.Sleep(200 * time.Millisecond) // wait for delivery
 
-	if got.method != http.MethodPost {
-		t.Errorf("method = %q, want POST", got.method)
-	}
-	if got.id != "d1" {
-		t.Errorf("delivery id = %q, want d1", got.id)
-	}
-	// Verify HMAC: sha256(timestamp + body)
-	mac := hmac.New(sha256.New, []byte(secret))
-	mac.Write([]byte(got.ts))
-	mac.Write(got.body)
-	expected := "sha256=" + hex.EncodeToString(mac.Sum(nil))
-	if got.sig != expected {
-		t.Errorf("HMAC sig mismatch: got %q, want %q", got.sig, expected)
+	select {
+	case got := <-received:
+		if got.method != http.MethodPost {
+			t.Errorf("method = %q, want POST", got.method)
+		}
+		if got.id != "d1" {
+			t.Errorf("delivery id = %q, want d1", got.id)
+		}
+		// Verify HMAC: sha256(timestamp + body)
+		mac := hmac.New(sha256.New, []byte(secret))
+		mac.Write([]byte(got.ts))
+		mac.Write(got.body)
+		expected := "sha256=" + hex.EncodeToString(mac.Sum(nil))
+		if got.sig != expected {
+			t.Errorf("HMAC sig mismatch: got %q, want %q", got.sig, expected)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("no delivery within 2s")
 	}
 }
 
