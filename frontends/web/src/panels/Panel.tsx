@@ -1,3 +1,4 @@
+import CelebrationsPane from './CelebrationsPane';
 import FeedPanel from './FeedPanel';
 import FiltersPanel from './FiltersPanel';
 import MentionInbox from './MentionInbox';
@@ -18,6 +19,9 @@ export default function Panel({ kind, channels, panelId }: { kind: string; chann
   }
   if (kind === 'filters') {
     return <FiltersPanel />;
+  }
+  if (kind === 'celebrations') {
+    return <CelebrationsPane />;
   }
   return (
     <div className={styles.placeholder}>

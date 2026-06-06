@@ -8,3 +8,4 @@ export type { Segment, EmoteMeta } from './segments';
 export { clampForContrast, contrastRatio } from './contrast';
 export { useFeedBuffer, appendCapped, markDeletedIn, clearIn } from './useFeedBuffer';
 export type { FeedBuffer, DeletionRef } from './useFeedBuffer';
+export { EVENT_LABEL, isEventType, isBigEvent, eventHeadline, eventCountLabel } from './events';

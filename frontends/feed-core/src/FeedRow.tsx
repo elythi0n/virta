@@ -1,9 +1,9 @@
 import { memo } from 'react';
 import { clampForContrast } from './contrast';
-import { eventCountLabel, isBigEvent } from './events';
+import { EVENT_LABEL, eventCountLabel, isBigEvent, isEventType } from './events';
 import PlatformGlyph from './PlatformGlyph';
 import type { Segment } from './segments';
-import type { FeedMessage, MessageType } from './types';
+import type { FeedMessage } from './types';
 import styles from './FeedRow.module.css';
 
 export type Density = 'tiny' | 'compact' | 'cozy' | 'comfortable' | 'large';
@@ -20,20 +20,6 @@ const BADGE: Record<string, { label: string; color: string }> = {
 };
 const badgeLabel = (set: string) => BADGE[set]?.label ?? set.slice(0, 3).toUpperCase();
 const badgeColor = (set: string) => BADGE[set]?.color ?? 'var(--virta-text-2)';
-
-// Non-chat message types render as a tinted event band with a short label.
-const EVENT_LABEL: Record<string, string> = {
-  sub: 'SUB',
-  resub: 'RESUB',
-  giftsub: 'GIFT',
-  raid: 'RAID',
-  host: 'HOST',
-  follow: 'FOLLOW',
-  announcement: 'ANNOUNCEMENT',
-  moderation: 'MOD',
-  system: 'SYSTEM',
-};
-const isEventType = (t: MessageType) => t in EVENT_LABEL;
 
 function renderSegment(seg: Segment, i: number) {
   switch (seg.type) {

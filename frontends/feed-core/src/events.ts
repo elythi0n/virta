@@ -1,5 +1,21 @@
 import type { FeedMessage, MessageType } from './types';
 
+// Short labels for non-chat message types; membership also defines what counts as an "event".
+export const EVENT_LABEL: Record<string, string> = {
+  sub: 'SUB',
+  resub: 'RESUB',
+  giftsub: 'GIFT',
+  raid: 'RAID',
+  host: 'HOST',
+  follow: 'FOLLOW',
+  announcement: 'ANNOUNCEMENT',
+  moderation: 'MOD',
+  system: 'SYSTEM',
+};
+
+// True for the non-chat message types that render as event bands / celebration cards.
+export const isEventType = (t: MessageType | undefined): boolean => !!t && t in EVENT_LABEL;
+
 // Above these magnitudes an event is "high impact": it earns a stronger band in the scrollback
 // and a one-shot celebration banner when it arrives live.
 export const HIGH_IMPACT_GIFTS = 5;

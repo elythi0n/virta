@@ -1,0 +1,145 @@
+.empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: var(--virta-space-16);
+  text-align: center;
+  background: var(--virta-bg-0);
+}
+
+.pane {
+  height: 100%;
+  overflow-y: auto;
+  padding: var(--virta-space-12);
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-8);
+  background: var(--virta-bg-0);
+}
+
+/* One card per event. --ev is the event's accent; big events glow a touch stronger. */
+.card {
+  --ev: var(--virta-accent);
+  position: relative;
+  overflow: hidden;
+  flex: none;
+  padding: var(--virta-space-12);
+  border: 1px solid var(--virta-line);
+  border-left: 3px solid var(--ev);
+  border-radius: var(--virta-radius-md);
+  background: color-mix(in srgb, var(--ev) 8%, var(--virta-bg-1));
+  animation: cardIn 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.card[data-type='raid'],
+.card[data-type='host'] {
+  --ev: var(--virta-warn);
+}
+.card[data-type='follow'] {
+  --ev: var(--virta-ok);
+}
+.card[data-type='moderation'] {
+  --ev: var(--virta-danger);
+}
+.card[data-type='system'] {
+  --ev: var(--virta-text-2);
+}
+.card[data-big='true'] {
+  border-left-width: 4px;
+  background: color-mix(in srgb, var(--ev) 14%, var(--virta-bg-1));
+}
+
+/* A soft one-shot sheen in the event color; never loops, so the pane stays calm. */
+.glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(120% 80% at 0% 0%, color-mix(in srgb, var(--ev) 26%, transparent), transparent 60%);
+  opacity: 0;
+  animation: sheen 1100ms ease-out both;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  margin-bottom: var(--virta-space-4);
+}
+.glyph {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.label {
+  padding: 1px var(--virta-space-4);
+  border-radius: var(--virta-radius-sm);
+  background: var(--ev);
+  color: var(--virta-bg-0);
+  font-family: var(--virta-font-ui);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+.count {
+  color: var(--ev);
+  font-family: var(--virta-font-mono);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.meta {
+  margin-left: auto;
+  color: var(--virta-text-2);
+  font-family: var(--virta-font-mono);
+  font-size: var(--virta-type-meta-size);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--virta-space-8);
+}
+.author {
+  color: var(--virta-text-0);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-title-size);
+  font-weight: 700;
+}
+.text {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--virta-text-1);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes sheen {
+  0% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    animation: none;
+  }
+  .glow {
+    animation: none;
+    display: none;
+  }
+}
