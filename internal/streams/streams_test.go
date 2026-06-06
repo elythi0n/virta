@@ -70,6 +70,28 @@ func TestKickProvider_ParsesLivestream(t *testing.T) {
 	}
 }
 
+func TestKickProvider_ThumbnailVariants(t *testing.T) {
+	cases := map[string]string{
+		`{"url":"https://k/u.jpg"}`: "https://k/u.jpg",
+		`{"src":"https://k/s.jpg"}`: "https://k/s.jpg",
+		`"https://k/string.jpg"`:    "https://k/string.jpg",
+		`null`:                      "",
+	}
+	for thumb, want := range cases {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(`{"livestream":{"viewer_count":1,"thumbnail":` + thumb + `}}`))
+		}))
+		got, _, err := NewKick(srv.Client(), srv.URL).Fetch(context.Background(), platform.ChannelRef{Platform: platform.Kick, Slug: "c"})
+		srv.Close()
+		if err != nil {
+			t.Fatalf("thumb %s: %v", thumb, err)
+		}
+		if got.ThumbnailURL != want {
+			t.Errorf("thumb %s → %q, want %q", thumb, got.ThumbnailURL, want)
+		}
+	}
+}
+
 func TestKickProvider_OfflineWhenNoLivestream(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{"livestream":null}`))

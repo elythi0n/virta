@@ -121,16 +121,39 @@ func (p *twitchProvider) Fetch(ctx context.Context, ch platform.ChannelRef) (Inf
 
 type kickResp struct {
 	Livestream *struct {
-		ViewerCount  int    `json:"viewer_count"`
-		SessionTitle string `json:"session_title"`
-		CreatedAt    string `json:"created_at"`
-		Thumbnail    struct {
-			URL string `json:"url"`
-		} `json:"thumbnail"`
-		Categories []struct {
+		ViewerCount  int             `json:"viewer_count"`
+		SessionTitle string          `json:"session_title"`
+		CreatedAt    string          `json:"created_at"`
+		Thumbnail    json.RawMessage `json:"thumbnail"` // shape varies: {url}|{src}|string
+		Categories   []struct {
 			Name string `json:"name"`
 		} `json:"categories"`
 	} `json:"livestream"`
+}
+
+// thumbURL pulls the image URL out of Kick's thumbnail field, which has appeared as an object with
+// a "url" or "src", or as a bare string.
+func thumbURL(raw json.RawMessage) string {
+	if len(raw) == 0 {
+		return ""
+	}
+	var obj struct {
+		URL string `json:"url"`
+		Src string `json:"src"`
+	}
+	if json.Unmarshal(raw, &obj) == nil {
+		if obj.URL != "" {
+			return obj.URL
+		}
+		if obj.Src != "" {
+			return obj.Src
+		}
+	}
+	var s string
+	if json.Unmarshal(raw, &s) == nil {
+		return s
+	}
+	return ""
 }
 
 type kickProvider struct {
@@ -178,7 +201,7 @@ func (p *kickProvider) Fetch(ctx context.Context, ch platform.ChannelRef) (Info,
 		Live:         true,
 		ViewerCount:  doc.Livestream.ViewerCount,
 		Title:        doc.Livestream.SessionTitle,
-		ThumbnailURL: doc.Livestream.Thumbnail.URL,
+		ThumbnailURL: thumbURL(doc.Livestream.Thumbnail),
 		StartedAt:    parseTime(doc.Livestream.CreatedAt),
 	}
 	if len(doc.Livestream.Categories) > 0 {
