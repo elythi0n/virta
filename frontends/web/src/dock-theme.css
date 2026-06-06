@@ -1,0 +1,49 @@
+/*
+ * Virta dock theme: drives dockview-core's mechanics chrome entirely from our design tokens, so
+ * the workspace reads as Virta and never as the vendor default (its shipped theme is not imported).
+ * Variable names are dockview-core's public theming surface; values are all ours.
+ */
+.dockview-theme-virta {
+  --dv-background-color: var(--virta-bg-0);
+  --dv-group-view-background-color: var(--virta-bg-0);
+  --dv-paneview-active-outline-color: var(--virta-accent);
+
+  /* Tab strip */
+  --dv-tabs-and-actions-container-background-color: var(--virta-bg-1);
+  --dv-tabs-and-actions-container-height: 34px;
+  --dv-tab-divider-color: var(--virta-line);
+  --dv-separator-border: var(--virta-line);
+  --dv-paneview-header-border-color: var(--virta-line);
+
+  /* Active group, visible (focused) tab */
+  --dv-activegroup-visiblepanel-tab-background-color: var(--virta-bg-0);
+  --dv-activegroup-visiblepanel-tab-color: var(--virta-text-0);
+  /* Active group, background tabs */
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--virta-bg-1);
+  --dv-activegroup-hiddenpanel-tab-color: var(--virta-text-2);
+  /* Inactive group, visible tab */
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--virta-bg-0);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--virta-text-1);
+  /* Inactive group, background tabs */
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--virta-bg-1);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--virta-text-2);
+
+  /* Affordances */
+  --dv-icon-hover-background-color: var(--virta-bg-2);
+  --dv-active-sash-color: var(--virta-accent);
+  --dv-separator-active-border: var(--virta-accent);
+  --dv-drag-over-background-color: var(--virta-highlight-bg);
+  --dv-drag-over-border-color: var(--virta-accent);
+  --dv-floating-box-shadow: 0 8px 24px rgb(0 0 0 / 0.4);
+}
+
+/* Accent underline on the focused tab, our own affordance over the base mechanics. */
+.dockview-theme-virta .dv-active-group .tab.active-tab::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--virta-accent);
+}
