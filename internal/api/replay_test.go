@@ -20,7 +20,7 @@ func seqsFrom(ch chan []byte) []uint64 {
 	for {
 		select {
 		case b := <-ch:
-			var we wireEvent
+			var we WireEvent
 			_ = json.Unmarshal(b, &we)
 			out = append(out, we.Seq)
 		default:

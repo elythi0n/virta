@@ -156,7 +156,7 @@ func TestStream_DeliversMessages(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read: %v", err)
 	}
-	var we wireEvent
+	var we WireEvent
 	if err := json.Unmarshal(data, &we); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
@@ -212,7 +212,7 @@ func TestStream_SubscribeThenReceive(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read: %v", err)
 	}
-	var we wireEvent
+	var we WireEvent
 	_ = json.Unmarshal(data, &we)
 	if we.Message == nil || we.Message.ID != "x" {
 		t.Fatalf("expected subscribed message, got %+v", we)
