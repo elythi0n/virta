@@ -13,7 +13,7 @@ LDFLAGS     := -s -w \
 # Cross-compile matrix (the 6 shipped OS/arch targets).
 PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64
 
-.PHONY: all ci build run lint fmt fmt-check vet test test-race cover cross app fixtures \
+.PHONY: all ci build run lint fmt fmt-check vet test test-race cover cross app daemon fixtures \
         tokens tokens-check test-live-twitch test-live-kick test-live-x test-live-llm soak docker clean tidy
 
 all: ci
@@ -80,12 +80,24 @@ cross:
 	done
 	@echo "✓ cross-compiled $(words $(PLATFORMS)) targets"
 
-## app: the one-click deliverable (ADR-022). For now = the virtad binary; becomes the
-## Wails desktop bundle at M4. Must always produce a runnable artifact.
-app: build
+## daemon: build just the virtad binary artifact (no GUI; always available offline).
+daemon:
 	@mkdir -p dist
 	go build -ldflags '$(LDFLAGS)' -o dist/virtad ./cmd/virtad
-	@echo "✓ artifact: dist/virtad  (desktop bundle lands at M4)"
+	@echo "✓ artifact: dist/virtad"
+
+## app: the one-click desktop bundle (ADR-022): the web UI + an embedded virtad in one native
+## artifact. Requires the Wails CLI and the WebKit dev libraries for this OS (not part of make ci).
+## Builds the web UI, stages it and a host virtad for embedding, then runs the Wails build.
+app:
+	@command -v wails >/dev/null 2>&1 || { echo "wails CLI not found: go install github.com/wailsapp/wails/v2/cmd/wails@latest (and install your OS's WebKit dev libraries)"; exit 1; }
+	cd frontends/web && npm install && npm run build
+	@find frontends/desktop/assets -mindepth 1 ! -name .gitkeep -delete
+	cp -r frontends/web/dist/. frontends/desktop/assets/
+	@ext=""; [ "$$(go env GOOS)" = "windows" ] && ext=".exe"; \
+		CGO_ENABLED=0 go build -ldflags '$(LDFLAGS)' -o frontends/desktop/bin/virtad$$ext ./cmd/virtad
+	cd frontends/desktop && go mod tidy && wails build -s
+	@echo "✓ desktop bundle: frontends/desktop/build/bin"
 
 ## fixtures: regenerate golden fixtures by re-running normalization with -update.
 fixtures:

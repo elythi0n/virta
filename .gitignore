@@ -33,3 +33,10 @@ dist-ssr/
 frontends/*/dist/
 frontends/*/.vite/
 *.tsbuildinfo
+
+# Desktop shell (Wails) build inputs/outputs; the .gitkeep placeholders are kept.
+frontends/desktop/build/
+frontends/desktop/assets/*
+!frontends/desktop/assets/.gitkeep
+frontends/desktop/bin/*
+!frontends/desktop/bin/.gitkeep

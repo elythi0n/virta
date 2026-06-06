@@ -1,0 +1,60 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"time"
+
+	"github.com/elythi0n/virta/internal/api"
+	"github.com/elythi0n/virta/internal/config"
+	"github.com/elythi0n/virta/internal/desktop"
+)
+
+// startupTimeout bounds how long we wait for a freshly launched daemon to come up before the UI
+// loads anyway (it will show a disconnected state and retry).
+const startupTimeout = 15 * time.Second
+
+// App is the shell's lifecycle owner: it finds or launches the daemon and tells the web UI how to
+// reach it.
+type App struct {
+	ctx       context.Context
+	discovery api.Discovery
+	daemon    *daemonProcess
+}
+
+func newApp() *App { return &App{} }
+
+// startup attaches to a running daemon or launches the embedded one, then records its address and
+// token so the UI can open an authenticated connection.
+func (a *App) startup(ctx context.Context) {
+	a.ctx = ctx
+	cfg, err := config.Load()
+	if err != nil {
+		return // Discovery() returns an empty address; the UI shows "not connected"
+	}
+	startCtx, cancel := context.WithTimeout(ctx, startupTimeout)
+	defer cancel()
+	if d, err := desktop.Ensure(startCtx, cfg.RuntimeDir, a.launchDaemon); err == nil {
+		a.discovery = d
+	}
+}
+
+func (a *App) shutdown(_ context.Context) {
+	a.daemon.stop()
+}
+
+// assetHandler serves requests the embedded UI doesn't satisfy. It exposes the daemon address and
+// token at /__discovery so the in-webview SPA can read them with a same-origin fetch, rather than
+// reading the owner-only discovery file (which a webview sandbox cannot) or coupling to Wails'
+// generated JS bindings. A daemon-served browser build can expose the same path.
+func (a *App) assetHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/__discovery" {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(a.discovery)
+			return
+		}
+		http.NotFound(w, r)
+	})
+}
