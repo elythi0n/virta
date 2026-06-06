@@ -21,7 +21,7 @@ export default function Panel({ kind, channels, panelId }: { kind: string; chann
     return <FiltersPanel />;
   }
   if (kind === 'celebrations') {
-    return <CelebrationsPane />;
+    return <CelebrationsPane panelId={panelId} />;
   }
   return (
     <div className={styles.placeholder}>
