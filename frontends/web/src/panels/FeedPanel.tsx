@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Feed, parseSegments, useFeedBuffer, type FeedMessage, type Platform } from '@virta/feed-core';
-import { Segmented } from '@virta/ui-kit';
+import { Segmented, StatusDot, Text } from '@virta/ui-kit';
+import { useDaemonStream, type ConnectionStatus } from '../daemon';
 import { useTheme } from '../theme';
 import styles from './FeedPanel.module.css';
 
@@ -54,9 +55,17 @@ const RATES: Record<Rate, number> = { off: 0, live: 12, stress: 200 }; // messag
 const MAX_MESSAGES = 8000; // bound memory; oldest drop once exceeded
 const TICK_MS = 50;
 
+const STATUS_LABEL: Record<ConnectionStatus, string> = {
+  offline: 'Demo data',
+  connecting: 'Connecting…',
+  connected: 'Live',
+  reconnecting: 'Reconnecting…',
+};
+
 export default function FeedPanel() {
   const { theme } = useTheme();
   const { messages, push } = useFeedBuffer({ max: MAX_MESSAGES });
+  const status = useDaemonStream(push);
   const [rate, setRate] = useState<Rate>('live');
   const [background, setBackground] = useState(() => hex(14, 15, 18));
 
@@ -66,28 +75,38 @@ export default function FeedPanel() {
     if (value) setBackground(value);
   }, [theme]);
 
-  // Produce messages at the chosen rate; the buffer coalesces them to one render per frame.
+  // With no daemon reachable, drive the feed with synthetic traffic so the UI is still alive in a
+  // bare `npm run dev`. When connected, the daemon stream feeds the same buffer instead.
   useEffect(() => {
+    if (status !== 'offline') return;
     const perSecond = RATES[rate];
     if (perSecond === 0) return;
     const perTick = Math.max(1, Math.round((perSecond * TICK_MS) / 1000));
     const id = setInterval(() => push(Array.from({ length: perTick }, makeMessage)), TICK_MS);
     return () => clearInterval(id);
-  }, [rate, push]);
+  }, [status, rate, push]);
 
   return (
     <div className={styles.panel}>
       <div className={styles.toolbar}>
-        <Segmented
-          ariaLabel="Stream rate"
-          value={rate}
-          onValueChange={(v) => setRate(v as Rate)}
-          options={[
-            { value: 'off', label: 'Off' },
-            { value: 'live', label: 'Live' },
-            { value: 'stress', label: '200/s' },
-          ]}
-        />
+        <span className={styles.status}>
+          <StatusDot status={status === 'connected' ? 'live' : status === 'offline' ? 'offline' : 'idle'} label={STATUS_LABEL[status]} />
+          <Text variant="meta" tone="subtle">
+            {STATUS_LABEL[status]}
+          </Text>
+        </span>
+        {status === 'offline' && (
+          <Segmented
+            ariaLabel="Stream rate"
+            value={rate}
+            onValueChange={(v) => setRate(v as Rate)}
+            options={[
+              { value: 'off', label: 'Off' },
+              { value: 'live', label: 'Live' },
+              { value: 'stress', label: '200/s' },
+            ]}
+          />
+        )}
       </div>
       <div className={styles.feedWrap}>
         <Feed messages={messages} background={background} />

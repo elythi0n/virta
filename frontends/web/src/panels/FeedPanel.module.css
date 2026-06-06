@@ -10,9 +10,16 @@
   flex: none;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--virta-space-8);
   padding: var(--virta-space-8) var(--virta-space-12);
   border-bottom: 1px solid var(--virta-line);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--virta-space-8);
 }
 
 .feedWrap {
