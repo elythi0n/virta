@@ -62,7 +62,9 @@ export default function Composer({ targets }: Props) {
   function signInControl() {
     if (signable.length === 0) return null;
     const primary = reachable.length === 0;
-    const variant = primary ? 'solid' : 'subtle';
+    // Sign-in is a secondary affordance, not the primary action — keep it muted graphite (the
+    // accent-blue solid read as too loud), so the Send button stays the one bright control.
+    const variant = primary ? 'subtle' : 'ghost';
     if (signable.length === 1) {
       return (
         <Button variant={variant} size="md" onClick={() => setSignIn(signable[0])}>
