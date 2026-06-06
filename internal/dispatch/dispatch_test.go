@@ -134,3 +134,76 @@ func TestDispatch_UnknownPlatform(t *testing.T) {
 		t.Errorf("unknown platform = %+v", out)
 	}
 }
+
+// newCrossSender wires a Twitch and a Kick adapter with the given capabilities, for the
+// cross-posting tests.
+func newCrossSender(tw, kick platform.Capabilities) (*dispatch.Sender, *fakeAdapter, *fakeAdapter) {
+	twa, ka := &fakeAdapter{caps: tw}, &fakeAdapter{caps: kick}
+	gov := ratelimit.New(clock.NewFake(time.Unix(0, 0)), ratelimit.Limit{Burst: 100, Window: time.Second})
+	s := dispatch.New(map[platform.Platform]dispatch.Adapter{platform.Twitch: twa, platform.Kick: ka}, gov, "help")
+	return s, twa, ka
+}
+
+var twitchCh = platform.ChannelRef{Platform: platform.Twitch, Slug: "forsen"}
+var kickCh = platform.ChannelRef{Platform: platform.Kick, Slug: "xqc"}
+
+// TestSendMany_ReachableAndExcluded is the cross-posting exit behavior: a message goes to the
+// reachable platform and the signed-out one is excluded before send (reported, not errored), so
+// the reachable send still happens.
+func TestSendMany_ReachableAndExcluded(t *testing.T) {
+	s, twa, ka := newCrossSender(
+		platform.Capabilities{Send: true},          // Twitch signed in
+		platform.Capabilities{ReadAnonymous: true}, // Kick signed out → no Send
+	)
+	results := s.SendMany(context.Background(), []platform.ChannelRef{twitchCh, kickCh}, "gg")
+
+	byKey := map[string]dispatch.TargetSend{}
+	for _, r := range results {
+		byKey[r.Channel.Key()] = r
+	}
+	tw := byKey["twitch:forsen"]
+	if !tw.Reachable {
+		t.Fatalf("twitch should be reachable: %+v", tw)
+	}
+	if e := <-tw.Sent; e != nil {
+		t.Errorf("twitch send result: %v", e)
+	}
+	k := byKey["kick:xqc"]
+	if k.Reachable || k.Reason != platform.ReasonAuthRequired {
+		t.Errorf("kick should be excluded with auth_required, got %+v", k)
+	}
+	// The reachable platform was sent to; the excluded one was not.
+	if len(twa.sends) != 1 || twa.sends[0].text != "gg" {
+		t.Errorf("twitch sends = %+v, want one 'gg'", twa.sends)
+	}
+	if len(ka.sends) != 0 {
+		t.Errorf("excluded kick must not be sent to, got %+v", ka.sends)
+	}
+}
+
+// TestTargets_PreSendReachability covers the pre-send chip state: each target reports whether it
+// can send and why not, without sending.
+func TestTargets_PreSendReachability(t *testing.T) {
+	s, twa, ka := newCrossSender(
+		platform.Capabilities{Send: true},
+		platform.Capabilities{ReadAnonymous: true},
+	)
+	states := s.Targets([]platform.ChannelRef{twitchCh, kickCh})
+	if len(states) != 2 || !states[0].CanSend || states[1].CanSend || states[1].Reason != platform.ReasonAuthRequired {
+		t.Errorf("target states = %+v", states)
+	}
+	// Pure pre-send check: nothing was sent.
+	if len(twa.sends) != 0 || len(ka.sends) != 0 {
+		t.Error("Targets must not send")
+	}
+}
+
+// TestSendMany_UnknownPlatformExcluded: a target on a platform with no adapter is excluded, not
+// errored.
+func TestSendMany_UnknownPlatformExcluded(t *testing.T) {
+	s, _, _ := newCrossSender(platform.Capabilities{Send: true}, platform.Capabilities{Send: true})
+	results := s.SendMany(context.Background(), []platform.ChannelRef{{Platform: platform.X, Slug: "z"}}, "hi")
+	if len(results) != 1 || results[0].Reachable {
+		t.Errorf("unknown-platform target should be excluded: %+v", results)
+	}
+}

@@ -72,4 +72,65 @@ func (s *Sender) Do(ctx context.Context, ch platform.ChannelRef, input string) (
 	}
 }
 
+// TargetState is one channel's pre-send reachability: whether a message can be sent to it right
+// now and, when it can't, a machine reason the frontend maps to copy. It backs the composer's
+// reachable/excluded target chips before anything is sent.
+type TargetState struct {
+	Channel platform.ChannelRef
+	CanSend bool
+	Reason  platform.ReasonCode // set when CanSend is false
+}
+
+// canSend reports whether ch can receive a send right now, with a reason when it can't.
+func (s *Sender) canSend(ch platform.ChannelRef) (bool, platform.ReasonCode) {
+	a, ok := s.adapters[ch.Platform]
+	if !ok {
+		return false, platform.ReasonNone
+	}
+	if !a.Capabilities().Send {
+		return false, platform.ReasonAuthRequired
+	}
+	return true, platform.ReasonNone
+}
+
+// Targets reports per-target send reachability without sending anything — the state a composer
+// renders as reachable vs excluded chips before the user hits enter.
+func (s *Sender) Targets(targets []platform.ChannelRef) []TargetState {
+	out := make([]TargetState, 0, len(targets))
+	for _, ch := range targets {
+		ok, reason := s.canSend(ch)
+		out = append(out, TargetState{Channel: ch, CanSend: ok, Reason: reason})
+	}
+	return out
+}
+
+// TargetSend is the disposition of a cross-posted message for one target.
+type TargetSend struct {
+	Channel   platform.ChannelRef
+	Reachable bool
+	Reason    platform.ReasonCode // set when Reachable is false
+	// Sent receives the eventual send result (nil = sent) for a reachable target; nil otherwise.
+	Sent <-chan error
+}
+
+// SendMany cross-posts text as a chat message to every reachable target, pacing each through the
+// governor. Unreachable targets (signed out, no adapter) are excluded before anything is sent
+// and reported — never errored — so one unreachable target can't fail the send to the others.
+func (s *Sender) SendMany(ctx context.Context, targets []platform.ChannelRef, text string) []TargetSend {
+	out := make([]TargetSend, 0, len(targets))
+	for _, ch := range targets {
+		ok, reason := s.canSend(ch)
+		if !ok {
+			out = append(out, TargetSend{Channel: ch, Reachable: false, Reason: reason})
+			continue
+		}
+		a := s.adapters[ch.Platform]
+		res := s.gov.Submit(channelKey(ch), func() error {
+			return a.Send(ctx, ch, text, platform.SendOpts{})
+		})
+		out = append(out, TargetSend{Channel: ch, Reachable: true, Sent: res})
+	}
+	return out
+}
+
 func channelKey(ch platform.ChannelRef) string { return ch.Key() }
