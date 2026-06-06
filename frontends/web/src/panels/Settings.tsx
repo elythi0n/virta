@@ -146,8 +146,16 @@ function Accessibility() {
   );
 }
 
+const AUTO_CALM_OPTIONS = [
+  { value: '0', label: 'Off' },
+  { value: '30', label: '30/s' },
+  { value: '60', label: '60/s' },
+  { value: '100', label: '100/s' },
+  { value: '150', label: '150/s' },
+];
+
 function ChatSettings() {
-  const { showDeleted, setShowDeleted, quickReplies, setQuickReplies } = useFeedDisplay();
+  const { showDeleted, setShowDeleted, quickReplies, setQuickReplies, autoCalmRate, setAutoCalmRate } = useFeedDisplay();
   return (
     <>
       <OnOff
@@ -156,6 +164,14 @@ function ChatSettings() {
         value={showDeleted}
         onChange={setShowDeleted}
       />
+      <Field label="Auto calm mode" hint="Engage calm mode automatically when a feed's combined rate passes this many messages per second.">
+        <Select
+          ariaLabel="Auto calm mode threshold"
+          value={String(autoCalmRate)}
+          onValueChange={(v) => setAutoCalmRate(Number(v))}
+          options={AUTO_CALM_OPTIONS}
+        />
+      </Field>
       <Field label="Quick replies" hint="One canned message per line; offered in the composer's ⚡ menu.">
         <textarea
           className={styles.textarea}

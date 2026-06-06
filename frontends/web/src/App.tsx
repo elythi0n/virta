@@ -96,6 +96,18 @@ export default function App() {
       // storage unavailable; names just won't persist across reloads
     }
   }, []);
+  const [autoCalmRate, setAutoCalmRateState] = useState<number>(() => {
+    const n = Number(localStorage.getItem('virta.autoCalmRate'));
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  });
+  const setAutoCalmRate = useCallback((v: number) => {
+    setAutoCalmRateState(v);
+    try {
+      localStorage.setItem('virta.autoCalmRate', String(v));
+    } catch {
+      // storage unavailable; the threshold just won't persist
+    }
+  }, []);
   const [reduceMotion, setReduceMotionState] = useState(() => loadBool('virta.reduceMotion'));
   const setReduceMotion = useCallback((v: boolean) => {
     setReduceMotionState(v);
@@ -308,7 +320,7 @@ export default function App() {
       <A11yProvider value={{ reduceMotion, setReduceMotion, dyslexicFont, setDyslexicFont }}>
       <DensityProvider value={{ density, setDensity }}>
         <FeedDisplayProvider
-          value={{ showTimestamps, setShowTimestamps, mentionNames, setMentionNames, showDeleted, setShowDeleted, quickReplies, setQuickReplies }}
+          value={{ showTimestamps, setShowTimestamps, mentionNames, setMentionNames, showDeleted, setShowDeleted, quickReplies, setQuickReplies, autoCalmRate, setAutoCalmRate }}
         >
         <ActionsProvider value={actions}>
           <OpenChannelProvider value={openChannel}>

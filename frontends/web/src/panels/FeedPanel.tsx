@@ -6,7 +6,7 @@ import { filterFeed, QUICK_FILTERS, type QuickFilter } from './quickFilter';
 import { applyCalm } from './calmMode';
 import ModRowActions, { type ModAction } from './ModRowActions';
 import ChatSettingsControl from './ChatSettingsControl';
-import { getHistory, sendMessage, useCapabilities, useChannels, useDaemonStream } from '../daemon';
+import { getHistory, sendMessage, useCapabilities, useChannels, useDaemonStream, useStats } from '../daemon';
 import type { ChatSettings, LoggedMessage } from '../daemon/wire.gen';
 
 // Convert a logged/scrollback row into a feed message for backfill. The stored body is plain text
@@ -192,8 +192,9 @@ type Props = {
 export default function FeedPanel({ channels, panelId }: Props) {
   const { theme } = useTheme();
   const { density: defaultDensity } = useDensity();
-  const { showTimestamps, showDeleted } = useFeedDisplay();
+  const { showTimestamps, showDeleted, autoCalmRate } = useFeedDisplay();
   const { channels: joined } = useChannels();
+  const { stats } = useStats();
   const { messages, push, markDeleted, clearChannel } = useFeedBuffer({ max: MAX_MESSAGES });
   const [chatSettings, setChatSettings] = useState<Record<string, ChatSettings>>({});
   const onChatSettings = useCallback((ch: string, s: ChatSettings) => setChatSettings((prev) => ({ ...prev, [ch]: s })), []);
@@ -249,12 +250,21 @@ export default function FeedPanel({ channels, panelId }: Props) {
   };
   const [background, setBackground] = useState(() => hex(14, 15, 18));
 
+  // Auto-engage calm mode when this feed's combined live rate (summed across its channels, from the
+  // daemon's stats) passes the configured threshold, so an overload calms itself without a click.
+  const liveRate = useMemo(
+    () => targets.reduce((sum, key) => sum + (stats[key]?.messagesPerSec ?? 0), 0),
+    [targets, stats],
+  );
+  const autoCalm = autoCalmRate > 0 && liveRate >= autoCalmRate;
+  const calmActive = calm || autoCalm;
+
   // Client-side view filter over the buffered feed; the full buffer keeps streaming underneath.
   const { visible, thinned } = useMemo(() => {
     const filtered = filterFeed(messages, quick, query);
-    if (!calm) return { visible: filtered, thinned: 0 };
+    if (!calmActive) return { visible: filtered, thinned: 0 };
     return applyCalm(filtered);
-  }, [messages, quick, query, calm]);
+  }, [messages, quick, query, calmActive]);
 
   // Recent chatters (newest first, unique) for the composer's @mention autocomplete.
   const chatters = useMemo(() => {
@@ -352,11 +362,13 @@ export default function FeedPanel({ channels, panelId }: Props) {
           )}
           <Tooltip
             content={
-              calm
-                ? thinned > 0
-                  ? `Calm mode on (collapsing repeats, ${thinned} thinned)`
-                  : 'Calm mode on (collapsing repeats)'
-                : 'Calm mode (collapse repeats)'
+              autoCalm && !calm
+                ? `Calm mode auto-engaged (${Math.round(liveRate)} msg/s)`
+                : calmActive
+                  ? thinned > 0
+                    ? `Calm mode on (collapsing repeats, ${thinned} thinned)`
+                    : 'Calm mode on (collapsing repeats)'
+                  : 'Calm mode (collapse repeats)'
             }
             side="bottom"
           >
@@ -364,11 +376,11 @@ export default function FeedPanel({ channels, panelId }: Props) {
               type="button"
               className={styles.iconBtn}
               aria-label="Calm mode"
-              aria-pressed={calm}
+              aria-pressed={calmActive}
               onClick={toggleCalm}
             >
               <Icon name="collapse" size={16} />
-              {calm && thinned > 0 && <span className={styles.calmCount}>{thinned}</span>}
+              {calmActive && thinned > 0 && <span className={styles.calmCount}>{thinned}</span>}
             </button>
           </Tooltip>
           <Tooltip content={hud ? 'Preview only' : 'Show controls'} side="bottom">

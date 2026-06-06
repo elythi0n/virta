@@ -12,6 +12,9 @@ type FeedDisplayValue = {
   /** Saved canned messages, offered as quick replies in the composer. */
   quickReplies: string[];
   setQuickReplies: (v: string[]) => void;
+  /** Auto-engage calm mode when a feed's combined rate reaches this many msg/s (0 = off). */
+  autoCalmRate: number;
+  setAutoCalmRate: (v: number) => void;
 };
 
 const FeedDisplayContext = createContext<FeedDisplayValue>({
@@ -23,6 +26,8 @@ const FeedDisplayContext = createContext<FeedDisplayValue>({
   setShowDeleted: () => {},
   quickReplies: [],
   setQuickReplies: () => {},
+  autoCalmRate: 0,
+  setAutoCalmRate: () => {},
 });
 
 export const FeedDisplayProvider = FeedDisplayContext.Provider;
