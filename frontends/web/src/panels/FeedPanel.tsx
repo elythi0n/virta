@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Feed, parseSegments, useFeedBuffer, type Density, type FeedMessage, type Platform } from '@virta/feed-core';
-import { Segmented, StatusDot, Text } from '@virta/ui-kit';
+import { Input, Segmented, StatusDot, Text } from '@virta/ui-kit';
+import { filterFeed, QUICK_FILTERS, type QuickFilter } from './quickFilter';
 import { useChannels, useDaemonStream, type ConnectionStatus } from '../daemon';
 import { useDensity } from '../density';
 import { useFeedDisplay } from '../feedDisplay';
@@ -159,7 +160,12 @@ export default function FeedPanel({ channels, panelId }: Props) {
   // feed.
   const targets = channels ?? joined.map((c) => `${c.platform}:${c.slug}`);
   const [rate, setRate] = useState<Rate>('live');
+  const [quick, setQuick] = useState<QuickFilter>('all');
+  const [query, setQuery] = useState('');
   const [background, setBackground] = useState(() => hex(14, 15, 18));
+
+  // Client-side view filter over the buffered feed; the full buffer keeps streaming underneath.
+  const visible = useMemo(() => filterFeed(messages, quick, query), [messages, quick, query]);
 
   // A feed aggregating more than one channel shows the source tag; a single-channel feed hides it.
   const showSource = channels === undefined || channels.length !== 1;
@@ -206,8 +212,33 @@ export default function FeedPanel({ channels, panelId }: Props) {
           <DensityControl value={density} onChange={changeDensity} />
         </div>
       </div>
+      <div className={styles.filterbar}>
+        <Input
+          className={styles.search}
+          aria-label="Filter messages"
+          placeholder="Filter messages…"
+          value={query}
+          onChange={(e) => setQuery(e.currentTarget.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setQuery('');
+          }}
+        />
+        <div className={styles.quick} role="group" aria-label="Quick filters">
+          {QUICK_FILTERS.map((f) => (
+            <button
+              key={f.value}
+              type="button"
+              className={`${styles.chip} ${quick === f.value ? styles.chipOn : ''}`}
+              aria-pressed={quick === f.value}
+              onClick={() => setQuick(f.value)}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className={styles.feedWrap}>
-        <Feed messages={messages} background={background} showSource={showSource} density={density} showTimestamps={showTimestamps} />
+        <Feed messages={visible} background={background} showSource={showSource} density={density} showTimestamps={showTimestamps} />
       </div>
       <Composer targets={targets} />
     </div>
