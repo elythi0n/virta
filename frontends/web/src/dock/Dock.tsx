@@ -1,6 +1,7 @@
 import { DockviewReact, type DockviewReadyEvent, type IDockviewPanelProps } from 'dockview';
 import Panel from '../panels/Panel';
 import Settings from '../panels/Settings';
+import HeaderActions from './HeaderActions';
 
 // This module is the only place that imports dockview. The rest of the app receives the api
 // through onReady and never depends on vendor shapes directly, so the engine stays swappable.
@@ -13,5 +14,14 @@ const components = {
 
 export default function Dock({ onReady }: { onReady: (event: DockviewReadyEvent) => void }) {
   // className selects our token-driven theme; the vendor theme is never imported.
-  return <DockviewReact className="dockview-theme-virta" components={components} onReady={onReady} />;
+  // rightHeaderActionsComponent adds the per-group pop-out control. Floating groups stay enabled
+  // (dockview default), so a tab can also be dragged out to float and dragged back to re-dock.
+  return (
+    <DockviewReact
+      className="dockview-theme-virta"
+      components={components}
+      rightHeaderActionsComponent={HeaderActions}
+      onReady={onReady}
+    />
+  );
 }
