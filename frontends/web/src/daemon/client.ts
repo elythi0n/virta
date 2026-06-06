@@ -1,5 +1,5 @@
 import type { DeletionRef, FeedMessage } from '@virta/feed-core';
-import type { Discovery, StatsSnapshot, WireEvent } from './wire.gen';
+import type { ChatSettings, Discovery, StatsSnapshot, WireEvent } from './wire.gen';
 import { discover as discoverDaemon } from './discovery';
 import { channelKey, toFeedMessage } from './normalize';
 
@@ -18,6 +18,8 @@ export interface DaemonClientOptions {
   onClear?: (channelKey: string, userId?: string) => void;
   /** A per-channel stats snapshot (msg/s, unique chatters, top emotes) on the daemon's ticker. */
   onStats?: (channelKey: string, snapshot: StatsSnapshot) => void;
+  /** A channel's chat settings (slow/followers/emote-only/unique) on join and when they change. */
+  onChatSettings?: (channelKey: string, settings: ChatSettings) => void;
   onStatus: (status: ConnectionStatus) => void;
   /** Channel keys ("platform:slug") to receive; empty = all. */
   channels?: string[];
@@ -78,6 +80,8 @@ export function createDaemonClient(opts: DaemonClientOptions): DaemonClient {
         opts.onClear?.(channelKey(event.channel.platform, event.channel.slug), event.target_user_id || undefined);
       } else if (event.type === 'stats' && event.channel && event.stats) {
         opts.onStats?.(channelKey(event.channel.platform, event.channel.slug), event.stats);
+      } else if (event.type === 'chat_settings' && event.channel && event.settings) {
+        opts.onChatSettings?.(channelKey(event.channel.platform, event.channel.slug), event.settings);
       }
     };
     ws.onerror = () => ws.close();

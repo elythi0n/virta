@@ -5,7 +5,9 @@ import Icon from '../Icon';
 import { filterFeed, QUICK_FILTERS, type QuickFilter } from './quickFilter';
 import { collapseCombos } from './calmMode';
 import ModRowActions, { type ModAction } from './ModRowActions';
+import ChatSettingsControl from './ChatSettingsControl';
 import { sendMessage, useCapabilities, useChannels, useDaemonStream } from '../daemon';
+import type { ChatSettings } from '../daemon/wire.gen';
 import { useDensity } from '../density';
 import { useFeedDisplay } from '../feedDisplay';
 import { useTheme } from '../theme';
@@ -177,7 +179,9 @@ export default function FeedPanel({ channels, panelId }: Props) {
   const { showTimestamps } = useFeedDisplay();
   const { channels: joined } = useChannels();
   const { messages, push, markDeleted, clearChannel } = useFeedBuffer({ max: MAX_MESSAGES });
-  const status = useDaemonStream({ onMessage: push, onDeleted: markDeleted, onClear: clearChannel }, channels);
+  const [chatSettings, setChatSettings] = useState<Record<string, ChatSettings>>({});
+  const onChatSettings = useCallback((ch: string, s: ChatSettings) => setChatSettings((prev) => ({ ...prev, [ch]: s })), []);
+  const status = useDaemonStream({ onMessage: push, onDeleted: markDeleted, onClear: clearChannel, onChatSettings }, channels);
 
   // Per-tab text size: the panel's saved choice, else the global default.
   const [density, setDensity] = useState<Density>(() => loadDensity(panelId) ?? defaultDensity);
@@ -248,6 +252,9 @@ export default function FeedPanel({ channels, panelId }: Props) {
     },
     [caps, runMod],
   );
+
+  // Chat-settings toggles apply to one channel, so show them only for a single moderatable feed.
+  const modChannel = targets.length === 1 && caps[targets[0].split(':')[0]]?.moderation ? targets[0] : null;
 
   // A feed aggregating more than one channel shows the source tag; a single-channel feed hides it.
   const showSource = channels === undefined || channels.length !== 1;
@@ -321,6 +328,12 @@ export default function FeedPanel({ channels, panelId }: Props) {
               <Icon name={hud ? 'eye' : 'eye-off'} size={16} />
             </button>
           </Tooltip>
+          {modChannel && (
+            <ChatSettingsControl
+              settings={chatSettings[modChannel]}
+              onCommand={(cmd) => void sendMessage([modChannel], cmd).catch(() => {})}
+            />
+          )}
           <DensityControl value={density} onChange={changeDensity} />
         </div>
       </div>

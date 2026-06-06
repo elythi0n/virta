@@ -1,0 +1,60 @@
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 26px;
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-sm);
+  background: var(--virta-bg-0);
+  color: var(--virta-text-2);
+  cursor: pointer;
+  transition:
+    border-color var(--virta-motion-fast) ease,
+    background var(--virta-motion-fast) ease,
+    color var(--virta-motion-fast) ease;
+}
+.trigger:hover {
+  border-color: var(--virta-text-2);
+  background: var(--virta-bg-2);
+  color: var(--virta-text-0);
+}
+
+.menu {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 180px;
+}
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  padding: var(--virta-space-8);
+  border: 0;
+  border-radius: var(--virta-radius-sm);
+  background: none;
+  color: var(--virta-text-1);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  text-align: left;
+  cursor: pointer;
+}
+.item:hover {
+  background: var(--virta-bg-2);
+  color: var(--virta-text-0);
+}
+.on {
+  color: var(--virta-text-0);
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  border: 1px solid var(--virta-text-2);
+}
+.dot[data-on='true'] {
+  border-color: transparent;
+  background: var(--virta-ok);
+}
