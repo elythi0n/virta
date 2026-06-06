@@ -106,6 +106,20 @@ export default function App() {
     api.addPanel({ id, component: 'panel', params: { kind: 'feed', channels, title }, title });
   }, []);
 
+  // Open a single-channel feed pane from the streams rail. The id is stable per channel, so a
+  // second click focuses the existing pane instead of opening a duplicate.
+  const openChannel = useCallback((channelKey: string, label: string) => {
+    const api = apiRef.current;
+    if (!api) return;
+    const id = `channel-${channelKey}`;
+    const existing = api.getPanel(id);
+    if (existing) {
+      existing.api.setActive();
+      return;
+    }
+    api.addPanel({ id, component: 'panel', params: { kind: 'feed', channels: [channelKey], title: label }, title: label });
+  }, []);
+
   // Every shell action is registered here so the palette (and later, the keymap and menus)
   // dispatch through one list rather than each surface wiring its own handler.
   const actions = useMemo<CommandAction[]>(() => {
@@ -164,7 +178,9 @@ export default function App() {
               onOpenSettings={openSettings}
               onOpenPlugins={() => openPanel('plugins', 'Plugins')}
             />
-            {sidebarOpen && <SideBar view={activeView} openPanel={openPanel} onNewFeed={() => setNewFeedOpen(true)} />}
+            {sidebarOpen && (
+              <SideBar view={activeView} openPanel={openPanel} openChannel={openChannel} onNewFeed={() => setNewFeedOpen(true)} />
+            )}
             <div className="dock-host">
               <Dock onReady={onReady} />
             </div>

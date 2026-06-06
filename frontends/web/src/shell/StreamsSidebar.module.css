@@ -1,0 +1,117 @@
+.empty {
+  margin: 0;
+  padding: var(--virta-space-8) var(--virta-space-4);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-4);
+}
+
+.item {
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-md);
+  background: var(--virta-bg-0);
+  overflow: hidden;
+}
+
+.row {
+  display: flex;
+  align-items: stretch;
+}
+.main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  padding: var(--virta-space-8);
+  border: 0;
+  background: none;
+  color: var(--virta-text-0);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  text-align: left;
+  cursor: pointer;
+}
+.main:hover {
+  background: var(--virta-bg-2);
+}
+.glyph {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+.name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.expand {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  border: 0;
+  border-left: 1px solid var(--virta-line);
+  background: none;
+  color: var(--virta-text-2);
+  cursor: pointer;
+}
+.expand:hover {
+  background: var(--virta-bg-2);
+  color: var(--virta-text-0);
+}
+.expand[data-open='true'] svg {
+  transform: rotate(180deg);
+}
+.expand svg {
+  transition: transform var(--virta-motion-fast) ease;
+}
+
+.metrics {
+  display: flex;
+  gap: var(--virta-space-12);
+  padding: 0 var(--virta-space-8) var(--virta-space-8);
+  color: var(--virta-text-2);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+}
+.metric b {
+  color: var(--virta-text-0);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.detail {
+  margin: 0;
+  padding: var(--virta-space-8);
+  border-top: 1px solid var(--virta-line);
+  background: var(--virta-bg-1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-4);
+}
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--virta-space-8);
+  font-size: var(--virta-type-meta-size);
+}
+.detailRow dt {
+  color: var(--virta-text-2);
+}
+.detailRow dd {
+  margin: 0;
+  color: var(--virta-text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

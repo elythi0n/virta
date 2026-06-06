@@ -2,7 +2,7 @@ import type { IconName } from '../Icon';
 
 // The primary activity-bar views, which toggle the side bar. Settings is not one of them: the
 // activity-bar gear opens Settings as a full dock panel (it has too much IA for a 264px rail).
-export type ViewId = 'sources' | 'panels';
+export type ViewId = 'sources' | 'panels' | 'streams';
 
 export interface ViewDef {
   id: ViewId;
@@ -12,6 +12,7 @@ export interface ViewDef {
 
 export const PRIMARY_VIEWS: ViewDef[] = [
   { id: 'panels', label: 'Panels', icon: 'panels' },
+  { id: 'streams', label: 'Streams', icon: 'stream' },
   { id: 'sources', label: 'Sources', icon: 'sources' },
 ];
 

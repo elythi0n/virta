@@ -9,6 +9,8 @@ export { useChannels } from './useChannels';
 export type { ChannelsStatus } from './useChannels';
 export { useCapabilities } from './useCapabilities';
 export type { CapabilitiesStatus } from './useCapabilities';
+export { useStats } from './useStats';
+export type { ChannelStats } from './useStats';
 export { startTwitchDevice, twitchDeviceStatus, startKickAuth, kickAuthStatus, pollSession, isTerminal } from './auth';
 export { listProfiles, createProfile, activateProfile } from './profiles';
 export { useProfiles } from './useProfiles';
