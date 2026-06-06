@@ -11,6 +11,7 @@
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.9",
     "@fontsource-variable/geist-mono": "^5.2.8",
+    "@virta/feed-core": "*",
     "@virta/ui-kit": "*",
     "dockview": "^6.6.1",
     "react": "^19.2.0",

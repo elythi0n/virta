@@ -1,0 +1,21 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--virta-bg-0);
+}
+
+.toolbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  padding: var(--virta-space-8) var(--virta-space-12);
+  border-bottom: 1px solid var(--virta-line);
+}
+
+.feedWrap {
+  flex: 1 1 auto;
+  min-height: 0;
+}

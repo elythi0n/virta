@@ -3,7 +3,11 @@
 // scanned. Run from the frontends/ workspace root.
 import { globSync, readFileSync } from 'node:fs';
 
-const files = globSync(['ui-kit/src/**/*.{css,ts,tsx}', 'web/src/**/*.{css,ts,tsx}']);
+const files = globSync([
+  'ui-kit/src/**/*.{css,ts,tsx}',
+  'feed-core/src/**/*.{css,ts,tsx}',
+  'web/src/**/*.{css,ts,tsx}',
+]);
 const HEX = /#[0-9a-fA-F]{3,8}\b/g;
 
 const violations = [];

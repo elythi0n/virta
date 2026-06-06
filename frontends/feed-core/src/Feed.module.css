@@ -1,0 +1,51 @@
+.feed {
+  position: relative;
+  height: 100%;
+  background: var(--virta-bg-0);
+}
+
+.viewport {
+  height: 100%;
+  overflow-y: auto;
+  overflow-anchor: none;
+}
+
+.sizer {
+  position: relative;
+  width: 100%;
+}
+
+.rowWrap {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+.pill {
+  position: absolute;
+  left: 50%;
+  bottom: var(--virta-space-16);
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--virta-space-4);
+  height: 28px;
+  padding: 0 var(--virta-space-12);
+  border: 0;
+  border-radius: var(--virta-radius-lg);
+  background: var(--virta-accent);
+  color: var(--virta-bg-0);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.4);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 600;
+  cursor: pointer;
+}
+.pill:hover {
+  filter: brightness(1.08);
+}
+.pill:focus-visible {
+  outline: 2px solid var(--virta-text-0);
+  outline-offset: 2px;
+}

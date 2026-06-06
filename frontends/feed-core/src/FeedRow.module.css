@@ -1,0 +1,39 @@
+.row {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: var(--virta-space-8);
+  padding: var(--virta-space-2) var(--virta-space-12);
+  border-left: 2px solid transparent;
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-chat-compact-size);
+  line-height: var(--virta-type-chat-compact-line);
+}
+.row:hover {
+  background: var(--virta-bg-1);
+}
+
+.twitch {
+  border-left-color: var(--virta-plat-twitch);
+}
+.kick {
+  border-left-color: var(--virta-plat-kick);
+}
+.x {
+  border-left-color: var(--virta-plat-x);
+}
+
+.ts {
+  color: var(--virta-text-2);
+  font-family: var(--virta-font-mono);
+  font-size: var(--virta-type-meta-size);
+}
+.author {
+  color: var(--virta-text-1);
+  font-weight: 600;
+}
+.body {
+  color: var(--virta-text-0);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

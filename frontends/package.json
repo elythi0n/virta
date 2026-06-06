@@ -2,7 +2,7 @@
   "name": "@virta/frontends",
   "private": true,
   "version": "0.0.0",
-  "workspaces": ["ui-kit", "web"],
+  "workspaces": ["ui-kit", "feed-core", "web"],
   "scripts": {
     "lint:tokens": "node scripts/token-lint.mjs"
   }
