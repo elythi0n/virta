@@ -9,6 +9,11 @@ export interface AccountInfo {
   scopes?: string[];
 }
 
+export interface AccountRef {
+  platform: string;
+  login: string;
+}
+
 export interface Annotations {
   hidden?: boolean;
   highlight?: string;
@@ -176,6 +181,13 @@ export interface PlatformAuthConfig {
   configured: boolean;
 }
 
+export interface ProfileExport {
+  schema_version: number;
+  name: string;
+  doc: unknown;
+  account_refs?: AccountRef[];
+}
+
 export interface ProfileInfo {
   id: string;
   name: string;
@@ -229,6 +241,14 @@ export interface StreamInfo {
   category?: string;
   thumbnail_url?: string;
   started_at?: string;
+}
+
+export interface ThemeInfo {
+  id: string;
+  name: string;
+  base?: string;
+  appearance: string;
+  warnings?: string[];
 }
 
 export interface TokenInfo {

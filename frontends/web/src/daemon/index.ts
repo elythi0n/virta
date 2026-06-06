@@ -29,3 +29,4 @@ export type { SearchParams } from './search';
 export { getIntegration, useIntegration } from './integration';
 export type { IntegrationReport, IntegrationFeature } from './integration';
 export { listTokens, mintToken, revokeToken } from './tokens';
+export { listThemes, importTheme, exportTheme, deleteTheme } from './themes';

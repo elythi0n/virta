@@ -10,6 +10,7 @@ import type { TokenInfo } from '../daemon/wire.gen';
 import { useTheme, type ThemeMode } from '../theme';
 import { DENSITIES } from './DensityControl';
 import Connections from './Connections';
+import ThemeEditor from './ThemeEditor';
 import styles from './Settings.module.css';
 
 type CategoryId =
@@ -111,6 +112,9 @@ function Appearance() {
           defaultValue={mentionNames.join(', ')}
           onBlur={(e) => setMentionNames(e.currentTarget.value.split(',').map((s) => s.trim()).filter(Boolean))}
         />
+      </Field>
+      <Field label="Themes" hint="Import a .vtheme file or paste a vtheme1: share string to add a custom theme.">
+        <ThemeEditor currentTheme={mode === 'dark' ? 'graphite-dark' : 'light'} onApply={() => {}} />
       </Field>
     </>
   );

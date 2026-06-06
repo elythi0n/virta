@@ -320,6 +320,7 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	}
 	srv.SetTokens(tokenStoreWrapper{store: tokenStore, settings: st.Settings()})
 	srv.SetPortability(portabilityControl{profiles: st.Profiles(), accounts: st.Accounts()})
+	srv.SetThemes(newThemeControl(st.Settings()))
 
 	// OAuth app credentials are read through providers so they can be set at runtime via the UI
 	// (stored in the vault), seeded from the env vars on first run.

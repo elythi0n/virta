@@ -1,0 +1,108 @@
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-16);
+  position: relative;
+}
+.dropping {
+  outline: 2px dashed var(--virta-accent);
+  outline-offset: 4px;
+  border-radius: var(--virta-radius-md);
+}
+.dropOverlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--virta-accent) 12%, var(--virta-bg-0));
+  border-radius: var(--virta-radius-md);
+  color: var(--virta-accent);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  font-weight: 600;
+  z-index: 2;
+}
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-4);
+}
+.groupLabel {
+  margin: 0 0 var(--virta-space-4);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  padding: var(--virta-space-8) var(--virta-space-12);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-md);
+  background: var(--virta-bg-0);
+  transition: border-color var(--virta-motion-fast) ease;
+}
+.rowActive {
+  border-color: var(--virta-accent);
+  background: color-mix(in srgb, var(--virta-accent) 6%, var(--virta-bg-0));
+}
+.rowMeta {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--virta-space-8);
+  min-width: 0;
+}
+.rowName {
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  font-weight: 600;
+  color: var(--virta-text-0);
+}
+.rowBase {
+  font-size: var(--virta-type-meta-size);
+  color: var(--virta-text-2);
+}
+.rowActions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-4);
+}
+.activePill {
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 600;
+  color: var(--virta-accent);
+}
+.importGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-8);
+  padding: var(--virta-space-12);
+  border: 1px dashed var(--virta-line);
+  border-radius: var(--virta-radius-md);
+}
+.pasteRow {
+  display: flex;
+  gap: var(--virta-space-8);
+}
+.pasteInput {
+  flex: 1;
+  padding: var(--virta-space-8) var(--virta-space-12);
+  background: var(--virta-bg-0);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-sm);
+  color: var(--virta-text-0);
+  font-family: var(--virta-font-mono);
+  font-size: 11px;
+}
+.pasteInput:focus-visible {
+  outline: 2px solid var(--virta-accent);
+  outline-offset: 1px;
+  border-color: var(--virta-accent);
+}
+.error {
+  color: var(--virta-danger);
+}

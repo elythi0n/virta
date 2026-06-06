@@ -58,6 +58,7 @@ type Server struct {
 	history           History           // message-log search/scrollback controller, installed via SetHistory
 	tokens            Tokens            // scoped API-token controller, installed via SetTokens
 	portability       Portability       // profile import/export controller, installed via SetPortability
+	themes            Themes            // custom theme management, installed via SetThemes
 	webui             http.Handler      // embedded web UI, installed via SetWebUI (nil = not served)
 	corsOrigins       []string          // opt-in CORS allowlist for local web tools (empty = CORS off)
 	integrationReport any               // native-integration report forwarded from the desktop shell
@@ -350,6 +351,10 @@ func (s *Server) routes() []route {
 		{"DELETE", "/v1/tokens/{id}", ScopeAdmin, s.handleRevokeToken, "Revoke an API token"},
 		{"GET", "/v1/profiles/{id}/export", ScopeControl, s.handleExportProfile, "Export a profile to a portable JSON"},
 		{"POST", "/v1/profiles/import", ScopeControl, s.handleImportProfile, "Import a profile from a portable JSON"},
+		{"GET", "/v1/themes", ScopeRead, s.handleListThemes, "List built-in and custom themes"},
+		{"POST", "/v1/themes", ScopeControl, s.handleImportTheme, "Import a .vtheme JSON"},
+		{"GET", "/v1/themes/{id}/export", ScopeRead, s.handleExportTheme, "Export a theme as .vtheme JSON"},
+		{"DELETE", "/v1/themes/{id}", ScopeControl, s.handleDeleteTheme, "Delete a custom theme"},
 		{"GET", "/dev", ScopeRead, s.handleDev, "Developer event probe page"},
 	}
 }

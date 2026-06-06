@@ -42,6 +42,8 @@ func roots() []reflect.Type {
 		reflect.TypeOf(api.LoggedMessage{}),
 		reflect.TypeOf(api.TokenInfo{}),
 		reflect.TypeOf(api.MintedToken{}),
+		reflect.TypeOf(api.ThemeInfo{}),
+		reflect.TypeOf(api.ProfileExport{}),
 	}
 }
 
