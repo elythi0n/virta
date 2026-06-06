@@ -158,7 +158,9 @@ func (s *Server) Start() error {
 		}
 	}()
 	s.log.Info("api listening", "addr", s.Addr())
-	s.log.Info("dev feed", "url", "http://"+s.Addr()+"/dev?token="+s.token)
+	// The token is intentionally not logged (it would leak into stderr/journald and the
+	// diagnostics ring); it lives in the owner-only discovery file.
+	s.log.Info("dev feed", "url", "http://"+s.Addr()+"/dev", "token", "in "+s.discoveryPath)
 	return nil
 }
 
