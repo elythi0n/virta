@@ -1,26 +1,19 @@
-import { useState } from 'react';
-import { Badge, Button, Segmented, Select, StatusDot, Text } from '@virta/ui-kit';
+import { Badge, Button, StatusDot, Text } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { PANEL_CATALOG, SOURCES, type ViewId } from './views';
 import styles from './SideBar.module.css';
 
 type Props = {
   view: ViewId;
-  theme: string;
   openPanel: (kind: string, title: string) => void;
-  setTheme: (t: string) => void;
 };
 
 const TITLES: Record<ViewId, string> = {
   panels: 'Panels',
   sources: 'Sources',
-  settings: 'Settings',
 };
 
-export default function SideBar({ view, theme, openPanel, setTheme }: Props) {
-  // Density is a placeholder until the feed renderer consumes it; local for now.
-  const [density, setDensity] = useState('cozy');
-
+export default function SideBar({ view, openPanel }: Props) {
   return (
     <aside className={styles.side} aria-label={TITLES[view]}>
       <Text as="header" variant="meta" tone="subtle" className={styles.head}>
@@ -63,40 +56,6 @@ export default function SideBar({ view, theme, openPanel, setTheme }: Props) {
             <Text as="p" variant="meta" tone="subtle" className={styles.note}>
               Connecting accounts wires to the daemon in a later step.
             </Text>
-          </>
-        )}
-
-        {view === 'settings' && (
-          <>
-            <div className={styles.field}>
-              <Text as="span" variant="meta" tone="subtle" className={styles.fieldLabel}>
-                Appearance
-              </Text>
-              <Segmented
-                ariaLabel="Theme"
-                value={theme}
-                onValueChange={setTheme}
-                options={[
-                  { value: 'graphite-dark', label: 'Graphite' },
-                  { value: 'light', label: 'Light' },
-                ]}
-              />
-            </div>
-            <div className={styles.field}>
-              <Text as="span" variant="meta" tone="subtle" className={styles.fieldLabel}>
-                Feed density
-              </Text>
-              <Select
-                ariaLabel="Feed density"
-                value={density}
-                onValueChange={setDensity}
-                options={[
-                  { value: 'compact', label: 'Compact' },
-                  { value: 'cozy', label: 'Cozy' },
-                  { value: 'comfortable', label: 'Comfortable' },
-                ]}
-              />
-            </div>
           </>
         )}
       </div>

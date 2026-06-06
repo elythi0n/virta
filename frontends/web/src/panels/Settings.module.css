@@ -1,0 +1,100 @@
+.settings {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--virta-bg-0);
+}
+
+.toolbar {
+  flex: none;
+  padding: var(--virta-space-12) var(--virta-space-16);
+  border-bottom: 1px solid var(--virta-line);
+}
+.toolbar :global(input) {
+  max-width: 320px;
+}
+
+.main {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+}
+
+.nav {
+  flex: none;
+  width: 184px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--virta-space-12) var(--virta-space-8);
+  border-right: 1px solid var(--virta-line);
+  overflow-y: auto;
+}
+.navItem {
+  position: relative;
+  padding: var(--virta-space-8);
+  border: 0;
+  border-radius: var(--virta-radius-sm);
+  background: none;
+  color: var(--virta-text-1);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  line-height: var(--virta-type-ui-line);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--virta-motion-fast) ease,
+    color var(--virta-motion-fast) ease;
+}
+.navItem:hover {
+  background: var(--virta-bg-1);
+  color: var(--virta-text-0);
+}
+.navActive {
+  background: var(--virta-bg-2);
+  color: var(--virta-text-0);
+}
+.navActive::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 7px;
+  bottom: 7px;
+  width: 2px;
+  border-radius: 0 2px 2px 0;
+  background: var(--virta-accent);
+}
+.navItem:focus-visible {
+  outline: 2px solid var(--virta-accent);
+  outline-offset: -2px;
+}
+
+.content {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-y: auto;
+  padding: var(--virta-space-24) var(--virta-space-32);
+}
+.heading {
+  margin-bottom: var(--virta-space-16);
+}
+
+.field {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--virta-space-24);
+  max-width: 560px;
+  padding: var(--virta-space-16) 0;
+  border-bottom: 1px solid var(--virta-line);
+}
+.fieldText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-2);
+  min-width: 0;
+}
+.fieldControl {
+  flex: none;
+}

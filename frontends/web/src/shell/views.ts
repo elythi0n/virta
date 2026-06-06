@@ -1,7 +1,8 @@
 import type { IconName } from '../Icon';
 
-// The primary activity-bar views. `settings` lives in the footer group, the rest at the top.
-export type ViewId = 'sources' | 'panels' | 'settings';
+// The primary activity-bar views, which toggle the side bar. Settings is not one of them: the
+// activity-bar gear opens Settings as a full dock panel (it has too much IA for a 264px rail).
+export type ViewId = 'sources' | 'panels';
 
 export interface ViewDef {
   id: ViewId;
@@ -13,8 +14,6 @@ export const PRIMARY_VIEWS: ViewDef[] = [
   { id: 'panels', label: 'Panels', icon: 'panels' },
   { id: 'sources', label: 'Sources', icon: 'sources' },
 ];
-
-export const FOOTER_VIEWS: ViewDef[] = [{ id: 'settings', label: 'Settings', icon: 'settings' }];
 
 // Catalog of panels the user can open into the dock from the Panels view.
 export interface PanelDef {

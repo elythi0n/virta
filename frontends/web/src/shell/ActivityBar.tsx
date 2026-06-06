@@ -1,17 +1,18 @@
 import Icon from '../Icon';
-import { PRIMARY_VIEWS, FOOTER_VIEWS, type ViewDef, type ViewId } from './views';
+import { PRIMARY_VIEWS, type ViewDef, type ViewId } from './views';
 import styles from './ActivityBar.module.css';
 
 type Props = {
   activeView: ViewId;
   sidebarOpen: boolean;
   onSelect: (v: ViewId) => void;
+  onOpenSettings: () => void;
 };
 
-export default function ActivityBar({ activeView, sidebarOpen, onSelect }: Props) {
+export default function ActivityBar({ activeView, sidebarOpen, onSelect, onOpenSettings }: Props) {
   const isActive = (id: ViewId) => sidebarOpen && activeView === id;
 
-  const item = (v: ViewDef) => {
+  const viewItem = (v: ViewDef) => {
     const active = isActive(v.id);
     return (
       <button
@@ -29,8 +30,13 @@ export default function ActivityBar({ activeView, sidebarOpen, onSelect }: Props
 
   return (
     <nav className={styles.bar} aria-label="Primary">
-      <div className={styles.group}>{PRIMARY_VIEWS.map(item)}</div>
-      <div className={styles.group}>{FOOTER_VIEWS.map(item)}</div>
+      <div className={styles.group}>{PRIMARY_VIEWS.map(viewItem)}</div>
+      <div className={styles.group}>
+        {/* Settings is an action, not a view: it opens a dock panel rather than the side bar. */}
+        <button className={styles.item} title="Settings" aria-label="Settings" onClick={onOpenSettings}>
+          <Icon name="settings" />
+        </button>
+      </div>
     </nav>
   );
 }

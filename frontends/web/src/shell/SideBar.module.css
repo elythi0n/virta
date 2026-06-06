@@ -69,13 +69,3 @@
 .note {
   margin: var(--virta-space-12) var(--virta-space-8) 0;
 }
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--virta-space-8);
-  padding: var(--virta-space-8);
-}
-.fieldLabel {
-  display: block;
-}

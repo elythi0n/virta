@@ -4,6 +4,7 @@ import Dock from './dock/Dock';
 import ActivityBar from './shell/ActivityBar';
 import SideBar from './shell/SideBar';
 import type { ViewId } from './shell/views';
+import { ThemeProvider } from './theme';
 
 export default function App() {
   const [activeView, setActiveView] = useState<ViewId>('panels');
@@ -56,13 +57,28 @@ export default function App() {
     api.addPanel({ id: kind, component: 'panel', params: { kind }, title });
   }, []);
 
+  // Settings opens as its own dock panel (not a side-bar pane): it needs room for many
+  // categories. Re-invoking focuses the existing panel.
+  const openSettings = useCallback(() => {
+    const api = apiRef.current;
+    if (!api) return;
+    const existing = api.getPanel('settings');
+    if (existing) {
+      existing.api.setActive();
+      return;
+    }
+    api.addPanel({ id: 'settings', component: 'settings', title: 'Settings' });
+  }, []);
+
   return (
-    <div className="shell">
-      <ActivityBar activeView={activeView} sidebarOpen={sidebarOpen} onSelect={selectView} />
-      {sidebarOpen && <SideBar view={activeView} theme={theme} openPanel={openPanel} setTheme={setTheme} />}
-      <div className="dock-host">
-        <Dock onReady={onReady} />
+    <ThemeProvider value={{ theme, setTheme }}>
+      <div className="shell">
+        <ActivityBar activeView={activeView} sidebarOpen={sidebarOpen} onSelect={selectView} onOpenSettings={openSettings} />
+        {sidebarOpen && <SideBar view={activeView} openPanel={openPanel} />}
+        <div className="dock-host">
+          <Dock onReady={onReady} />
+        </div>
       </div>
-    </div>
+    </ThemeProvider>
   );
 }
