@@ -106,7 +106,13 @@ app:
 	cp -r frontends/web/dist/. frontends/desktop/assets/
 	@ext=""; [ "$$(go env GOOS)" = "windows" ] && ext=".exe"; \
 		CGO_ENABLED=0 go build -ldflags '$(LDFLAGS)' -o frontends/desktop/bin/virtad$$ext ./cmd/virtad
-	cd frontends/desktop && go mod tidy && wails build -s
+	@mkdir -p frontends/desktop/build && cp frontends/ui-kit/src/assets/virta-logo-512.png frontends/desktop/build/appicon.png
+	@cd frontends/desktop && go mod tidy && { \
+		tags=""; \
+		if pkg-config --exists webkit2gtk-4.1 2>/dev/null && ! pkg-config --exists webkit2gtk-4.0 2>/dev/null; then tags="-tags webkit2_41"; fi; \
+		echo "+ wails build -s $$tags"; \
+		wails build -s $$tags; \
+	}
 	@echo "✓ desktop bundle: frontends/desktop/build/bin"
 
 ## fixtures: regenerate golden fixtures by re-running normalization with -update.

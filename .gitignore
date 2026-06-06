@@ -40,3 +40,5 @@ frontends/desktop/assets/*
 !frontends/desktop/assets/.gitkeep
 frontends/desktop/bin/*
 !frontends/desktop/bin/.gitkeep
+frontends/desktop/frontend/
+frontends/desktop/desktop
