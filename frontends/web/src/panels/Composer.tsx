@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Button, Input, Popover, Text } from '@virta/ui-kit';
 import { PlatformGlyph, type Platform } from '@virta/feed-core';
-import { previewSend, sendMessage } from '../daemon';
+import { previewSend, sendMessage, useEmotes } from '../daemon';
 import SignInDialog, { type SignInPlatform } from '../shell/SignInDialog';
 import type { SendTarget } from '../daemon/wire.gen';
+import { applySuggestion, suggest, tokenAt, type Suggestion } from './autocomplete';
 import styles from './Composer.module.css';
 
 const SIGNABLE = new Set(['twitch', 'kick']);
@@ -15,12 +16,15 @@ const sent = (status: string) => status === 'sent' || status === 'queued';
 type Props = {
   /** Channel keys ("platform:slug") this composer can post to. */
   targets: string[];
+  /** Recent chatter names, for @mention autocomplete. */
+  chatters?: string[];
 };
 
 // Compose and cross-post to the feed's channels. Target chips show where a message will land:
 // reachable ones solid, unreachable ones (platforms you're not signed in to) dimmed with a ⊘; a
 // single passive line offers to sign in. After a send, each chip carries its per-target result.
-export default function Composer({ targets }: Props) {
+// Typing offers emote/@mention autocomplete.
+export default function Composer({ targets, chatters = [] }: Props) {
   const [text, setText] = useState('');
   const [preview, setPreview] = useState<SendTarget[] | null>([]); // null = daemon unreachable
   const [sending, setSending] = useState(false);
@@ -28,6 +32,39 @@ export default function Composer({ targets }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [results, setResults] = useState<Record<string, string>>({});
   const [reload, setReload] = useState(0);
+
+  // Autocomplete state.
+  const inputRef = useRef<HTMLInputElement>(null);
+  const pendingCaret = useRef<number | null>(null);
+  const [caret, setCaret] = useState(0);
+  const [acIndex, setAcIndex] = useState(0);
+  const [dismissed, setDismissed] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const emotes = useEmotes();
+  const prepared = useMemo(() => emotes.map((e) => ({ code: e.code, url: e.url, lc: e.code.toLowerCase() })), [emotes]);
+  const suggestions = useMemo(
+    () => (dismissed ? [] : suggest(tokenAt(text, caret).token, prepared, chatters)),
+    [dismissed, text, caret, prepared, chatters],
+  );
+  const acOpen = focused && suggestions.length > 0;
+
+  const accept = (s: Suggestion) => {
+    const next = applySuggestion(text, caret, s.value);
+    setText(next.text);
+    pendingCaret.current = next.caret;
+    setDismissed(false);
+    setAcIndex(0);
+  };
+
+  // Restore the caret after an accept rewrites the text.
+  useLayoutEffect(() => {
+    if (pendingCaret.current === null || !inputRef.current) return;
+    const pos = pendingCaret.current;
+    pendingCaret.current = null;
+    inputRef.current.focus();
+    inputRef.current.setSelectionRange(pos, pos);
+    setCaret(pos);
+  }, [text]);
   const key = [...targets].sort().join(',');
 
   useEffect(() => {
@@ -95,23 +132,77 @@ export default function Composer({ targets }: Props) {
         </div>
       )}
 
-      <div className={styles.row}>
-        <Input
-          placeholder={offline ? 'Not connected' : 'Send a message'}
-          aria-label="Message"
-          disabled={offline}
-          value={text}
-          onChange={(e) => setText(e.currentTarget.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              void submit();
-            }
-          }}
-        />
-        <Button variant="solid" size="md" disabled={!canSend} onClick={() => void submit()}>
-          Send
-        </Button>
+      <div className={styles.acWrap}>
+        {acOpen && (
+          <ul className={styles.popup} role="listbox" aria-label="Suggestions">
+            {suggestions.map((s, i) => (
+              <li key={s.value}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={i === acIndex}
+                  className={`${styles.option} ${i === acIndex ? styles.optionOn : ''}`}
+                  onMouseDown={(e) => {
+                    e.preventDefault(); // keep focus in the input
+                    accept(s);
+                  }}
+                >
+                  {s.image && <img className={styles.optionImg} src={s.image} alt="" loading="lazy" />}
+                  {s.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className={styles.row}>
+          <Input
+            ref={inputRef}
+            placeholder={offline ? 'Not connected' : 'Send a message'}
+            aria-label="Message"
+            disabled={offline}
+            value={text}
+            onChange={(e) => {
+              setText(e.currentTarget.value);
+              setCaret(e.currentTarget.selectionStart ?? e.currentTarget.value.length);
+              setDismissed(false);
+              setAcIndex(0);
+            }}
+            onSelect={(e) => setCaret(e.currentTarget.selectionStart ?? 0)}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            onKeyDown={(e) => {
+              if (acOpen) {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  setAcIndex((i) => (i + 1) % suggestions.length);
+                  return;
+                }
+                if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  setAcIndex((i) => (i - 1 + suggestions.length) % suggestions.length);
+                  return;
+                }
+                if (e.key === 'Enter' || e.key === 'Tab') {
+                  e.preventDefault();
+                  accept(suggestions[acIndex]);
+                  return;
+                }
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  setDismissed(true);
+                  return;
+                }
+              }
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                void submit();
+              }
+            }}
+          />
+          <Button variant="solid" size="md" disabled={!canSend} onClick={() => void submit()}>
+            Send
+          </Button>
+        </div>
       </div>
 
       {signable.length > 0 && (

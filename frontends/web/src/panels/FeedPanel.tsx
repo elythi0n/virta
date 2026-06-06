@@ -215,6 +215,20 @@ export default function FeedPanel({ channels, panelId }: Props) {
     return calm ? collapseCombos(filtered) : filtered;
   }, [messages, quick, query, calm]);
 
+  // Recent chatters (newest first, unique) for the composer's @mention autocomplete.
+  const chatters = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (let i = messages.length - 1; i >= 0 && out.length < 100; i--) {
+      const a = messages[i].author;
+      if (a && !seen.has(a)) {
+        seen.add(a);
+        out.push(a);
+      }
+    }
+    return out;
+  }, [messages]);
+
   // A feed aggregating more than one channel shows the source tag; a single-channel feed hides it.
   const showSource = channels === undefined || channels.length !== 1;
 
@@ -320,7 +334,7 @@ export default function FeedPanel({ channels, panelId }: Props) {
       <div className={styles.feedWrap}>
         <Feed messages={visible} background={background} showSource={showSource} density={density} showTimestamps={showTimestamps} />
       </div>
-      {hud && <Composer targets={targets} />}
+      {hud && <Composer targets={targets} chatters={chatters} />}
     </div>
   );
 }

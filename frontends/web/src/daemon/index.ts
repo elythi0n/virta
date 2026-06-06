@@ -16,6 +16,7 @@ export { listFilters, saveFilters } from './filters';
 export { listMethods, setMethod } from './connections';
 export { listAccounts, disconnectAccount } from './accounts';
 export { getAuthConfig, setAuthConfig } from './authConfig';
+export { listEmotes, useEmotes } from './emotes';
 export { startTwitchDevice, twitchDeviceStatus, startKickAuth, kickAuthStatus, pollSession, isTerminal } from './auth';
 export { listProfiles, createProfile, activateProfile } from './profiles';
 export { useProfiles } from './useProfiles';

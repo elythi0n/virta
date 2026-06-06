@@ -47,10 +47,57 @@
   font-weight: 700;
 }
 
+.acWrap {
+  position: relative;
+}
 .row {
   display: flex;
   gap: var(--virta-space-8);
   align-items: center;
+}
+
+.popup {
+  position: absolute;
+  bottom: calc(100% + var(--virta-space-4));
+  left: 0;
+  z-index: 30;
+  margin: 0;
+  padding: var(--virta-space-4);
+  list-style: none;
+  min-width: 200px;
+  max-width: 320px;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--virta-bg-1);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-md);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.4);
+}
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  width: 100%;
+  height: 30px;
+  padding: 0 var(--virta-space-8);
+  border: 0;
+  border-radius: var(--virta-radius-sm);
+  background: none;
+  color: var(--virta-text-1);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  text-align: left;
+  cursor: pointer;
+}
+.optionOn {
+  background: var(--virta-bg-2);
+  color: var(--virta-text-0);
+}
+.optionImg {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  flex: none;
 }
 
 .note {
