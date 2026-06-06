@@ -109,7 +109,7 @@ app:
 	@mkdir -p frontends/desktop/build && cp frontends/ui-kit/src/assets/virta-logo-512.png frontends/desktop/build/appicon.png
 	@cd frontends/desktop && go mod tidy && { \
 		tags=""; \
-		if pkg-config --exists webkit2gtk-4.1 2>/dev/null && ! pkg-config --exists webkit2gtk-4.0 2>/dev/null; then tags="-tags webkit2_41"; fi; \
+		if pkg-config --modversion webkit2gtk-4.1 >/dev/null 2>&1 && ! pkg-config --modversion webkit2gtk-4.0 >/dev/null 2>&1; then tags="-tags webkit2_41"; fi; \
 		echo "+ wails build -s $$tags"; \
 		wails build -s $$tags; \
 	}
