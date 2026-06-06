@@ -179,6 +179,34 @@ func (m *Manager) RemoveChannel(ctx context.Context, ch platform.ChannelRef) err
 	return m.save(ctx)
 }
 
+// Filters returns a copy of the active profile's filter rules.
+func (m *Manager) Filters() []filter.Rule {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := make([]filter.Rule, len(m.active.Filters))
+	copy(out, m.active.Filters)
+	return out
+}
+
+// SetFilters validates and applies a new rule set: it compiles (rejecting a bad regex), hot-swaps
+// the live ruleset, records it on the active profile, and persists. A compile error changes
+// nothing.
+func (m *Manager) SetFilters(ctx context.Context, rules []filter.Rule) error {
+	rs, err := filter.Compile(rules)
+	if err != nil {
+		return err
+	}
+	m.mu.Lock()
+	if !m.loaded {
+		m.mu.Unlock()
+		return nil
+	}
+	m.active.Filters = rules
+	m.mu.Unlock()
+	m.filter.SetRuleset(rs)
+	return m.save(ctx)
+}
+
 // ActiveID returns the id of the active profile ("" if none activated yet).
 func (m *Manager) ActiveID() string {
 	m.mu.Lock()

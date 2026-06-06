@@ -94,6 +94,17 @@ export interface EmoteRef {
   animated: boolean;
 }
 
+export interface FilterRule {
+  id: string;
+  action: string;
+  platforms?: string[];
+  channels?: string[];
+  authors?: string[];
+  types?: string[];
+  keywords?: string[];
+  regexes?: string[];
+}
+
 export type HealthState = string;
 
 export interface HealthStatus {

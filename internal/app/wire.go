@@ -276,6 +276,7 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	mgr := profiles.New(st.Profiles(), eng, filterStage, logCtl, runner, clk)
 	srv.SetChannels(channelControl{eng: eng, emotes: emoteResolver, badges: badgeResolver, streams: streamResolver, profiles: mgr})
 	srv.SetProfiles(profileControl{mgr: mgr, repo: st.Profiles()})
+	srv.SetFilters(filterControl{mgr: mgr})
 
 	// Outbound sends are paced per channel and cross-posted through the typed-action layer. Kick
 	// is seeded conservatively (its limits are undocumented and adapt on 429); Twitch starts at
@@ -450,6 +451,64 @@ func (c channelControl) Leave(plat, slug string) error {
 	}
 	_ = c.profiles.RemoveChannel(context.Background(), ref)
 	return nil
+}
+
+// filterControl adapts the profile manager to the API's filter-ruleset controller, translating the
+// wire's string rules to the engine's typed grammar and back.
+type filterControl struct{ mgr *profiles.Manager }
+
+func toWireRule(r filter.Rule) api.FilterRule {
+	w := api.FilterRule{
+		ID:       r.ID,
+		Action:   string(r.Action),
+		Channels: r.Match.Channels,
+		Authors:  r.Match.Authors,
+		Keywords: r.Match.Keywords,
+		Regexes:  r.Match.Regexes,
+	}
+	for _, p := range r.Match.Platforms {
+		w.Platforms = append(w.Platforms, string(p))
+	}
+	for _, t := range r.Match.Types {
+		w.Types = append(w.Types, string(t))
+	}
+	return w
+}
+
+func fromWireRule(w api.FilterRule) filter.Rule {
+	r := filter.Rule{
+		ID:     w.ID,
+		Action: filter.Action(w.Action),
+		Match:  filter.Match{Channels: w.Channels, Authors: w.Authors, Keywords: w.Keywords, Regexes: w.Regexes},
+	}
+	for _, p := range w.Platforms {
+		r.Match.Platforms = append(r.Match.Platforms, platform.Platform(p))
+	}
+	for _, t := range w.Types {
+		r.Match.Types = append(r.Match.Types, platform.MessageType(t))
+	}
+	return r
+}
+
+func (c filterControl) Filters() []api.FilterRule {
+	rules := c.mgr.Filters()
+	out := make([]api.FilterRule, 0, len(rules))
+	for _, r := range rules {
+		out = append(out, toWireRule(r))
+	}
+	return out
+}
+
+func (c filterControl) SetFilters(ctx context.Context, rules []api.FilterRule) error {
+	in := make([]filter.Rule, 0, len(rules))
+	for _, r := range rules {
+		in = append(in, fromWireRule(r))
+	}
+	// Validate (a bad regex) before touching the active profile, mapping to the API's 400 path.
+	if _, err := filter.Compile(in); err != nil {
+		return fmt.Errorf("%w: %v", api.ErrInvalidRuleset, err)
+	}
+	return c.mgr.SetFilters(ctx, in)
 }
 
 // profileControl adapts the profile manager to the API's profile controller.

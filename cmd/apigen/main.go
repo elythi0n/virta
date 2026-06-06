@@ -28,6 +28,7 @@ func roots() []reflect.Type {
 		reflect.TypeOf(api.ChannelInfo{}),
 		reflect.TypeOf(api.Capabilities{}),
 		reflect.TypeOf(api.StreamInfo{}),
+		reflect.TypeOf(api.FilterRule{}),
 		reflect.TypeOf(api.DeviceSession{}),
 		reflect.TypeOf(api.AuthSession{}),
 		reflect.TypeOf(api.ProfileInfo{}),

@@ -47,6 +47,7 @@ type Server struct {
 	hub      *hub
 	channels Channels     // join/leave controller, installed via SetChannels
 	profiles Profiles     // profile controller, installed via SetProfiles
+	filters  Filters      // filter-ruleset controller, installed via SetFilters
 	authCtl  Auth         // account-auth controller, installed via SetAuth
 	send     Send         // cross-posting controller, installed via SetSend
 	webui    http.Handler // embedded web UI, installed via SetWebUI (nil = not served)
@@ -98,6 +99,8 @@ func New(cfg Config) (*Server, error) {
 	mux.Handle("GET /v1/channels", s.auth(http.HandlerFunc(s.handleListChannels)))
 	mux.Handle("GET /v1/capabilities", s.auth(http.HandlerFunc(s.handleCapabilities)))
 	mux.Handle("GET /v1/streams", s.auth(http.HandlerFunc(s.handleListStreams)))
+	mux.Handle("GET /v1/filters", s.auth(http.HandlerFunc(s.handleListFilters)))
+	mux.Handle("PUT /v1/filters", s.auth(http.HandlerFunc(s.handleSetFilters)))
 	mux.Handle("POST /v1/channels", s.auth(http.HandlerFunc(s.handleJoinChannel)))
 	mux.Handle("DELETE /v1/channels", s.auth(http.HandlerFunc(s.handleLeaveChannel)))
 	mux.Handle("POST /v1/send", s.auth(http.HandlerFunc(s.handleSend)))
