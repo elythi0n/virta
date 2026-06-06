@@ -21,7 +21,10 @@ export interface DockOptions {
 }
 
 export interface Dock {
+  /** Seed a panel at an explicit position; for building the initial layout. */
   add(panel: DockPanel): void;
+  /** Open a panel by id, or focus it if already open; for user-driven actions. */
+  open(panel: DockPanel): void;
   /** Escape hatch to the underlying engine for spike-only experiments. */
   api: DockviewApi;
   dispose(): void;
@@ -46,17 +49,27 @@ export function createDock(target: HTMLElement, opts: DockOptions): Dock {
     },
   });
 
+  function add(panel: DockPanel) {
+    api.addPanel({
+      id: panel.id,
+      component: panel.kind,
+      title: panel.title,
+      position: panel.position
+        ? { referencePanel: panel.position.referencePanelId, direction: panel.position.direction }
+        : undefined,
+    });
+  }
+
   return {
     api,
-    add(panel) {
-      api.addPanel({
-        id: panel.id,
-        component: panel.kind,
-        title: panel.title,
-        position: panel.position
-          ? { referencePanel: panel.position.referencePanelId, direction: panel.position.direction }
-          : undefined,
-      });
+    add,
+    open(panel) {
+      const existing = api.getPanel(panel.id);
+      if (existing) {
+        existing.api.setActive();
+        return;
+      }
+      add(panel);
     },
     dispose() {
       api.dispose();

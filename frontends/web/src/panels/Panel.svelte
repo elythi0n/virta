@@ -21,9 +21,11 @@
     author: `viewer_${(i * 7) % 240}`,
     body: SAMPLE[i % SAMPLE.length],
   }));
+
+  const isFeed = $derived(kind === 'feed' || kind === 'x-chat');
 </script>
 
-{#if kind === 'feed'}
+{#if isFeed}
   <div class="feed" role="log" aria-label="Unified feed">
     {#each rows as row (row.id)}
       <div class="row">
