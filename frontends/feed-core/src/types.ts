@@ -34,6 +34,8 @@ export interface FeedMessage {
   deleted?: boolean;
   /** Set when a filter highlight rule matched; the row renders with a highlight rail + tint. */
   highlighted?: boolean;
+  /** Calm mode: how many identical consecutive messages this row stands in for (≥2 = a combo). */
+  combo?: number;
   author: string;
   /** Platform-provided author color (hex); contrast-clamped before use. */
   authorColor?: string;

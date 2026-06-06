@@ -4,7 +4,7 @@
 //
 //   npm run bench:feed        (from frontends/)
 //
-// Builds web, serves the production build, opens the Unified feed, sets the rate to 200/s, and
+// Builds web, serves the production build, opens the Chat feed, sets the rate to 200/s, and
 // records frame timing + long-task blocking over a fixed window. Exits non-zero if it busts the
 // budget, so it can gate a PR where a browser is available.
 import { spawn } from 'node:child_process';
@@ -107,7 +107,7 @@ async function main() {
     try {
       const page = await browser.newPage({ viewport: { width: 1366, height: 900 } });
       await page.goto(URL, { waitUntil: 'networkidle' });
-      await page.getByText('Unified feed', { exact: true }).first().click();
+      await page.getByText('Chat', { exact: true }).first().click();
       await page.getByRole('button', { name: RATE_LABEL }).click();
       await page.waitForTimeout(1200); // let the stream reach steady state
       console.log(`> measuring ${WINDOW_SECONDS}s at ${RATE_LABEL}…`);

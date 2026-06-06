@@ -115,6 +115,7 @@ function FeedRow({ message, background, showSource, showTimestamps = true, densi
       <span className={`${styles.body} ${type === 'action' ? styles.action : ''}`}>
         {message.deleted ? <span className={styles.tombstone}>message deleted</span> : message.segments.map(renderSegment)}
       </span>
+      {message.combo && message.combo > 1 && <span className={styles.combo}>×{message.combo}</span>}
     </div>
   );
 }

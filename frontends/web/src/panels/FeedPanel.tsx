@@ -3,6 +3,7 @@ import { Feed, parseSegments, PlatformGlyph, useFeedBuffer, type Density, type F
 import { Input, Segmented, Text, Tooltip } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { filterFeed, QUICK_FILTERS, type QuickFilter } from './quickFilter';
+import { collapseCombos } from './calmMode';
 import { useChannels, useDaemonStream } from '../daemon';
 import { useDensity } from '../density';
 import { useFeedDisplay } from '../feedDisplay';
@@ -47,6 +48,23 @@ function saveHud(id: string | undefined, v: boolean) {
     localStorage.setItem(hudKey(id), v ? '1' : '0');
   } catch {
     // storage unavailable; visibility just won't persist across reloads
+  }
+}
+
+// Calm mode (combo-collapse) is remembered per panel; default off.
+const calmKey = (id?: string) => `virta.feed.calm.${id ?? 'default'}`;
+function loadCalm(id?: string): boolean {
+  try {
+    return localStorage.getItem(calmKey(id)) === '1';
+  } catch {
+    return false;
+  }
+}
+function saveCalm(id: string | undefined, v: boolean) {
+  try {
+    localStorage.setItem(calmKey(id), v ? '1' : '0');
+  } catch {
+    // storage unavailable; calm mode just won't persist across reloads
   }
 }
 
@@ -181,10 +199,21 @@ export default function FeedPanel({ channels, panelId }: Props) {
       return next;
     });
   };
+  const [calm, setCalm] = useState(() => loadCalm(panelId)); // true = collapse identical-message combos
+  const toggleCalm = () => {
+    setCalm((v) => {
+      const next = !v;
+      saveCalm(panelId, next);
+      return next;
+    });
+  };
   const [background, setBackground] = useState(() => hex(14, 15, 18));
 
   // Client-side view filter over the buffered feed; the full buffer keeps streaming underneath.
-  const visible = useMemo(() => filterFeed(messages, quick, query), [messages, quick, query]);
+  const visible = useMemo(() => {
+    const filtered = filterFeed(messages, quick, query);
+    return calm ? collapseCombos(filtered) : filtered;
+  }, [messages, quick, query, calm]);
 
   // A feed aggregating more than one channel shows the source tag; a single-channel feed hides it.
   const showSource = channels === undefined || channels.length !== 1;
@@ -236,6 +265,17 @@ export default function FeedPanel({ channels, panelId }: Props) {
               ]}
             />
           )}
+          <Tooltip content={calm ? 'Calm mode on (collapsing repeats)' : 'Calm mode (collapse repeats)'} side="bottom">
+            <button
+              type="button"
+              className={styles.iconBtn}
+              aria-label="Calm mode"
+              aria-pressed={calm}
+              onClick={toggleCalm}
+            >
+              <Icon name="collapse" size={16} />
+            </button>
+          </Tooltip>
           <Tooltip content={hud ? 'Preview only' : 'Show controls'} side="bottom">
             <button
               type="button"

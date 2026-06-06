@@ -139,6 +139,20 @@
   font-style: italic;
 }
 
+/* Calm-mode combo count: how many identical messages this row folds in. */
+.combo {
+  flex: none;
+  align-self: center;
+  padding: 0 var(--virta-space-4);
+  border-radius: var(--virta-radius-sm);
+  background: color-mix(in srgb, var(--virta-accent) 22%, transparent);
+  color: var(--virta-accent);
+  font-family: var(--virta-font-mono);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
 /* A filter highlight: tinted band + a warm rail, overriding the platform rail color. */
 .highlight {
   background: var(--virta-highlight-bg);
