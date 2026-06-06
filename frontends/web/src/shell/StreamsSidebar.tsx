@@ -3,6 +3,7 @@ import { PlatformGlyph, type Platform } from '@virta/feed-core';
 import { ContextMenu, StatusDot, Text, type ContextMenuEntry, type DotStatus } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { useChannels, useStats, useStreams } from '../daemon';
+import { groupStreams, type StreamGroup } from './streamGroups';
 import styles from './StreamsSidebar.module.css';
 
 function stateDot(state: string): DotStatus {
@@ -11,6 +12,7 @@ function stateDot(state: string): DotStatus {
   return 'idle';
 }
 
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 // Compact count: 1.2k above a thousand, whole numbers below.
 const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k` : Math.round(n).toString());
 
@@ -25,10 +27,11 @@ type Props = {
   mergeChannelIntoFeed: (panelId: string, channelKey: string) => void;
 };
 
-// The live channel rail, Twitch-style: each joined channel as a card with a live preview
-// thumbnail, a LIVE badge, and the viewer count when streaming; expand a row for the chat activity
-// (msg/s, unique chatters) from the daemon's stats stream. Click the preview to watch, the name to
-// open chat, or right-click for those plus merging into an existing feed.
+// The live channel rail, Twitch-style. Channels that share a name across platforms collapse into
+// one streamer card surfacing the best platform (Twitch first, since its thumbnail + viewer count
+// come through), sorted with the most-watched live streamers on top. Click the preview to watch or
+// the name to open chat (the primary platform); right-click for those plus opening a specific
+// platform or merging chat into an existing feed.
 export default function StreamsSidebar({ openChannel, openStream, listFeeds, mergeChannelIntoFeed }: Props) {
   const { channels, status } = useChannels();
   const streams = useStreams();
@@ -45,39 +48,87 @@ export default function StreamsSidebar({ openChannel, openStream, listFeeds, mer
   if (channels.length === 0) {
     return (
       <Text variant="meta" tone="subtle" as="p" className={styles.empty}>
-        No channels joined yet. Add some in Sources.
+        No channels joined yet. Add one with the + above.
       </Text>
     );
   }
 
+  const groups = groupStreams(channels, streams);
+
   return (
     <ul className={styles.list}>
-      {channels.map((c) => {
-        const key = `${c.platform}:${c.slug.toLowerCase()}`;
-        const info = streams[key];
-        const st = stats[key];
-        const live = info?.live ?? false;
-        const open = expanded === key;
-        const feeds = listFeeds();
-        const menuItems: ContextMenuEntry[] = [
-          { kind: 'item', label: 'Open stream', onSelect: () => openStream(key, c.slug) },
-          { kind: 'item', label: 'Open chat', onSelect: () => openChannel(key, c.slug) },
-        ];
-        if (feeds.length > 0) {
-          menuItems.push({
-            kind: 'submenu',
-            label: 'Open chat into',
-            items: feeds.map((f) => ({ kind: 'item', label: f.title, onSelect: () => mergeChannelIntoFeed(f.id, key) })),
-          });
-        }
-        return (
-          <li key={key} className={styles.item} data-live={live}>
-            <ContextMenu
-              items={menuItems}
-              trigger={
-                <div className={styles.card}>
+      {groups.map((g) => (
+        <StreamCard
+          key={g.name}
+          group={g}
+          stat={stats[g.primary.key]}
+          open={expanded === g.name}
+          onToggle={() => setExpanded(expanded === g.name ? null : g.name)}
+          openChannel={openChannel}
+          openStream={openStream}
+          feeds={listFeeds()}
+          mergeChannelIntoFeed={mergeChannelIntoFeed}
+        />
+      ))}
+    </ul>
+  );
+}
+
+function StreamCard({
+  group,
+  stat,
+  open,
+  onToggle,
+  openChannel,
+  openStream,
+  feeds,
+  mergeChannelIntoFeed,
+}: {
+  group: StreamGroup;
+  stat?: { messagesPerSec: number; uniqueChatters: number; topEmote?: string };
+  open: boolean;
+  onToggle: () => void;
+  openChannel: (key: string, label: string) => void;
+  openStream: (key: string, label: string) => void;
+  feeds: { id: string; title: string }[];
+  mergeChannelIntoFeed: (panelId: string, channelKey: string) => void;
+}) {
+  const { primary, display, variants, live } = group;
+  const info = primary.info;
+
+  const menuItems: ContextMenuEntry[] = [
+    { kind: 'item', label: 'Open stream', onSelect: () => openStream(primary.key, display) },
+    { kind: 'item', label: 'Open chat', onSelect: () => openChannel(primary.key, display) },
+  ];
+  // Each additional platform this streamer is on gets its own "Open on …" submenu, so a Kick
+  // stream (or any other) stays reachable even though Twitch leads the card.
+  for (const v of variants) {
+    if (v.key === primary.key) continue;
+    menuItems.push({
+      kind: 'submenu',
+      label: `Open on ${cap(v.platform)}`,
+      items: [
+        { kind: 'item', label: 'Stream', onSelect: () => openStream(v.key, display) },
+        { kind: 'item', label: 'Chat', onSelect: () => openChannel(v.key, display) },
+      ],
+    });
+  }
+  if (feeds.length > 0) {
+    menuItems.push({
+      kind: 'submenu',
+      label: 'Open chat into',
+      items: feeds.map((f) => ({ kind: 'item', label: f.title, onSelect: () => mergeChannelIntoFeed(f.id, primary.key) })),
+    });
+  }
+
+  return (
+    <li className={styles.item} data-live={live}>
+      <ContextMenu
+        items={menuItems}
+        trigger={
+          <div className={styles.card}>
             {live && (
-              <button type="button" className={styles.thumb} onClick={() => openStream(key, c.slug)} aria-label={`Watch ${c.slug}`}>
+              <button type="button" className={styles.thumb} onClick={() => openStream(primary.key, display)} aria-label={`Watch ${display}`}>
                 {info?.thumbnail_url ? (
                   <img className={styles.thumbImg} src={info.thumbnail_url} alt="" loading="lazy" />
                 ) : (
@@ -94,19 +145,27 @@ export default function StreamsSidebar({ openChannel, openStream, listFeeds, mer
             )}
 
             <div className={styles.row}>
-              <button type="button" className={styles.main} onClick={() => openChannel(key, c.slug)} title={`Open ${c.slug}`}>
-                <PlatformGlyph platform={c.platform as Platform} className={styles.glyph} />
-                <span className={styles.name}>{c.slug}</span>
+              <button type="button" className={styles.main} onClick={() => openChannel(primary.key, display)} title={`Open ${display}`}>
+                <span className={styles.glyphs}>
+                  {variants.map((v) => (
+                    <PlatformGlyph
+                      key={v.key}
+                      platform={v.platform as Platform}
+                      className={v.key === primary.key ? styles.glyph : styles.glyphMuted}
+                    />
+                  ))}
+                </span>
+                <span className={styles.name}>{display}</span>
                 {!live && <span className={styles.offline}>Offline</span>}
-                <StatusDot status={stateDot(c.state)} label={c.state} />
+                <StatusDot status={stateDot(primary.state)} label={primary.state} />
               </button>
               <button
                 type="button"
                 className={styles.expand}
-                aria-label={open ? `Hide ${c.slug} stats` : `Show ${c.slug} stats`}
+                aria-label={open ? `Hide ${display} stats` : `Show ${display} stats`}
                 aria-expanded={open}
                 data-open={open}
-                onClick={() => setExpanded(open ? null : key)}
+                onClick={onToggle}
               >
                 <Icon name="chevron-down" size={14} />
               </button>
@@ -128,25 +187,22 @@ export default function StreamsSidebar({ openChannel, openStream, listFeeds, mer
                 <div className={styles.detailRow}>
                   <dt>Chat</dt>
                   <dd>
-                    <b>{st ? fmt(st.messagesPerSec) : '—'}</b> msg/s
+                    <b>{stat ? fmt(stat.messagesPerSec) : '—'}</b> msg/s
                   </dd>
                 </div>
                 <div className={styles.detailRow}>
                   <dt>Chatters</dt>
-                  <dd>{st ? fmt(st.uniqueChatters) : '—'}</dd>
+                  <dd>{stat ? fmt(stat.uniqueChatters) : '—'}</dd>
                 </div>
                 <div className={styles.detailRow}>
                   <dt>Top emote</dt>
-                  <dd>{st?.topEmote ?? '—'}</dd>
+                  <dd>{stat?.topEmote ?? '—'}</dd>
                 </div>
               </dl>
             )}
-                </div>
-              }
-            />
-          </li>
-        );
-      })}
-    </ul>
+          </div>
+        }
+      />
+    </li>
   );
 }

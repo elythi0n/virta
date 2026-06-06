@@ -17,9 +17,16 @@
   border-radius: var(--virta-radius-md);
   background: var(--virta-bg-0);
   overflow: hidden;
+  transition:
+    border-color var(--virta-motion-base) ease,
+    box-shadow var(--virta-motion-base) ease;
 }
 .item[data-live='true'] {
   border-color: color-mix(in srgb, var(--virta-line) 60%, var(--virta-accent));
+}
+.item:hover {
+  border-color: color-mix(in srgb, var(--virta-line) 35%, var(--virta-accent));
+  box-shadow: 0 1px 8px -4px color-mix(in srgb, var(--virta-accent) 50%, transparent);
 }
 .card {
   display: block;
@@ -111,10 +118,24 @@
 .main:hover {
   background: var(--virta-bg-2);
 }
+/* The streamer's platforms: the primary leads at full strength, the rest sit muted behind it as a
+   hint that the same streamer is reachable elsewhere (via the right-click menu). */
+.glyphs {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
 .glyph {
   width: 15px;
   height: 15px;
   flex: none;
+}
+.glyphMuted {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  opacity: 0.4;
 }
 .name {
   flex: 1 1 auto;
@@ -180,6 +201,25 @@
   display: flex;
   flex-direction: column;
   gap: var(--virta-space-4);
+  animation: streamDetailIn var(--virta-motion-base) ease;
+}
+@keyframes streamDetailIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .detail {
+    animation: none;
+  }
+  .thumb:hover .thumbImg {
+    transform: none;
+  }
 }
 .detailRow {
   display: flex;
