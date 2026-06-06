@@ -131,6 +131,8 @@ func TestDeviceFlow_EndToEnd(t *testing.T) {
 	clk := clock.NewFake(time.Unix(1_000_000, 0))
 	o := newOAuthServer(t)
 	m, vault, st := newManager(t, o, clk)
+	authed := make(chan store.Account, 1)
+	m.SetOnAuthorized(func(a store.Account) { authed <- a })
 
 	s, err := m.StartDevice(context.Background())
 	if err != nil {
@@ -152,6 +154,15 @@ func TestDeviceFlow_EndToEnd(t *testing.T) {
 	// Token actually stored in the vault.
 	if v, err := vault.Get(context.Background(), SecretRef("42")); err != nil || v == "" {
 		t.Errorf("token not stored: %v", err)
+	}
+	// The wiring hook fired with the authorized account.
+	select {
+	case acc := <-authed:
+		if acc.PlatformUID != "42" {
+			t.Errorf("OnAuthorized account = %+v, want uid 42", acc)
+		}
+	case <-time.After(2 * time.Second):
+		t.Error("OnAuthorized did not fire")
 	}
 }
 

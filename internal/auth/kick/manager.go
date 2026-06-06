@@ -67,10 +67,16 @@ type Manager struct {
 	refMu    sync.Mutex
 	refLocks map[string]*sync.Mutex // per-account locks serializing token refresh
 
+	onAuthorized func(store.Account) // fired when an account finishes authorizing (wiring hook)
+
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
 }
+
+// SetOnAuthorized registers a hook called when an account finishes authorizing, so the wiring
+// layer can attach the account to its platform adapter (enabling send + moderation).
+func (m *Manager) SetOnAuthorized(f func(store.Account)) { m.onAuthorized = f }
 
 // NewManager builds a Kick token manager.
 func NewManager(client *Client, vault secrets.Vault, accounts store.AccountRepo, gen id.Generator, clk clock.Clock) *Manager {
@@ -176,6 +182,9 @@ func (m *Manager) redeem(w http.ResponseWriter, r *http.Request, p *pending, cod
 		return
 	}
 	m.setState(p.session.ID, StateAuthorized, acc.Login, "")
+	if m.onAuthorized != nil {
+		m.onAuthorized(acc)
+	}
 	_, _ = fmt.Fprint(w, "Authorized! You can close this window and return to Virta.")
 }
 

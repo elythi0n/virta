@@ -99,6 +99,8 @@ func TestAuthFlow_EndToEnd(t *testing.T) {
 	o := newKickOAuth(t)
 	m, vault, st := newManager(t, o, clk)
 	ctx := context.Background()
+	authed := make(chan store.Account, 1)
+	m.SetOnAuthorized(func(a store.Account) { authed <- a })
 
 	s, err := m.StartAuth(ctx)
 	if err != nil {
@@ -133,6 +135,15 @@ func TestAuthFlow_EndToEnd(t *testing.T) {
 	}
 	if v, err := vault.Get(ctx, SecretRef("55")); err != nil || v == "" {
 		t.Errorf("token not stored: %v", err)
+	}
+	// The wiring hook fired with the authorized account.
+	select {
+	case acc := <-authed:
+		if acc.PlatformUID != "55" {
+			t.Errorf("OnAuthorized account = %+v, want uid 55", acc)
+		}
+	case <-time.After(2 * time.Second):
+		t.Error("OnAuthorized did not fire")
 	}
 }
 

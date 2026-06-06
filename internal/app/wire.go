@@ -286,6 +286,50 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 		kick: kickAuth, kickConfigured: cfg.KickClientID != "",
 	})
 
+	// Attach an authenticated account to its platform adapter: bind a token source to the
+	// account's vault ref and a broadcaster-id resolver, then flip the adapter to authenticated
+	// (enabling send/moderation). Tokens never leave the auth manager; the adapter only gets a
+	// closure. This runs both when an account signs in (the hooks below) and at startup for
+	// accounts already stored, so a signed-in account survives a restart.
+	helix := twitch.NewHelixClient(cfg.TwitchClientID, nil)
+	kickAPI := kick.NewAPIClient(nil)
+	authTwitch := func(acc store.Account) {
+		ref := acc.SecretRef
+		tokens := func(ctx context.Context) (string, error) { return twitchAuth.AccessToken(ctx, ref) }
+		resolve := func(ctx context.Context, login string) (string, error) {
+			tok, err := tokens(ctx)
+			if err != nil {
+				return "", err
+			}
+			return helix.UserID(ctx, tok, login)
+		}
+		twitchAdapter.Authenticate(acc.PlatformUID, tokens, helix, resolve)
+	}
+	authKick := func(acc store.Account) {
+		ref := acc.SecretRef
+		tokens := func(ctx context.Context) (string, error) { return kickAuth.AccessToken(ctx, ref) }
+		resolve := func(ctx context.Context, slug string) (string, error) {
+			tok, err := tokens(ctx)
+			if err != nil {
+				return "", err
+			}
+			return kickAPI.BroadcasterID(ctx, tok, slug)
+		}
+		kickAdapter.Authenticate(tokens, kickAPI, resolve)
+	}
+	twitchAuth.SetOnAuthorized(authTwitch)
+	kickAuth.SetOnAuthorized(authKick)
+	if accs, err := st.Accounts().List(context.Background()); err == nil {
+		for _, acc := range accs {
+			switch acc.Platform {
+			case platform.Twitch:
+				authTwitch(acc)
+			case platform.Kick:
+				authKick(acc)
+			}
+		}
+	}
+
 	return &Daemon{cfg: cfg, log: log, store: st, vault: vault, runner: runner, engine: eng, stats: statsAgg, logSink: logSink, sweeper: sweeper, profiles: mgr, twitchAuth: twitchAuth, kickAuth: kickAuth, api: srv}, nil
 }
 

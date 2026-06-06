@@ -305,3 +305,19 @@ func TestAdapter_AuthenticatedSendAndModerate(t *testing.T) {
 		t.Error("deauthenticated adapter should not advertise Send")
 	}
 }
+
+func TestBroadcasterID(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("slug") != "xqc" {
+			t.Errorf("slug query = %q, want xqc", r.URL.Query().Get("slug"))
+		}
+		_, _ = w.Write([]byte(`{"data":[{"broadcaster_user_id":777}]}`))
+	}))
+	defer srv.Close()
+	c := NewAPIClient(srv.Client())
+	c.SetBaseURL(srv.URL)
+	id, err := c.BroadcasterID(context.Background(), "tok", "xqc")
+	if err != nil || id != "777" {
+		t.Fatalf("BroadcasterID = %q, %v; want 777", id, err)
+	}
+}

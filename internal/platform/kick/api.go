@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -96,6 +97,36 @@ func (c *APIClient) SendChat(ctx context.Context, accessToken, broadcasterUserID
 	}
 	if !sent {
 		return "", errors.New("kick: message not sent")
+	}
+	return id, nil
+}
+
+// BroadcasterID resolves a channel slug to its numeric broadcaster user id, which send and
+// moderation require. The public API's exact channel shape is unverified, so decoding is
+// tolerant; live behavior is tracked separately.
+func (c *APIClient) BroadcasterID(ctx context.Context, accessToken, slug string) (string, error) {
+	raw, err := c.do(ctx, http.MethodGet, c.base+"/channels?slug="+url.QueryEscape(slug), accessToken, nil)
+	if err != nil {
+		return "", err
+	}
+	var body struct {
+		Data []struct {
+			BroadcasterUserID json.Number `json:"broadcaster_user_id"`
+			UserID            json.Number `json:"user_id"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(raw, &body); err != nil {
+		return "", fmt.Errorf("kick: decode channel: %w", err)
+	}
+	if len(body.Data) == 0 {
+		return "", fmt.Errorf("kick: no channel for slug %q", slug)
+	}
+	id := body.Data[0].BroadcasterUserID.String()
+	if id == "" || id == "0" {
+		id = body.Data[0].UserID.String()
+	}
+	if id == "" || id == "0" {
+		return "", fmt.Errorf("kick: no broadcaster id for slug %q", slug)
 	}
 	return id, nil
 }

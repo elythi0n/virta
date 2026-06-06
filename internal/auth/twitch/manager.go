@@ -62,10 +62,16 @@ type Manager struct {
 	refMu    sync.Mutex
 	refLocks map[string]*sync.Mutex // per-account locks serializing token refresh
 
+	onAuthorized func(store.Account) // fired when an account finishes authorizing (wiring hook)
+
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
 }
+
+// SetOnAuthorized registers a hook called when an account finishes authorizing, so the wiring
+// layer can attach the account to its platform adapter (enabling send). Set once at construction.
+func (m *Manager) SetOnAuthorized(f func(store.Account)) { m.onAuthorized = f }
 
 // NewManager builds a token manager.
 func NewManager(client *Client, vault secrets.Vault, accounts store.AccountRepo, gen id.Generator, clk clock.Clock) *Manager {
@@ -155,6 +161,9 @@ func (m *Manager) poll(sessionID string, da DeviceAuth) {
 				return
 			}
 			m.setState(sessionID, StateAuthorized, acc.Login, "")
+			if m.onAuthorized != nil {
+				m.onAuthorized(acc)
+			}
 			return
 		case isPending(err):
 			continue
