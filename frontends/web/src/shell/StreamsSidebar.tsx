@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { PlatformGlyph, type Platform } from '@virta/feed-core';
 import { StatusDot, Text, type DotStatus } from '@virta/ui-kit';
 import Icon from '../Icon';
-import { useChannels, useStats } from '../daemon';
+import { useChannels, useStats, useStreams } from '../daemon';
 import styles from './StreamsSidebar.module.css';
 
 function stateDot(state: string): DotStatus {
@@ -10,22 +10,21 @@ function stateDot(state: string): DotStatus {
   if (state === 'error') return 'offline';
   return 'idle';
 }
-const stateLabel = (state: string) => (state === 'connected' ? 'Live' : state === 'error' ? 'Error' : 'Connecting');
 
 // Compact count: 1.2k above a thousand, whole numbers below.
-const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : Math.round(n).toString());
+const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k` : Math.round(n).toString());
 
 type Props = {
   /** Open a feed scoped to a single channel ("platform:slug"). */
   openChannel: (channelKey: string, label: string) => void;
 };
 
-// The live channel rail: each joined channel with its connection state and live activity (msg/s,
-// unique chatters) from the daemon's stats stream. The daemon does not expose stream viewer counts
-// yet, so we surface the chat activity it does have. Click a channel to open its own feed; expand a
-// row for the fuller stats.
+// The live channel rail, Twitch-style: each joined channel as a card with a live preview
+// thumbnail, a LIVE badge, and the viewer count when streaming; expand a row for the chat activity
+// (msg/s, unique chatters) from the daemon's stats stream. Click a channel to open its own feed.
 export default function StreamsSidebar({ openChannel }: Props) {
   const { channels, status } = useChannels();
+  const streams = useStreams();
   const { stats } = useStats();
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -48,15 +47,35 @@ export default function StreamsSidebar({ openChannel }: Props) {
     <ul className={styles.list}>
       {channels.map((c) => {
         const key = `${c.platform}:${c.slug.toLowerCase()}`;
-        const s = stats[key];
+        const info = streams[key];
+        const st = stats[key];
+        const live = info?.live ?? false;
         const open = expanded === key;
         return (
-          <li key={key} className={styles.item}>
+          <li key={key} className={styles.item} data-live={live}>
+            {live && (
+              <button type="button" className={styles.thumb} onClick={() => openChannel(key, c.slug)} aria-label={`Open ${c.slug}`}>
+                {info?.thumbnail_url ? (
+                  <img className={styles.thumbImg} src={info.thumbnail_url} alt="" loading="lazy" />
+                ) : (
+                  <span className={styles.thumbFallback} aria-hidden />
+                )}
+                <span className={styles.liveBadge}>LIVE</span>
+                {info && info.viewer_count > 0 && (
+                  <span className={styles.viewers}>
+                    <i className={styles.vdot} aria-hidden />
+                    {fmt(info.viewer_count)}
+                  </span>
+                )}
+              </button>
+            )}
+
             <div className={styles.row}>
               <button type="button" className={styles.main} onClick={() => openChannel(key, c.slug)} title={`Open ${c.slug}`}>
                 <PlatformGlyph platform={c.platform as Platform} className={styles.glyph} />
                 <span className={styles.name}>{c.slug}</span>
-                <StatusDot status={stateDot(c.state)} label={stateLabel(c.state)} />
+                {!live && <span className={styles.offline}>Offline</span>}
+                <StatusDot status={stateDot(c.state)} label={c.state} />
               </button>
               <button
                 type="button"
@@ -70,31 +89,33 @@ export default function StreamsSidebar({ openChannel }: Props) {
               </button>
             </div>
 
-            <div className={styles.metrics}>
-              <span className={styles.metric}>
-                <b>{s ? fmt(s.messagesPerSec) : '—'}</b> msg/s
-              </span>
-              <span className={styles.metric}>
-                <b>{s ? fmt(s.uniqueChatters) : '—'}</b> chatters
-              </span>
-            </div>
+            {live && (info?.category || info?.title) && (
+              <div className={styles.streamInfo}>
+                {info?.category && <span className={styles.category}>{info.category}</span>}
+                {info?.title && (
+                  <span className={styles.title} title={info.title}>
+                    {info.title}
+                  </span>
+                )}
+              </div>
+            )}
 
             {open && (
               <dl className={styles.detail}>
                 <div className={styles.detailRow}>
-                  <dt>Top emote</dt>
-                  <dd>{s?.topEmote ?? '—'}</dd>
+                  <dt>Chat</dt>
+                  <dd>
+                    <b>{st ? fmt(st.messagesPerSec) : '—'}</b> msg/s
+                  </dd>
                 </div>
                 <div className={styles.detailRow}>
-                  <dt>Window</dt>
-                  <dd>{s ? `${s.windowSeconds}s` : '—'}</dd>
+                  <dt>Chatters</dt>
+                  <dd>{st ? fmt(st.uniqueChatters) : '—'}</dd>
                 </div>
-                {c.reason && (
-                  <div className={styles.detailRow}>
-                    <dt>State</dt>
-                    <dd>{c.reason}</dd>
-                  </div>
-                )}
+                <div className={styles.detailRow}>
+                  <dt>Top emote</dt>
+                  <dd>{st?.topEmote ?? '—'}</dd>
+                </div>
               </dl>
             )}
           </li>
