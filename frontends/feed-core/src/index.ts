@@ -6,5 +6,5 @@ export type { FeedMessage, Platform, MessageType } from './types';
 export { parseSegments } from './segments';
 export type { Segment, EmoteMeta } from './segments';
 export { clampForContrast, contrastRatio } from './contrast';
-export { useFeedBuffer, appendCapped } from './useFeedBuffer';
-export type { FeedBuffer } from './useFeedBuffer';
+export { useFeedBuffer, appendCapped, markDeletedIn, clearIn } from './useFeedBuffer';
+export type { FeedBuffer, DeletionRef } from './useFeedBuffer';

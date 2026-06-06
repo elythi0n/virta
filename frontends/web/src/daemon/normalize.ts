@@ -39,6 +39,12 @@ function formatTimestamp(iso: string): string {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
+// The daemon's canonical channel identity: "platform:slug" with a lower-cased slug. Used to match
+// deletions and clears to the rows they affect.
+export function channelKey(platform: string, slug: string): string {
+  return `${platform}:${slug.toLowerCase()}`;
+}
+
 // Convert a daemon UnifiedMessage into the feed renderer's message shape.
 export function toFeedMessage(m: UnifiedMessage): FeedMessage {
   return {
@@ -50,6 +56,7 @@ export function toFeedMessage(m: UnifiedMessage): FeedMessage {
     authorId: m.author.id,
     author: m.author.display_name || m.author.login,
     authorColor: m.author.color || undefined,
+    channel: channelKey(m.channel.platform, m.channel.slug),
     source: { slug: m.channel.slug, label: m.channel.display_name || m.channel.slug },
     badges: m.author.badges?.map((b) => ({ set: b.set, title: b.title, url: b.url })),
     body: m.segments.map((s) => s.text).join(''),

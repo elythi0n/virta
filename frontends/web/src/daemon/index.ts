@@ -1,7 +1,8 @@
 export { createDaemonClient } from './client';
 export type { ConnectionStatus, DaemonClient, DaemonClientOptions } from './client';
 export { useDaemonStream } from './useDaemonStream';
-export { toFeedMessage } from './normalize';
+export type { StreamHandlers } from './useDaemonStream';
+export { toFeedMessage, channelKey } from './normalize';
 export { discover, resetDiscovery } from './discovery';
 export { listChannels, joinChannel, leaveChannel, getCapabilities, DaemonUnreachableError } from './api';
 export { useChannels } from './useChannels';

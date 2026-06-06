@@ -11,9 +11,50 @@ export function appendCapped(prev: FeedMessage[], incoming: FeedMessage[], max: 
   return combined.length > max ? combined.slice(combined.length - max) : combined;
 }
 
+/** A deletion target: the engine's ULID (preferred) and/or the platform's own message id. */
+export interface DeletionRef {
+  id?: string;
+  platformMessageId?: string;
+}
+
+/**
+ * Mark a single deleted message (matched by engine id, else platform id). Returns the same array
+ * reference when nothing matched, so React skips a re-render. Pure for unit testing.
+ */
+export function markDeletedIn(messages: FeedMessage[], ref: DeletionRef): FeedMessage[] {
+  let changed = false;
+  const next = messages.map((m) => {
+    if (m.deleted) return m;
+    const hit = (!!ref.id && m.id === ref.id) || (!!ref.platformMessageId && m.platformMessageId === ref.platformMessageId);
+    if (!hit) return m;
+    changed = true;
+    return { ...m, deleted: true };
+  });
+  return changed ? next : messages;
+}
+
+/**
+ * Mark every message a channel-clear removes: a timeout/ban (one user) or a full chat clear
+ * (no user). Scoped to the cleared channel. Pure; preserves identity when nothing matched.
+ */
+export function clearIn(messages: FeedMessage[], channelKey: string, userId?: string): FeedMessage[] {
+  let changed = false;
+  const next = messages.map((m) => {
+    if (m.deleted || m.channel !== channelKey) return m;
+    if (userId && m.authorId !== userId) return m;
+    changed = true;
+    return { ...m, deleted: true };
+  });
+  return changed ? next : messages;
+}
+
 export interface FeedBuffer {
   messages: FeedMessage[];
   push: (incoming: FeedMessage | FeedMessage[]) => void;
+  /** Strike a deleted message (moderator delete, or the author deleting their own). */
+  markDeleted: (ref: DeletionRef) => void;
+  /** Strike messages removed by a timeout/ban (one user) or a full channel clear (no user). */
+  clearChannel: (channelKey: string, userId?: string) => void;
   clear: () => void;
 }
 
@@ -48,6 +89,17 @@ export function useFeedBuffer({ max = 5000 }: { max?: number } = {}): FeedBuffer
     [flush],
   );
 
+  // Deletions/clears arrive well after their messages are committed (a mod action, seconds later),
+  // so applying them to committed state is enough; the sub-frame window where a target is still
+  // queued is not worth the StrictMode hazard of consuming the queue inside a state updater.
+  const markDeleted = useCallback((ref: DeletionRef) => {
+    setMessages((prev) => markDeletedIn(prev, ref));
+  }, []);
+
+  const clearChannel = useCallback((channelKey: string, userId?: string) => {
+    setMessages((prev) => clearIn(prev, channelKey, userId));
+  }, []);
+
   const clear = useCallback(() => {
     queue.current = [];
     if (frame.current !== null) {
@@ -64,5 +116,5 @@ export function useFeedBuffer({ max = 5000 }: { max?: number } = {}): FeedBuffer
     [],
   );
 
-  return { messages, push, clear };
+  return { messages, push, markDeleted, clearChannel, clear };
 }

@@ -35,6 +35,8 @@ export interface FeedMessage {
   author: string;
   /** Platform-provided author color (hex); contrast-clamped before use. */
   authorColor?: string;
+  /** Source channel key ("platform:slug", slug lower-cased) — matches deletions and clears. */
+  channel?: string;
   /** Source channel, shown as an attribution tag when a feed aggregates several channels. */
   source?: { slug: string; label: string };
   /** Author badges (broadcaster, moderator, subscriber, …); up to 3 shown, then "+N". `url` is

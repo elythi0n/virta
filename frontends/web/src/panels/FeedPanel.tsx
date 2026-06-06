@@ -143,8 +143,8 @@ export default function FeedPanel({ channels, panelId }: Props) {
   const { theme } = useTheme();
   const { density: defaultDensity } = useDensity();
   const { channels: joined } = useChannels();
-  const { messages, push } = useFeedBuffer({ max: MAX_MESSAGES });
-  const status = useDaemonStream(push, channels);
+  const { messages, push, markDeleted, clearChannel } = useFeedBuffer({ max: MAX_MESSAGES });
+  const status = useDaemonStream({ onMessage: push, onDeleted: markDeleted, onClear: clearChannel }, channels);
 
   // Per-tab text size: the panel's saved choice, else the global default.
   const [density, setDensity] = useState<Density>(() => loadDensity(panelId) ?? defaultDensity);

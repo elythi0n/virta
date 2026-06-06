@@ -1,7 +1,7 @@
-import type { FeedMessage } from '@virta/feed-core';
+import type { DeletionRef, FeedMessage } from '@virta/feed-core';
 import type { Discovery, WireEvent } from './wire.gen';
 import { discover as discoverDaemon } from './discovery';
-import { toFeedMessage } from './normalize';
+import { channelKey, toFeedMessage } from './normalize';
 
 export type ConnectionStatus = 'offline' | 'connecting' | 'connected' | 'reconnecting';
 
@@ -12,6 +12,10 @@ export interface DaemonClient {
 
 export interface DaemonClientOptions {
   onMessage: (msg: FeedMessage) => void;
+  /** A message was deleted (moderator delete, or the author's own). */
+  onDeleted?: (ref: DeletionRef) => void;
+  /** A channel was cleared: a timeout/ban for one user, or the whole chat when no user is given. */
+  onClear?: (channelKey: string, userId?: string) => void;
   onStatus: (status: ConnectionStatus) => void;
   /** Channel keys ("platform:slug") to receive; empty = all. */
   channels?: string[];
@@ -65,6 +69,10 @@ export function createDaemonClient(opts: DaemonClientOptions): DaemonClient {
       }
       if (event.type === 'message' && event.message) {
         opts.onMessage(toFeedMessage(event.message));
+      } else if (event.type === 'message_deleted') {
+        opts.onDeleted?.({ id: event.message_id || undefined, platformMessageId: event.platform_message_id || undefined });
+      } else if (event.type === 'channel_clear' && event.channel) {
+        opts.onClear?.(channelKey(event.channel.platform, event.channel.slug), event.target_user_id || undefined);
       }
     };
     ws.onerror = () => ws.close();
