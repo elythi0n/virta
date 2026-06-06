@@ -23,6 +23,8 @@ export { default as Tooltip, TooltipProvider } from './Tooltip';
 export { default as CommandPalette } from './CommandPalette';
 export type { CommandAction } from './CommandPalette';
 
+export { default as Dialog } from './Dialog';
+
 // Brand mark (a glow-on-dark raster, designed for dark surfaces). Reach for the
 // 256px variant in app chrome and the 512px variant where it renders larger or
 // on high-DPI displays; the unscaled master lives beside these.

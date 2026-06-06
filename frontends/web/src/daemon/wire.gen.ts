@@ -8,6 +8,14 @@ export interface Annotations {
   first_time?: boolean;
 }
 
+export interface AuthSession {
+  id: string;
+  authorize_url: string;
+  state: string;
+  login?: string;
+  error?: string;
+}
+
 export interface Author {
   id: string;
   login: string;
@@ -52,6 +60,17 @@ export interface ChatSettings {
   unique_chat: boolean;
   followers_only_minutes: number;
   slow_seconds: number;
+}
+
+export interface DeviceSession {
+  id: string;
+  user_code: string;
+  verification_uri: string;
+  expires_in: number;
+  interval: number;
+  state: string;
+  login?: string;
+  error?: string;
 }
 
 export interface Discovery {

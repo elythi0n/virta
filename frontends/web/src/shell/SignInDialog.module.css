@@ -1,0 +1,34 @@
+.flow {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--virta-space-12);
+}
+
+.link {
+  color: var(--virta-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.code {
+  align-self: stretch;
+  padding: var(--virta-space-12);
+  background: var(--virta-bg-0);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-md);
+  color: var(--virta-text-0);
+  font-family: var(--virta-font-mono);
+  font-size: var(--virta-type-title-size);
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-align: center;
+}
+
+.error {
+  margin: 0;
+  color: var(--virta-danger);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  line-height: var(--virta-type-ui-line);
+}

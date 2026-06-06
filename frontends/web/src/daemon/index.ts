@@ -6,3 +6,6 @@ export { discover, resetDiscovery } from './discovery';
 export { listChannels, joinChannel, leaveChannel, getCapabilities, DaemonUnreachableError } from './api';
 export { useChannels } from './useChannels';
 export type { ChannelsStatus } from './useChannels';
+export { useCapabilities } from './useCapabilities';
+export type { CapabilitiesStatus } from './useCapabilities';
+export { startTwitchDevice, twitchDeviceStatus, startKickAuth, kickAuthStatus, pollSession, isTerminal } from './auth';
