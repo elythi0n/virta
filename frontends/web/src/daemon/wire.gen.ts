@@ -273,6 +273,22 @@ export interface UnifiedMessage {
   annotations?: Annotations;
 }
 
+export interface WebhookAttempt {
+  at_ms: number;
+  status_code?: number;
+  error?: string;
+  latency_ms: number;
+}
+
+export interface WebhookEndpointInfo {
+  id: string;
+  name: string;
+  url: string;
+  events: string[];
+  active: boolean;
+  paused: boolean;
+}
+
 export interface WireEvent {
   type: string;
   schema_version: number;

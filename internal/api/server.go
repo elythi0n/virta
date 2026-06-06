@@ -59,6 +59,7 @@ type Server struct {
 	tokens            Tokens            // scoped API-token controller, installed via SetTokens
 	portability       Portability       // profile import/export controller, installed via SetPortability
 	themes            Themes            // custom theme management, installed via SetThemes
+	webhooks          Webhooks          // outbound webhook management, installed via SetWebhooks
 	webui             http.Handler      // embedded web UI, installed via SetWebUI (nil = not served)
 	corsOrigins       []string          // opt-in CORS allowlist for local web tools (empty = CORS off)
 	integrationReport any               // native-integration report forwarded from the desktop shell
@@ -351,6 +352,11 @@ func (s *Server) routes() []route {
 		{"DELETE", "/v1/tokens/{id}", ScopeAdmin, s.handleRevokeToken, "Revoke an API token"},
 		{"GET", "/v1/profiles/{id}/export", ScopeControl, s.handleExportProfile, "Export a profile to a portable JSON"},
 		{"POST", "/v1/profiles/import", ScopeControl, s.handleImportProfile, "Import a profile from a portable JSON"},
+		{"GET", "/v1/webhooks", ScopeControl, s.handleListWebhooks, "List webhook endpoints + event catalog"},
+		{"POST", "/v1/webhooks", ScopeControl, s.handleCreateWebhook, "Create a webhook endpoint"},
+		{"DELETE", "/v1/webhooks/{id}", ScopeControl, s.handleDeleteWebhook, "Delete a webhook endpoint"},
+		{"GET", "/v1/webhooks/{id}/log", ScopeControl, s.handleWebhookLog, "Webhook delivery log (last 100)"},
+		{"POST", "/v1/webhooks/{id}/resume", ScopeControl, s.handleResumeWebhook, "Resume a paused webhook"},
 		{"GET", "/v1/themes", ScopeRead, s.handleListThemes, "List built-in and custom themes"},
 		{"POST", "/v1/themes", ScopeControl, s.handleImportTheme, "Import a .vtheme JSON"},
 		{"GET", "/v1/themes/{id}/export", ScopeRead, s.handleExportTheme, "Export a theme as .vtheme JSON"},

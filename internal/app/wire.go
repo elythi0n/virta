@@ -44,6 +44,7 @@ import (
 	"github.com/elythi0n/virta/internal/streams"
 	"github.com/elythi0n/virta/internal/velocity"
 	"github.com/elythi0n/virta/internal/webui"
+	"github.com/elythi0n/virta/internal/webhook"
 )
 
 // SelectVault chooses where credentials are stored: the OS credential store when one is
@@ -258,10 +259,13 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	// The scrollback ring retains a bounded per-channel tail in memory, so history/search work even
 	// when persistent logging is off (session-scoped); it's unused for reads when logging is on.
 	scrollbackRing := scrollback.New()
+	webhookMgr := webhook.NewManager(log, nil)
+	idGen := func() string { s, _ := api.NewTokenSecret(); if len(s) > 8 { return s[:8] }; return s }
+	webhookSink := webhook.NewSink(webhookMgr, idGen)
 	runner := pipeline.NewRunner(pipeline.Options{
 		Clock:  clk,
 		Stages: []pipeline.Stage{filterStage, emotes.NewStage(emoteResolver), badges.NewStage(badgeResolver), velocityStage},
-		Sinks:  []pipeline.Sink{srv.Sink(), statsAgg, logSink, heldQueue, scrollbackRing},
+		Sinks:  []pipeline.Sink{srv.Sink(), statsAgg, logSink, heldQueue, scrollbackRing, webhookSink},
 		Logger: log,
 	})
 
@@ -321,6 +325,7 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	srv.SetTokens(tokenStoreWrapper{store: tokenStore, settings: st.Settings()})
 	srv.SetPortability(portabilityControl{profiles: st.Profiles(), accounts: st.Accounts()})
 	srv.SetThemes(newThemeControl(st.Settings()))
+	srv.SetWebhooks(newWebhookControl(webhookMgr, st.Settings()))
 
 	// OAuth app credentials are read through providers so they can be set at runtime via the UI
 	// (stored in the vault), seeded from the env vars on first run.

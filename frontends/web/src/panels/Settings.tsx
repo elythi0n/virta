@@ -11,6 +11,7 @@ import { useTheme, type ThemeMode } from '../theme';
 import { DENSITIES } from './DensityControl';
 import Connections from './Connections';
 import ThemeEditor from './ThemeEditor';
+import WebhooksPanel from './WebhooksPanel';
 import styles from './Settings.module.css';
 
 type CategoryId =
@@ -35,7 +36,7 @@ const CATEGORIES: Category[] = [
   { id: 'connections', label: 'Connections', keywords: 'accounts sign in twitch kick channels platform' },
   { id: 'chat', label: 'Chat', keywords: 'feed messages events emotes timestamps' },
   { id: 'filters', label: 'Filters', keywords: 'rules block hide highlight keywords' },
-  { id: 'notifications', label: 'Notifications', keywords: 'alerts sounds mentions' },
+  { id: 'notifications', label: 'Notifications & Webhooks', keywords: 'alerts sounds mentions webhooks outbound delivery hmac' },
   { id: 'shortcuts', label: 'Shortcuts', keywords: 'keyboard keymap hotkeys bindings' },
   { id: 'integrations', label: 'Integrations', keywords: 'api tokens scoped token third party stream deck bot webhook' },
   { id: 'integration', label: 'Platform integration', keywords: 'native tray hotkeys notifications sounds wayland os desktop' },
@@ -427,6 +428,8 @@ function CategoryBody({ id }: { id: CategoryId }) {
       return <ChatSettings />;
     case 'shortcuts':
       return <Shortcuts />;
+    case 'notifications':
+      return <WebhooksPanel />;
     case 'integrations':
       return <Integrations />;
     case 'integration':

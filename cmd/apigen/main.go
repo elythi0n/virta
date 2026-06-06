@@ -44,6 +44,8 @@ func roots() []reflect.Type {
 		reflect.TypeOf(api.MintedToken{}),
 		reflect.TypeOf(api.ThemeInfo{}),
 		reflect.TypeOf(api.ProfileExport{}),
+		reflect.TypeOf(api.WebhookEndpointInfo{}),
+		reflect.TypeOf(api.WebhookAttempt{}),
 	}
 }
 
