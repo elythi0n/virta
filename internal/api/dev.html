@@ -40,6 +40,15 @@
   #statsbar:empty { display:none; }
   #statsbar .stat b { color:var(--fg); font-weight:600; }
   #profile { display:inline-flex; gap:.3rem; align-items:center; }
+  #compose, #auth { display:flex; gap:.5rem; align-items:center; padding:.4rem .75rem; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  #targets { display:inline-flex; gap:.5rem; flex-wrap:wrap; }
+  #targets label { color:var(--fg2); }
+  #targets label.cantsend { opacity:.5; text-decoration:line-through; }
+  #sendresult, #authinfo { color:var(--fg2); font-size:11px; }
+  #auth a, #authinfo a { color:#bf94ff; }
+  #queue { padding:.2rem .75rem; color:#f5b942; font-size:11px; }
+  #queue:empty { display:none; }
+  #queue b { color:#fff; }
 </style>
 </head>
 <body>
@@ -52,6 +61,19 @@
   <span id="status"><span class="dot"></span><span id="statetext">connecting…</span></span>
 </header>
 <div id="channels"></div>
+<div id="compose">
+  <input id="msg" placeholder="message to send" size="40" autocomplete="off">
+  <span id="targets"></span>
+  <button id="send">Send</button>
+  <span id="sendresult"></span>
+</div>
+<div id="auth">
+  sign in:
+  <button id="signin-twitch">Twitch</button>
+  <button id="signin-kick">Kick</button>
+  <span id="authinfo"></span>
+</div>
+<div id="queue"></div>
 <div id="statsbar"></div>
 <div id="feed"></div>
 <script>
@@ -90,6 +112,7 @@ async function refreshChannels() {
     chip.appendChild(x);
     el.appendChild(chip);
   });
+  renderTargets(channels);
 }
 document.getElementById('join').onclick = async () => {
   const platform = document.getElementById('platform').value;
@@ -264,6 +287,94 @@ function connect() {
     }
   };
 }
+// --- composer (send + target select) ---
+async function renderTargets(channels) {
+  const el = document.getElementById('targets');
+  el.innerHTML = '';
+  (channels || []).forEach(c => {
+    const key = c.platform + ':' + c.slug;
+    const label = document.createElement('label');
+    label.innerHTML = `<input type="checkbox" value="${escapeHtml(key)}" checked> ${escapeHtml(c.slug)}`;
+    el.appendChild(label);
+  });
+  // Dim targets that can't receive a send right now, with the reason as a tooltip.
+  const keys = (channels || []).map(c => c.platform + ':' + c.slug);
+  if (!keys.length) return;
+  const r = await api('POST', '/v1/send/preview', { channels: keys });
+  if (!r.ok) return;
+  const { targets } = await r.json();
+  (targets || []).forEach(t => {
+    const cb = el.querySelector(`input[value="${CSS.escape(t.channel)}"]`);
+    if (cb && !t.can_send) {
+      cb.checked = false;
+      const lbl = cb.closest('label');
+      lbl.classList.add('cantsend');
+      lbl.title = t.reason || 'cannot send';
+    }
+  });
+}
+async function doSend() {
+  const text = document.getElementById('msg').value;
+  const out = document.getElementById('sendresult');
+  if (!text) return;
+  const channels = [...document.querySelectorAll('#targets input:checked')].map(i => i.value);
+  if (!channels.length) { out.textContent = 'no targets selected'; return; }
+  const r = await api('POST', '/v1/send', { channels, text });
+  if (!r.ok) { out.textContent = 'send failed: ' + r.status + ' ' + (await r.text()); return; }
+  const { results } = await r.json();
+  out.textContent = (results || []).map(x => `${x.channel}: ${x.status}${x.reason ? ' (' + x.reason + ')' : ''}`).join('   ');
+  document.getElementById('msg').value = '';
+}
+document.getElementById('send').onclick = doSend;
+document.getElementById('msg').addEventListener('keydown', e => { if (e.key === 'Enter') doSend(); });
+
+// --- sign-in (Twitch device code, Kick redirect) ---
+const authInfo = document.getElementById('authinfo');
+let twPoll = null, kkPoll = null;
+document.getElementById('signin-twitch').onclick = async () => {
+  const r = await api('POST', '/v1/auth/twitch/device');
+  if (!r.ok) { authInfo.textContent = 'Twitch sign-in unavailable: ' + (await r.text()); return; }
+  const s = await r.json();
+  authInfo.innerHTML = `Twitch: open <a href="${escapeHtml(s.verification_uri)}" target="_blank" rel="noopener">${escapeHtml(s.verification_uri)}</a> and enter <b>${escapeHtml(s.user_code)}</b>`;
+  clearInterval(twPoll);
+  twPoll = setInterval(async () => {
+    const sr = await api('GET', '/v1/auth/twitch/device/' + encodeURIComponent(s.id));
+    if (!sr.ok) return;
+    const st = await sr.json();
+    if (st.state === 'authorized') { authInfo.innerHTML = 'Twitch: signed in as <b>' + escapeHtml(st.login) + '</b>'; clearInterval(twPoll); refreshChannels(); }
+    else if (['denied', 'expired', 'error'].includes(st.state)) { authInfo.textContent = 'Twitch: ' + st.state + (st.error ? ' · ' + st.error : ''); clearInterval(twPoll); }
+  }, Math.max(1, s.interval || 5) * 1000);
+};
+document.getElementById('signin-kick').onclick = async () => {
+  const r = await api('POST', '/v1/auth/kick/start');
+  if (!r.ok) { authInfo.textContent = 'Kick sign-in unavailable: ' + (await r.text()); return; }
+  const s = await r.json();
+  authInfo.innerHTML = `Kick: open <a href="${escapeHtml(s.authorize_url)}" target="_blank" rel="noopener">authorize</a>, then return here`;
+  clearInterval(kkPoll);
+  kkPoll = setInterval(async () => {
+    const sr = await api('GET', '/v1/auth/kick/' + encodeURIComponent(s.id));
+    if (!sr.ok) return;
+    const st = await sr.json();
+    if (st.state === 'authorized') { authInfo.innerHTML = 'Kick: signed in as <b>' + escapeHtml(st.login) + '</b>'; clearInterval(kkPoll); refreshChannels(); }
+    else if (['error', 'expired'].includes(st.state)) { authInfo.textContent = 'Kick: ' + st.state + (st.error ? ' · ' + st.error : ''); clearInterval(kkPoll); }
+  }, 2000);
+};
+
+// --- send-queue depth + countdown ---
+async function pollQueue() {
+  const keys = [...document.querySelectorAll('#targets input')].map(i => i.value);
+  const q = document.getElementById('queue');
+  if (!keys.length) { q.innerHTML = ''; return; }
+  const r = await api('POST', '/v1/send/queue', { channels: keys });
+  if (!r.ok) return;
+  const { queue } = await r.json();
+  const active = (queue || []).filter(x => x.queued > 0 || x.next_in_ms > 0);
+  q.innerHTML = active.length
+    ? 'queue: ' + active.map(x => `${escapeHtml(x.channel)} <b>${x.queued}</b> queued${x.next_in_ms > 0 ? ' · next ' + (x.next_in_ms / 1000).toFixed(1) + 's' : ''}`).join('   ')
+    : '';
+}
+setInterval(pollQueue, 1000);
+
 connect();
 </script>
 </body>

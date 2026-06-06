@@ -37,4 +37,10 @@ func TestDev_ServesPageWithToken(t *testing.T) {
 			t.Errorf("dev page missing %q (M2 catch-up)", want)
 		}
 	}
+	// The M3 send UX: composer, sign-in, and send-queue countdown drive the new endpoints.
+	for _, want := range []string{"id=\"compose\"", "/v1/send", "/v1/send/preview", "/v1/send/queue", "/v1/auth/twitch/device", "/v1/auth/kick/start"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("dev page missing %q (M3 send UX)", want)
+		}
+	}
 }
