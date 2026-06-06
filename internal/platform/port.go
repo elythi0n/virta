@@ -14,6 +14,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 )
 
@@ -207,6 +208,15 @@ type ChannelRef struct {
 	ID          string   `json:"id"`   // platform channel/room id (may be resolved lazily, e.g. Kick chatroom id)
 	Slug        string   `json:"slug"` // login / kick slug / x handle — what the user typed
 	DisplayName string   `json:"display_name,omitempty"`
+}
+
+// Key is the channel's canonical identity for routing, filtering, and pacing: "platform:slug"
+// with the slug lower-cased. Slugs are case-insensitive on every supported platform (Twitch
+// logins and Kick slugs are canonically lower-case), so a channel joined as "Shroud" and the
+// "shroud" that arrives on incoming messages resolve to the same key — without this, a
+// subscriber filtering on the typed casing would silently receive nothing.
+func (c ChannelRef) Key() string {
+	return string(c.Platform) + ":" + strings.ToLower(c.Slug)
 }
 
 // ---- Health & reason codes machine codes, never prose ----

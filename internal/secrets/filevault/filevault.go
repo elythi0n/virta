@@ -67,25 +67,56 @@ func New(dir string) (*Vault, error) {
 }
 
 func (v *Vault) loadOrCreateKey() ([]byte, error) {
+	key, err := v.readKey()
+	if err == nil {
+		return key, nil
+	}
+	if !errors.Is(err, os.ErrNotExist) {
+		return nil, err
+	}
+
+	// No key yet: generate one and create the file exclusively, so two processes starting at
+	// once can't each write a different key and decrypt with the wrong one.
+	key = make([]byte, keySize)
+	if _, err := rand.Read(key); err != nil {
+		return nil, fmt.Errorf("filevault: generate key: %w", err)
+	}
+	f, err := os.OpenFile(v.keyPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if errors.Is(err, os.ErrExist) {
+		return v.readKey() // lost the race; use the key the winner wrote
+	}
+	if err != nil {
+		return nil, fmt.Errorf("filevault: create key: %w", err)
+	}
+	if _, werr := f.Write(key); werr != nil {
+		_ = f.Close()
+		return nil, fmt.Errorf("filevault: write key: %w", werr)
+	}
+	if cerr := f.Close(); cerr != nil {
+		return nil, fmt.Errorf("filevault: write key: %w", cerr)
+	}
+	return key, nil
+}
+
+// readKey reads the master key, refusing one whose file is readable by group or others — the
+// vault's entire protection is that key file, so a loosened mode (e.g. after a copy through a
+// filesystem that drops permissions) must fail loudly rather than be trusted silently.
+func (v *Vault) readKey() ([]byte, error) {
+	info, err := os.Stat(v.keyPath)
+	if err != nil {
+		return nil, err
+	}
+	if perm := info.Mode().Perm(); perm&0o077 != 0 {
+		return nil, fmt.Errorf("filevault: key file %s is accessible by group/other (mode %#o); restrict it to owner-only (chmod 600)", v.keyPath, perm)
+	}
 	key, err := os.ReadFile(v.keyPath)
-	switch {
-	case err == nil:
-		if len(key) != keySize {
-			return nil, fmt.Errorf("filevault: key file has wrong size %d", len(key))
-		}
-		return key, nil
-	case errors.Is(err, os.ErrNotExist):
-		key = make([]byte, keySize)
-		if _, err := rand.Read(key); err != nil {
-			return nil, fmt.Errorf("filevault: generate key: %w", err)
-		}
-		if err := os.WriteFile(v.keyPath, key, 0o600); err != nil {
-			return nil, fmt.Errorf("filevault: write key: %w", err)
-		}
-		return key, nil
-	default:
+	if err != nil {
 		return nil, fmt.Errorf("filevault: read key: %w", err)
 	}
+	if len(key) != keySize {
+		return nil, fmt.Errorf("filevault: key file has wrong size %d", len(key))
+	}
+	return key, nil
 }
 
 func (v *Vault) Get(_ context.Context, key string) (string, error) {

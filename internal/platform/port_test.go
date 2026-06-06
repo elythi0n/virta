@@ -172,6 +172,24 @@ func TestUnifiedMessage_PlainText(t *testing.T) {
 	}
 }
 
+// TestChannelRef_Key pins the canonical routing key: platform unchanged, slug lower-cased, so a
+// channel referenced with any casing resolves to a single key.
+func TestChannelRef_Key(t *testing.T) {
+	cases := map[string]struct {
+		ref  platform.ChannelRef
+		want string
+	}{
+		"mixed-case twitch": {platform.ChannelRef{Platform: platform.Twitch, Slug: "Shroud"}, "twitch:shroud"},
+		"lower twitch":      {platform.ChannelRef{Platform: platform.Twitch, Slug: "forsen"}, "twitch:forsen"},
+		"mixed-case kick":   {platform.ChannelRef{Platform: platform.Kick, Slug: "xQc"}, "kick:xqc"},
+	}
+	for name, tc := range cases {
+		if got := tc.ref.Key(); got != tc.want {
+			t.Errorf("%s: Key() = %q, want %q", name, got, tc.want)
+		}
+	}
+}
+
 // Compile-time proof that all event types are sealed into the Event interface.
 var (
 	_ platform.Event = platform.MessageEvent{}

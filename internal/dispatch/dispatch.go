@@ -72,4 +72,4 @@ func (s *Sender) Do(ctx context.Context, ch platform.ChannelRef, input string) (
 	}
 }
 
-func channelKey(ch platform.ChannelRef) string { return string(ch.Platform) + ":" + ch.Slug }
+func channelKey(ch platform.ChannelRef) string { return ch.Key() }

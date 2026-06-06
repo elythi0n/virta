@@ -90,6 +90,24 @@ func TestZeroWriteWhenDisabled(t *testing.T) {
 	}
 }
 
+// TestDisablingLoggingDiscardsBuffered is the in-flight half of the zero-write guarantee:
+// messages buffered while logging was on are non-ephemeral (so the store choke point accepts
+// them), so turning logging off must discard the buffer, or a later flush would persist chat the
+// user expected to stay unlogged.
+func TestDisablingLoggingDiscardsBuffered(t *testing.T) {
+	fs := newFakeStore()
+	s := NewSink(fs, clock.NewFake(time.Unix(0, 0)), nil)
+	s.SetEnabled(true)
+	for i := 0; i < 3; i++ {
+		_ = s.Consume(context.Background(), chat("m", "forsen", "hi", false))
+	}
+	s.SetEnabled(false) // user turns logging off before the batch timer fires
+	s.flush()           // a flush still happens on the timer / at shutdown
+	if fs.count() != 0 {
+		t.Errorf("persisted %d buffered messages after logging off, want 0", fs.count())
+	}
+}
+
 func TestEnabledButEphemeralStillNotWritten(t *testing.T) {
 	fs := newFakeStore()
 	s := NewSink(fs, clock.NewFake(time.Unix(0, 0)), nil)

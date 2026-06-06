@@ -217,9 +217,7 @@ func (e *Engine) Close() error {
 	return nil
 }
 
-func channelKey(ch platform.ChannelRef) string {
-	return string(ch.Platform) + ":" + ch.Slug
-}
+func channelKey(ch platform.ChannelRef) string { return ch.Key() }
 
 func idKey(ch platform.ChannelRef, platformMsgID string) string {
 	return channelKey(ch) + "|" + platformMsgID

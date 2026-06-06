@@ -66,8 +66,16 @@ func NewSink(store MessageStore, clk clock.Clock, log *slog.Logger) *Sink {
 func (s *Sink) Name() string { return "logbook" }
 
 // SetEnabled turns logging on or off (the profile manager calls this on activation). When off,
-// Consume buffers nothing.
-func (s *Sink) SetEnabled(on bool) { s.enabled.Store(on) }
+// Consume buffers nothing and any messages buffered while logging was on are discarded, so a
+// later flush can't persist chat received before the user switched logging off.
+func (s *Sink) SetEnabled(on bool) {
+	s.enabled.Store(on)
+	if !on {
+		s.mu.Lock()
+		s.buf = nil
+		s.mu.Unlock()
+	}
+}
 
 // Consume buffers a chat message for persistence (when logging is on and it isn't ephemeral)
 // and applies deletions. Other events are ignored.

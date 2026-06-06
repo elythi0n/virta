@@ -48,6 +48,8 @@ type pending struct {
 	redirectURI string
 	srv         *http.Server
 	ln          net.Listener
+	redeemOnce  sync.Once // the authorization code is redeemed at most once
+	shutOnce    sync.Once // the loopback server/listener is torn down at most once
 }
 
 // Manager runs Kick authorization-code/PKCE sessions over a loopback redirect and owns Kick
@@ -62,6 +64,9 @@ type Manager struct {
 	mu       sync.Mutex
 	sessions map[string]*pending
 
+	refMu    sync.Mutex
+	refLocks map[string]*sync.Mutex // per-account locks serializing token refresh
+
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
@@ -72,7 +77,7 @@ func NewManager(client *Client, vault secrets.Vault, accounts store.AccountRepo,
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Manager{
 		client: client, vault: vault, accounts: accounts, gen: gen, clk: clk,
-		sessions: map[string]*pending{}, ctx: ctx, cancel: cancel,
+		sessions: map[string]*pending{}, refLocks: map[string]*sync.Mutex{}, ctx: ctx, cancel: cancel,
 	}
 }
 
@@ -137,21 +142,41 @@ func (m *Manager) callback(p *pending) http.HandlerFunc {
 			_, _ = fmt.Fprint(w, "Authorization was declined. You can close this window.")
 			return
 		}
-		tok, err := m.client.Exchange(r.Context(), q.Get("code"), p.verifier, p.redirectURI)
-		if err != nil {
-			m.setState(p.session.ID, StateError, "", err.Error())
-			http.Error(w, "token exchange failed", http.StatusBadGateway)
-			return
+		// The authorization code is single-use: only the first valid callback redeems it. A
+		// browser reload or prefetch must not re-run the exchange and turn an already-authorized
+		// session into a spent-code error.
+		redeemed := false
+		p.redeemOnce.Do(func() {
+			redeemed = true
+			m.redeem(w, r, p, q.Get("code"))
+		})
+		if !redeemed {
+			_, _ = fmt.Fprint(w, "Already authorized. You can close this window and return to Virta.")
 		}
-		acc, err := m.persist(r.Context(), tok)
-		if err != nil {
-			m.setState(p.session.ID, StateError, "", err.Error())
-			http.Error(w, "could not save account", http.StatusInternalServerError)
-			return
-		}
-		m.setState(p.session.ID, StateAuthorized, acc.Login, "")
-		_, _ = fmt.Fprint(w, "Authorized! You can close this window and return to Virta.")
 	}
+}
+
+// redeem exchanges the authorization code, persists the account, and records the session result.
+func (m *Manager) redeem(w http.ResponseWriter, r *http.Request, p *pending, code string) {
+	if code == "" {
+		m.setState(p.session.ID, StateError, "", "missing authorization code")
+		http.Error(w, "missing authorization code", http.StatusBadRequest)
+		return
+	}
+	tok, err := m.client.Exchange(r.Context(), code, p.verifier, p.redirectURI)
+	if err != nil {
+		m.setState(p.session.ID, StateError, "", err.Error())
+		http.Error(w, "token exchange failed", http.StatusBadGateway)
+		return
+	}
+	acc, err := m.persist(r.Context(), tok)
+	if err != nil {
+		m.setState(p.session.ID, StateError, "", err.Error())
+		http.Error(w, "could not save account", http.StatusInternalServerError)
+		return
+	}
+	m.setState(p.session.ID, StateAuthorized, acc.Login, "")
+	_, _ = fmt.Fprint(w, "Authorized! You can close this window and return to Virta.")
 }
 
 // expire shuts the session down after authTimeout (or on manager close), marking it expired if
@@ -170,9 +195,13 @@ func (m *Manager) expire(p *pending) {
 	m.shutdown(p)
 }
 
-// shutdown stops a session's loopback server (idempotent).
+// shutdown stops a session's loopback server (idempotent). The listener is closed explicitly as
+// well, so the port is freed even if a teardown raced Serve before it registered the listener.
 func (m *Manager) shutdown(p *pending) {
-	_ = p.srv.Shutdown(context.Background())
+	p.shutOnce.Do(func() {
+		_ = p.srv.Shutdown(context.Background())
+		_ = p.ln.Close()
+	})
 }
 
 // Status returns a snapshot of a session.
@@ -222,14 +251,44 @@ func (m *Manager) AccessToken(ctx context.Context, ref string) (string, error) {
 	if m.clk.Now().Before(tok.ExpiresAt.Add(-refreshSkew)) {
 		return tok.Access, nil
 	}
+	// Serialize refreshes for this account: the refresh token is single-use and rotates, so two
+	// concurrent refreshes would both spend the same token and strand one of them.
+	unlock := m.lockRef(ref)
+	defer unlock()
+	// Re-check under the lock — another caller may have refreshed while we waited.
+	tok, err = m.readToken(ctx, ref)
+	if err != nil {
+		return "", err
+	}
+	if m.clk.Now().Before(tok.ExpiresAt.Add(-refreshSkew)) {
+		return tok.Access, nil
+	}
 	fresh, err := m.client.Refresh(ctx, tok.Refresh)
 	if err != nil {
 		return "", fmt.Errorf("kick: refresh: %w", err)
+	}
+	// A refresh response may omit the granted scopes; keep the ones already stored rather than
+	// silently clearing the account's scopes.
+	if len(fresh.Scopes) == 0 {
+		fresh.Scopes = tok.Scopes
 	}
 	if err := m.writeToken(ctx, ref, fresh); err != nil {
 		return "", err
 	}
 	return fresh.Access, nil
+}
+
+// lockRef serializes token refreshes for one account ref and returns the unlock func.
+func (m *Manager) lockRef(ref string) func() {
+	m.refMu.Lock()
+	mu, ok := m.refLocks[ref]
+	if !ok {
+		mu = &sync.Mutex{}
+		m.refLocks[ref] = mu
+	}
+	m.refMu.Unlock()
+	mu.Lock()
+	return mu.Unlock
 }
 
 func (m *Manager) writeToken(ctx context.Context, ref string, tok Token) error {

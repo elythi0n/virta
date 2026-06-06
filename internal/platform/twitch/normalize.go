@@ -1,6 +1,7 @@
 package twitch
 
 import (
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -36,6 +37,11 @@ func normalizePrivmsg(m ircMessage) platform.UnifiedMessage {
 		display = login
 	}
 
+	segs := buildSegments(text, parseEmotes(m.tags["emotes"]))
+	if bits, _ := strconv.Atoi(m.tags["bits"]); bits > 0 {
+		segs = splitCheers(segs, bits)
+	}
+
 	msg := platform.UnifiedMessage{
 		PlatformMessageID: m.tags["id"],
 		Platform:          platform.Twitch,
@@ -48,7 +54,7 @@ func normalizePrivmsg(m ircMessage) platform.UnifiedMessage {
 			Color:       m.tags["color"],
 			Badges:      parseBadges(m.tags["badges"]),
 		},
-		Segments: buildSegments(text, parseEmotes(m.tags["emotes"])),
+		Segments: segs,
 		SentAt:   parseSentTS(m.tags["tmi-sent-ts"]),
 	}
 	if isAction {
@@ -178,4 +184,79 @@ func buildSegments(text string, emotes []emoteSpan) []platform.Segment {
 
 func emoteURL(id string) string {
 	return strings.Replace(emoteURLTemplate, "%s", id, 1)
+}
+
+// cheerToken matches a cheermote: a name immediately followed by a positive bit amount, e.g.
+// "Cheer100" or "Kappa50".
+var cheerToken = regexp.MustCompile(`^([A-Za-z]+)([1-9][0-9]*)$`)
+
+// splitCheers turns cheermote tokens in the text segments into cheer segments, so the IRC path
+// produces the same cheer/CheerBits output the EventSub path does. IRC doesn't mark which words
+// are cheermotes, so a token is only treated as a cheer when the amounts across all candidates
+// add up to the message's authoritative bits total — otherwise the text is left as-is rather
+// than guessed at. The bits<=0 case (no cheer) returns the segments unchanged.
+func splitCheers(segs []platform.Segment, bits int) []platform.Segment {
+	sum := 0
+	for _, s := range segs {
+		if s.Kind != platform.SegText {
+			continue
+		}
+		for _, tok := range strings.Fields(s.Text) {
+			if m := cheerToken.FindStringSubmatch(tok); m != nil {
+				n, _ := strconv.Atoi(m[2])
+				sum += n
+			}
+		}
+	}
+	if sum != bits {
+		return segs
+	}
+	out := make([]platform.Segment, 0, len(segs))
+	for _, s := range segs {
+		if s.Kind != platform.SegText {
+			out = append(out, s)
+			continue
+		}
+		out = append(out, splitTextCheers(s.Text)...)
+	}
+	return out
+}
+
+// splitTextCheers breaks one text run into alternating text and cheer segments, preserving all
+// surrounding whitespace so the concatenation of segment texts still reconstructs the original.
+func splitTextCheers(text string) []platform.Segment {
+	var out []platform.Segment
+	var buf strings.Builder
+	flush := func() {
+		if buf.Len() > 0 {
+			out = append(out, platform.Segment{Kind: platform.SegText, Text: buf.String()})
+			buf.Reset()
+		}
+	}
+	for i := 0; i < len(text); {
+		if text[i] == ' ' {
+			j := i
+			for j < len(text) && text[j] == ' ' {
+				j++
+			}
+			buf.WriteString(text[i:j])
+			i = j
+			continue
+		}
+		j := i
+		for j < len(text) && text[j] != ' ' {
+			j++
+		}
+		word := text[i:j]
+		if m := cheerToken.FindStringSubmatch(word); m != nil {
+			n, _ := strconv.Atoi(m[2])
+			flush()
+			out = append(out, platform.Segment{Kind: platform.SegCheer, Text: word, CheerBits: n})
+		} else {
+			buf.WriteString(word)
+		}
+		i = j
+	}
+	flush()
+	return out
 }

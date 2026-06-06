@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/elythi0n/virta/internal/platform"
 )
@@ -85,11 +86,12 @@ func TestEventSub_MentionCheerAndReply(t *testing.T) {
 }
 
 func TestEventSub_NotificationSub(t *testing.T) {
+	sentAt := time.Date(2024, 6, 4, 11, 20, 8, 0, time.UTC)
 	ev, ok, err := eventFromNotification(subChatNotif, json.RawMessage(`{"event":{
 		"broadcaster_user_login":"forsen","chatter_user_login":"newsub","chatter_user_name":"NewSub",
 		"notice_type":"sub","system_message":"NewSub subscribed!",
 		"message":{"text":"","fragments":[]}
-	}}`))
+	}}`), sentAt)
 	if err != nil || !ok {
 		t.Fatalf("notification: ok=%v err=%v", ok, err)
 	}
@@ -101,15 +103,40 @@ func TestEventSub_NotificationSub(t *testing.T) {
 	if m.PlainText() != "NewSub subscribed!" {
 		t.Errorf("text = %q", m.PlainText())
 	}
+	if !m.SentAt.Equal(sentAt) {
+		t.Errorf("sent_at = %v, want %v", m.SentAt, sentAt)
+	}
+}
+
+// TestEventSub_ChatMessageCarriesSentAt covers the frame timestamp flowing through to the
+// message: the envelope's metadata.message_timestamp must populate SentAt, just as the IRC path
+// fills it from tmi-sent-ts. Without it, every message on the authenticated transport would
+// carry the zero time.
+func TestEventSub_ChatMessageCarriesSentAt(t *testing.T) {
+	frame := []byte(`{"metadata":{"message_type":"notification","subscription_type":"channel.chat.message","message_timestamp":"2024-06-04T11:20:08.123456789Z"},` +
+		`"payload":{"event":{"broadcaster_user_login":"forsen","chatter_user_id":"2","chatter_user_login":"alice","message_id":"m9","message_type":"text",` +
+		`"message":{"text":"hi","fragments":[{"type":"text","text":"hi"}]}}}}`)
+	env, err := parseEnvelope(frame)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ev, ok, err := eventFromNotification(env.Metadata.SubscriptionType, env.Payload, parseESTimestamp(env.Metadata.MessageTimestamp))
+	if err != nil || !ok {
+		t.Fatalf("dispatch: ok=%v err=%v", ok, err)
+	}
+	want := time.Date(2024, 6, 4, 11, 20, 8, 123456789, time.UTC)
+	if got := ev.(platform.MessageEvent).Message.SentAt; !got.Equal(want) {
+		t.Errorf("sent_at = %v, want %v", got, want)
+	}
 }
 
 func TestEventSub_DeleteClearSettings(t *testing.T) {
-	del, ok, _ := eventFromNotification(subChatDelete, json.RawMessage(`{"event":{"broadcaster_user_login":"forsen","message_id":"abc"}}`))
+	del, ok, _ := eventFromNotification(subChatDelete, json.RawMessage(`{"event":{"broadcaster_user_login":"forsen","message_id":"abc"}}`), time.Time{})
 	if d, _ := del.(platform.MessageDeletedEvent); !ok || d.PlatformMessageID != "abc" || d.Channel.Slug != "forsen" {
 		t.Errorf("delete = %#v", del)
 	}
 
-	clr, ok, _ := eventFromNotification(subChatClear, json.RawMessage(`{"event":{"broadcaster_user_login":"forsen"}}`))
+	clr, ok, _ := eventFromNotification(subChatClear, json.RawMessage(`{"event":{"broadcaster_user_login":"forsen"}}`), time.Time{})
 	if c, _ := clr.(platform.ChannelClearEvent); !ok || c.Channel.Slug != "forsen" {
 		t.Errorf("clear = %#v", clr)
 	}
@@ -117,7 +144,7 @@ func TestEventSub_DeleteClearSettings(t *testing.T) {
 	set, ok, _ := eventFromNotification(subChatSettings, json.RawMessage(`{"event":{
 		"broadcaster_user_login":"forsen","emote_mode":true,"slow_mode":true,"slow_mode_wait_time_seconds":30,
 		"follower_mode":false,"subscriber_mode":false,"unique_chat_mode":true
-	}}`))
+	}}`), time.Time{})
 	cs, _ := set.(platform.ChatSettingsEvent)
 	if !ok || !cs.Settings.EmoteOnly || cs.Settings.SlowSeconds != 30 || !cs.Settings.UniqueChat || cs.Settings.FollowersOnlyMinutes != -1 {
 		t.Errorf("settings = %#v", set)
@@ -139,7 +166,7 @@ func TestEventSub_EnvelopeAndSession(t *testing.T) {
 	if nenv.Metadata.MessageType != esNotification {
 		t.Fatalf("notif envelope = %+v", nenv)
 	}
-	ev, ok, err := eventFromNotification(nenv.Metadata.SubscriptionType, nenv.Payload)
+	ev, ok, err := eventFromNotification(nenv.Metadata.SubscriptionType, nenv.Payload, time.Time{})
 	if err != nil || !ok {
 		t.Fatalf("dispatch: ok=%v err=%v", ok, err)
 	}
@@ -149,7 +176,7 @@ func TestEventSub_EnvelopeAndSession(t *testing.T) {
 }
 
 func TestEventSub_UnknownSubTypeIgnored(t *testing.T) {
-	_, ok, err := eventFromNotification("channel.follow", json.RawMessage(`{"event":{}}`))
+	_, ok, err := eventFromNotification("channel.follow", json.RawMessage(`{"event":{}}`), time.Time{})
 	if ok || err != nil {
 		t.Errorf("unknown sub type: ok=%v err=%v, want (false,nil)", ok, err)
 	}

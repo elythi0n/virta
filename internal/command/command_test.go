@@ -54,6 +54,24 @@ func TestParse_TimeoutDefaultsDuration(t *testing.T) {
 	}
 }
 
+// TestParse_NegativeNumericArgsNotSent guards against a negative duration silently producing an
+// inverted moderation action (e.g. "/slow -5" turning slow mode off): such input must become a
+// not-sent hint instead.
+func TestParse_NegativeNumericArgsNotSent(t *testing.T) {
+	for _, in := range []string{"/slow -5", "/followers -3", "/timeout baduser -10", "/timeout baduser 0"} {
+		if p := Parse(in, ch, modCaps()); p.Kind != KindHint || p.Hint == "" {
+			t.Errorf("%q = %+v, want a not-sent hint", in, p)
+		}
+	}
+	// Zero stays valid for slow/followers (off / any-follower), not an error.
+	if p := Parse("/slow 0", ch, modCaps()); p.Kind != KindMod || p.Action.Enabled {
+		t.Errorf("/slow 0 = %+v, want a mod action with slow disabled", p)
+	}
+	if p := Parse("/followers 0", ch, modCaps()); p.Kind != KindMod || !p.Action.Enabled {
+		t.Errorf("/followers 0 = %+v, want a mod action enabling any-follower mode", p)
+	}
+}
+
 func TestParse_UnknownCommandNotSent(t *testing.T) {
 	p := Parse("/foo bar", ch, modCaps())
 	if p.Kind != KindHint || p.Hint == "" {

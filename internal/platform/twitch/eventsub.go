@@ -2,6 +2,7 @@ package twitch
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/elythi0n/virta/internal/platform"
 	"github.com/elythi0n/virta/internal/platform/segment"
@@ -35,8 +36,22 @@ type esEnvelope struct {
 	Metadata struct {
 		MessageType      string `json:"message_type"`
 		SubscriptionType string `json:"subscription_type"`
+		MessageTimestamp string `json:"message_timestamp"` // RFC3339; the message's send time
 	} `json:"metadata"`
 	Payload json.RawMessage `json:"payload"`
+}
+
+// parseESTimestamp parses an EventSub metadata timestamp, returning the zero time if absent or
+// malformed (the engine still stamps ReceivedAt regardless).
+func parseESTimestamp(v string) time.Time {
+	if v == "" {
+		return time.Time{}
+	}
+	t, err := time.Parse(time.RFC3339Nano, v)
+	if err != nil {
+		return time.Time{}
+	}
+	return t.UTC()
 }
 
 // esSession is the welcome/reconnect payload's session object.
@@ -63,8 +78,9 @@ func sessionFromPayload(payload json.RawMessage) (esSession, error) {
 }
 
 // eventFromNotification maps a notification's event payload to a platform Event by subscription
-// type. Returns ok=false for types we don't surface.
-func eventFromNotification(subType string, payload json.RawMessage) (platform.Event, bool, error) {
+// type. sentAt is the frame's timestamp, applied to chat messages. Returns ok=false for types we
+// don't surface.
+func eventFromNotification(subType string, payload json.RawMessage, sentAt time.Time) (platform.Event, bool, error) {
 	var p struct {
 		Event json.RawMessage `json:"event"`
 	}
@@ -74,9 +90,11 @@ func eventFromNotification(subType string, payload json.RawMessage) (platform.Ev
 	switch subType {
 	case subChatMessage:
 		m, err := normalizeEventSubMessage(p.Event)
+		m.SentAt = sentAt
 		return platform.MessageEvent{Message: m}, err == nil, err
 	case subChatNotif:
 		m, err := normalizeEventSubNotification(p.Event)
+		m.SentAt = sentAt
 		return platform.MessageEvent{Message: m}, err == nil, err
 	case subChatDelete:
 		return deletedFromEvent(p.Event)

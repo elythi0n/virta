@@ -121,6 +121,28 @@ func TestGovernor_SetLimitUpgrade(t *testing.T) {
 	}
 }
 
+// TestGovernor_SubmitDoesNotDispatchOtherChannels guards cross-channel isolation: a Submit on
+// one channel must never dispatch another channel's queued-and-ready send, so a slow send on a
+// busy channel can't stall an unrelated one.
+func TestGovernor_SubmitDoesNotDispatchOtherChannels(t *testing.T) {
+	clk := clock.NewFake(time.Unix(0, 0))
+	g := New(clk, Limit{Burst: 1, Window: time.Second})
+	rec := &recorder{}
+	g.Submit("a", rec.fn("a1")) // consumes channel a's one token
+	g.Submit("a", rec.fn("a2")) // queued: a is out of tokens
+	clk.Advance(time.Second)    // a token refills for a, but nothing has drained a yet
+	g.Submit("b", rec.fn("b1")) // submitting b must not dispatch a's now-ready a2
+
+	for _, id := range rec.order() {
+		if id == "a2" {
+			t.Fatalf("Submit(b) dispatched channel a's queued send: %v", rec.order())
+		}
+	}
+	if q, _ := g.State("a"); q != 1 {
+		t.Errorf("a2 should remain queued on channel a, got queue=%d", q)
+	}
+}
+
 func TestGovernor_StateUnknownKey(t *testing.T) {
 	g := New(clock.NewFake(time.Unix(0, 0)), Limit{Burst: 1, Window: time.Second})
 	if q, n := g.State("nope"); q != 0 || n != 0 {

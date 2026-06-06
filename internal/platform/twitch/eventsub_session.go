@@ -90,7 +90,7 @@ func (s *session) run(ctx context.Context) (reconnect string, err error) {
 		case esKeepalive:
 			// Liveness only — the read deadline (set by the transport) covers the timeout rule.
 		case esNotification:
-			if ev, ok, e := eventFromNotification(env.Metadata.SubscriptionType, env.Payload); e == nil && ok {
+			if ev, ok, e := eventFromNotification(env.Metadata.SubscriptionType, env.Payload, parseESTimestamp(env.Metadata.MessageTimestamp)); e == nil && ok {
 				s.emit(ev)
 			}
 		case esReconnect:

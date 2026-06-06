@@ -41,6 +41,22 @@ func TestHub_AssignsMonotonicSeq(t *testing.T) {
 	}
 }
 
+// TestHub_SubscriptionMatchesCanonicalSlugCase guards against a case-sensitive channel filter: a
+// client subscribing with the casing the user typed must still receive messages, which arrive
+// carrying the platform's canonical lower-case slug.
+func TestHub_SubscriptionMatchesCanonicalSlugCase(t *testing.T) {
+	h := newHub()
+	c := newClient()
+	h.register(c)
+	c.setSubscription(toSubscription([]string{"twitch:Shroud"}))
+	_ = h.Consume(context.Background(), platform.MessageEvent{Message: platform.UnifiedMessage{
+		ID: "m1", Channel: platform.ChannelRef{Platform: platform.Twitch, Slug: "shroud"},
+	}})
+	if got := seqsFrom(c.send); len(got) != 1 {
+		t.Fatalf("mixed-case subscriber received %d messages, want 1", len(got))
+	}
+}
+
 func TestHub_ReplayResumesPastCursor(t *testing.T) {
 	h := newHub()
 	// Buffer three events with no client attached (seq 1,2,3).

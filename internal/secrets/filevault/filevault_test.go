@@ -67,6 +67,25 @@ func TestFileVault_KeyFileIsOwnerOnly(t *testing.T) {
 	}
 }
 
+// TestFileVault_GroupReadableKeyRejected: the master key is the vault's whole protection, so a
+// key file readable by group or others (as a copy through a permission-dropping filesystem
+// produces) must be refused loudly rather than trusted silently.
+func TestFileVault_GroupReadableKeyRejected(t *testing.T) {
+	if os.PathSeparator != '/' {
+		t.Skip("POSIX permission check")
+	}
+	dir := t.TempDir()
+	if _, err := filevault.New(dir); err != nil { // creates the key 0600
+		t.Fatal(err)
+	}
+	if err := os.Chmod(filepath.Join(dir, "vault.key"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := filevault.New(dir); err == nil {
+		t.Fatal("New accepted a group/world-readable key file, want refusal")
+	}
+}
+
 func TestFileVault_TamperedDataFails(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()

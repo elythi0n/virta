@@ -37,6 +37,7 @@ type channelState struct {
 	tokens     float64
 	lastRefill time.Time
 	queue      []*entry
+	sending    bool // a batch for this channel is in flight; keeps its sends ordered
 }
 
 // Governor paces sends per channel key (e.g. "twitch:forsen").
@@ -90,31 +91,68 @@ func (g *Governor) Submit(key string, send func() error) <-chan error {
 	cs := g.state(key)
 	cs.queue = append(cs.queue, &entry{send: send, result: res})
 	g.mu.Unlock()
-	g.Drain()
+	// Dispatch only this channel: a slow send here must not stall sends waiting on other
+	// channels (those are driven by their own Submit or the production Drain ticker).
+	g.drainKey(key)
 	return res
 }
 
-// Drain refills every channel's bucket and dispatches as many queued sends as tokens allow, in
-// order. The actual send runs outside the lock (it may do network I/O). Production calls this
-// on a ticker; tests call it after advancing the clock.
+// Drain refills every channel's bucket and dispatches its eligible queued sends. Channels are
+// drained concurrently so a slow send on one never delays another, while each channel's own
+// sends stay ordered; it returns once the dispatched sends complete. Production calls this on a
+// ticker; tests call it after advancing the clock.
 func (g *Governor) Drain() {
+	g.mu.Lock()
+	keys := make([]string, 0, len(g.channels))
+	for key := range g.channels {
+		keys = append(keys, key)
+	}
+	g.mu.Unlock()
+
+	var wg sync.WaitGroup
+	for _, key := range keys {
+		wg.Add(1)
+		go func(key string) {
+			defer wg.Done()
+			g.drainKey(key)
+		}(key)
+	}
+	wg.Wait()
+}
+
+// drainKey dispatches as many of one channel's queued sends as its tokens allow, in order. The
+// sends run outside g.mu (they may do network I/O); the sending flag ensures only one batch per
+// channel is in flight at a time, so concurrent callers can't reorder a channel's sends.
+func (g *Governor) drainKey(key string) {
 	now := g.clk.Now()
 	g.mu.Lock()
-	var ready []*entry
-	for _, cs := range g.channels {
-		cs.refill(now)
-		for cs.tokens >= 1 && len(cs.queue) > 0 {
-			e := cs.queue[0]
-			cs.queue = cs.queue[1:]
-			cs.tokens--
-			ready = append(ready, e)
-		}
+	cs, ok := g.channels[key]
+	if !ok || cs.sending {
+		g.mu.Unlock()
+		return
 	}
+	cs.refill(now)
+	var ready []*entry
+	for cs.tokens >= 1 && len(cs.queue) > 0 {
+		e := cs.queue[0]
+		cs.queue = cs.queue[1:]
+		cs.tokens--
+		ready = append(ready, e)
+	}
+	if len(ready) == 0 {
+		g.mu.Unlock()
+		return
+	}
+	cs.sending = true
 	g.mu.Unlock()
 
 	for _, e := range ready {
 		e.result <- e.send()
 	}
+
+	g.mu.Lock()
+	cs.sending = false
+	g.mu.Unlock()
 }
 
 // State reports a channel's queue depth and the time until its next send is permitted (0 if a

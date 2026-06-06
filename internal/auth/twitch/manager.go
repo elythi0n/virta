@@ -59,6 +59,9 @@ type Manager struct {
 	mu       sync.Mutex
 	sessions map[string]*Session
 
+	refMu    sync.Mutex
+	refLocks map[string]*sync.Mutex // per-account locks serializing token refresh
+
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
@@ -75,6 +78,7 @@ func NewManager(client *Client, vault secrets.Vault, accounts store.AccountRepo,
 		clk:      clk,
 		unit:     time.Second,
 		sessions: map[string]*Session{},
+		refLocks: map[string]*sync.Mutex{},
 		ctx:      ctx,
 		cancel:   cancel,
 	}
@@ -155,7 +159,9 @@ func (m *Manager) poll(sessionID string, da DeviceAuth) {
 		case isPending(err):
 			continue
 		case isSlowDown(err):
-			interval += m.unit
+			// The authorization server is asking us to poll less often; the device-flow spec
+			// requires lengthening the interval by five seconds each time, not edging it up.
+			interval += 5 * m.unit
 		case isExpired(err):
 			m.setState(sessionID, StateExpired, "", "")
 			return
@@ -200,9 +206,25 @@ func (m *Manager) AccessToken(ctx context.Context, ref string) (string, error) {
 	if m.clk.Now().Before(tok.ExpiresAt.Add(-refreshSkew)) {
 		return tok.Access, nil
 	}
+	// Serialize refreshes for this account: the refresh token is single-use and rotates, so two
+	// concurrent refreshes would both spend the same token and strand one of them.
+	unlock := m.lockRef(ref)
+	defer unlock()
+	// Re-check under the lock — another caller may have refreshed while we waited.
+	tok, err = m.readToken(ctx, ref)
+	if err != nil {
+		return "", err
+	}
+	if m.clk.Now().Before(tok.ExpiresAt.Add(-refreshSkew)) {
+		return tok.Access, nil
+	}
 	fresh, err := m.client.Refresh(ctx, tok.Refresh)
 	if err != nil {
 		return "", fmt.Errorf("twitch: refresh: %w", err)
+	}
+	// Keep the previously-granted scopes if the refresh response omits them.
+	if len(fresh.Scopes) == 0 {
+		fresh.Scopes = tok.Scopes
 	}
 	// Atomic rotation: persist the new (single-use) token set before relying on it, so a crash
 	// can't strand us with a refresh token Twitch has already invalidated.
@@ -210,6 +232,19 @@ func (m *Manager) AccessToken(ctx context.Context, ref string) (string, error) {
 		return "", err
 	}
 	return fresh.Access, nil
+}
+
+// lockRef serializes token refreshes for one account ref and returns the unlock func.
+func (m *Manager) lockRef(ref string) func() {
+	m.refMu.Lock()
+	mu, ok := m.refLocks[ref]
+	if !ok {
+		mu = &sync.Mutex{}
+		m.refLocks[ref] = mu
+	}
+	m.refMu.Unlock()
+	mu.Lock()
+	return mu.Unlock
 }
 
 func (m *Manager) writeToken(ctx context.Context, ref string, tok Token) error {

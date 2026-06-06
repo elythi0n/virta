@@ -208,7 +208,7 @@ func (a *Aggregator) Close() error {
 	return nil
 }
 
-func channelKey(ch platform.ChannelRef) string { return string(ch.Platform) + ":" + ch.Slug }
+func channelKey(ch platform.ChannelRef) string { return ch.Key() }
 
 // topEmotes returns the n most-used emotes, ties broken by name for stable output.
 func topEmotes(counts map[string]int, n int) []platform.EmoteCount {

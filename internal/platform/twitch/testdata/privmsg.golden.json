@@ -340,8 +340,13 @@
     },
     "segments": [
       {
+        "kind": "cheer",
+        "text": "Cheer100",
+        "cheer_bits": 100
+      },
+      {
         "kind": "text",
-        "text": "Cheer100 nice play"
+        "text": " nice play"
       }
     ],
     "sent_at": "2024-06-04T11:20:08Z",

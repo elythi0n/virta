@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sync"
 	"testing"
 	"time"
 
@@ -20,11 +21,21 @@ import (
 
 // kickOAuth scripts Kick's token + users endpoints.
 type kickOAuth struct {
-	srv          *httptest.Server
-	access       string
-	refresh      string
-	refreshFail  bool
-	exchangeFail bool
+	srv                *httptest.Server
+	access             string
+	refresh            string
+	refreshFail        bool
+	exchangeFail       bool
+	omitScopeOnRefresh bool // mimic Kick omitting "scope" from a refresh response
+
+	mu           sync.Mutex
+	refreshCalls int
+}
+
+func (o *kickOAuth) refreshes() int {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.refreshCalls
 }
 
 func newKickOAuth(t *testing.T) *kickOAuth {
@@ -33,14 +44,23 @@ func newKickOAuth(t *testing.T) *kickOAuth {
 	mux.HandleFunc("/token", func(w http.ResponseWriter, r *http.Request) {
 		_ = r.ParseForm()
 		grant := r.Form.Get("grant_type")
+		if grant == "refresh_token" {
+			o.mu.Lock()
+			o.refreshCalls++
+			o.mu.Unlock()
+		}
 		if (grant == "refresh_token" && o.refreshFail) || (grant == "authorization_code" && o.exchangeFail) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		writeJSON(w, map[string]any{
+		body := map[string]any{
 			"access_token": o.access, "refresh_token": o.refresh, "expires_in": 3600,
 			"scope": "user:read chat:write",
-		})
+		}
+		if grant == "refresh_token" && o.omitScopeOnRefresh {
+			delete(body, "scope")
+		}
+		writeJSON(w, body)
 	})
 	mux.HandleFunc("/users", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, map[string]any{"data": []map[string]any{{"user_id": 55, "slug": "xqc", "name": "xQc"}}})
@@ -179,6 +199,82 @@ func TestAccessToken_RefreshError(t *testing.T) {
 	// And a missing token errors too.
 	if _, err := m.AccessToken(ctx, SecretRef("999")); err == nil {
 		t.Error("AccessToken with no stored token returned nil error")
+	}
+}
+
+// TestCallback_RedeemsCodeOnce guards against a browser reload re-spending the authorization
+// code: the first callback authorizes, and a second hit with the now-spent code must leave the
+// session authorized (not flip it to an error) and must not persist a second account.
+func TestCallback_RedeemsCodeOnce(t *testing.T) {
+	clk := clock.NewFake(time.Unix(1_000_000, 0))
+	m, _, st := newManager(t, newKickOAuth(t), clk)
+	s, _ := m.StartAuth(context.Background())
+
+	m.mu.Lock()
+	p := m.sessions[s.ID]
+	m.mu.Unlock()
+	handler := m.callback(p)
+
+	hit := func() {
+		r := httptest.NewRequest(http.MethodGet, p.redirectURI+"?code=auth-code&state="+url.QueryEscape(p.oauthState), nil)
+		handler(httptest.NewRecorder(), r)
+	}
+
+	hit() // first callback authorizes
+	if got, _ := m.Status(s.ID); got.State != StateAuthorized {
+		t.Fatalf("after first callback state = %q, want authorized", got.State)
+	}
+	hit() // reload with the spent code must not flip the session to error
+	if got, _ := m.Status(s.ID); got.State != StateAuthorized {
+		t.Errorf("after callback replay state = %q, want still authorized", got.State)
+	}
+	if accs, _ := st.Accounts().List(context.Background()); len(accs) != 1 {
+		t.Errorf("accounts persisted = %d, want 1", len(accs))
+	}
+}
+
+// TestAccessToken_RefreshKeepsScopesWhenOmitted: a refresh response without a scope field must
+// not wipe the account's stored scopes.
+func TestAccessToken_RefreshKeepsScopesWhenOmitted(t *testing.T) {
+	clk := clock.NewFake(time.Unix(1_000_000, 0))
+	o := newKickOAuth(t)
+	o.omitScopeOnRefresh = true
+	m, _, _ := newManager(t, o, clk)
+	ctx := context.Background()
+	ref := SecretRef("55")
+	_ = m.writeToken(ctx, ref, Token{
+		Access: "old", Refresh: "r", ExpiresAt: clk.Now().Add(-time.Minute),
+		Scopes: []string{"user:read", "chat:write"},
+	})
+	if _, err := m.AccessToken(ctx, ref); err != nil {
+		t.Fatalf("AccessToken: %v", err)
+	}
+	stored, _ := m.readToken(ctx, ref)
+	if len(stored.Scopes) != 2 {
+		t.Errorf("scopes after refresh = %v, want the original two preserved", stored.Scopes)
+	}
+}
+
+// TestAccessToken_ConcurrentRefreshHappensOnce: the refresh token is single-use and rotates, so
+// concurrent callers near expiry must serialize and refresh exactly once — the rest reuse the
+// freshly stored token rather than re-spending the old one.
+func TestAccessToken_ConcurrentRefreshHappensOnce(t *testing.T) {
+	clk := clock.NewFake(time.Unix(1_000_000, 0))
+	o := newKickOAuth(t)
+	m, _, _ := newManager(t, o, clk)
+	ctx := context.Background()
+	ref := SecretRef("55")
+	_ = m.writeToken(ctx, ref, Token{Access: "old", Refresh: "r", ExpiresAt: clk.Now().Add(-time.Minute)})
+	o.access, o.refresh = "access-2", "refresh-2"
+
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() { defer wg.Done(); _, _ = m.AccessToken(ctx, ref) }()
+	}
+	wg.Wait()
+	if n := o.refreshes(); n != 1 {
+		t.Errorf("refresh calls = %d, want 1 (refresh must be serialized per account)", n)
 	}
 }
 

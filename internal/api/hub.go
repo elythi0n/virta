@@ -224,9 +224,7 @@ type subscribeMessage struct {
 	Since    uint64   `json:"since,omitempty"`    // resume cursor: replay buffered events past this seq
 }
 
-func channelKey(ch platform.ChannelRef) string {
-	return string(ch.Platform) + ":" + ch.Slug
-}
+func channelKey(ch platform.ChannelRef) string { return ch.Key() }
 
 // toWire converts a pipeline event into its wire envelope, the channel key used for
 // per-client filtering, and whether it should be broadcast to everyone regardless of filter

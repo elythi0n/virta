@@ -123,6 +123,9 @@ func buildTimeout(_ platform.ChannelRef, args []string) (platform.ModAction, str
 	a := platform.ModAction{Type: platform.ModTimeout, TargetUserID: args[0], Duration: defaultTimeout}
 	if len(args) >= 2 {
 		if secs, err := strconv.Atoi(args[1]); err == nil {
+			if secs <= 0 {
+				return platform.ModAction{}, "usage: /timeout <user> [seconds>0] [reason]"
+			}
 			a.Duration = time.Duration(secs) * time.Second
 			a.Reason = strings.Join(args[2:], " ")
 		} else {
@@ -155,8 +158,8 @@ func buildSlow(_ platform.ChannelRef, args []string) (platform.ModAction, string
 	secs := 30 // Twitch's default slow interval
 	if len(args) >= 1 {
 		n, err := strconv.Atoi(args[0])
-		if err != nil {
-			return platform.ModAction{}, "usage: /slow [seconds]"
+		if err != nil || n < 0 {
+			return platform.ModAction{}, "usage: /slow [seconds>=0]"
 		}
 		secs = n
 	}
@@ -167,8 +170,8 @@ func buildFollowers(_ platform.ChannelRef, args []string) (platform.ModAction, s
 	mins := 0 // any follower
 	if len(args) >= 1 {
 		n, err := strconv.Atoi(args[0])
-		if err != nil {
-			return platform.ModAction{}, "usage: /followers [minutes]"
+		if err != nil || n < 0 {
+			return platform.ModAction{}, "usage: /followers [minutes>=0]"
 		}
 		mins = n
 	}

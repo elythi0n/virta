@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/coder/websocket"
@@ -71,7 +72,9 @@ func toSubscription(channels []string) subscription {
 	}
 	m := make(map[string]struct{}, len(channels))
 	for _, ch := range channels {
-		m[ch] = struct{}{}
+		// Canonicalize to match the key incoming messages carry: slugs are case-insensitive, so
+		// a client subscribing to "twitch:Shroud" must still match "twitch:shroud" on the wire.
+		m[strings.ToLower(ch)] = struct{}{}
 	}
 	return subscription{channels: m}
 }
