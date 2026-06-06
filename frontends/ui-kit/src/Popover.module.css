@@ -1,0 +1,10 @@
+.content {
+  z-index: 70;
+  min-width: 200px;
+  padding: var(--virta-space-4);
+  background: var(--virta-bg-1);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-md);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.4);
+  font-family: var(--virta-font-ui);
+}

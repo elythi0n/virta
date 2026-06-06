@@ -29,6 +29,7 @@ func roots() []reflect.Type {
 		reflect.TypeOf(api.Capabilities{}),
 		reflect.TypeOf(api.DeviceSession{}),
 		reflect.TypeOf(api.AuthSession{}),
+		reflect.TypeOf(api.ProfileInfo{}),
 	}
 }
 

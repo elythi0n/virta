@@ -111,6 +111,13 @@ export type MessageType = string;
 
 export type Platform = string;
 
+export interface ProfileInfo {
+  id: string;
+  name: string;
+  active: boolean;
+  default: boolean;
+}
+
 export type ReasonCode = string;
 
 export interface Segment {

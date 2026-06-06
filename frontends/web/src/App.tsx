@@ -3,6 +3,7 @@ import type { DockviewApi, DockviewReadyEvent } from 'dockview';
 import Dock from './dock/Dock';
 import ActivityBar from './shell/ActivityBar';
 import SideBar from './shell/SideBar';
+import Titlebar from './shell/Titlebar';
 import { CommandPalette, TooltipProvider, type CommandAction } from '@virta/ui-kit';
 import { PANEL_CATALOG, type ViewId } from './shell/views';
 import { ThemeProvider } from './theme';
@@ -108,11 +109,14 @@ export default function App() {
   return (
     <ThemeProvider value={{ theme, setTheme }}>
       <TooltipProvider>
-        <div className="shell">
-          <ActivityBar activeView={activeView} sidebarOpen={sidebarOpen} onSelect={selectView} onOpenSettings={openSettings} />
-          {sidebarOpen && <SideBar view={activeView} openPanel={openPanel} />}
-          <div className="dock-host">
-            <Dock onReady={onReady} />
+        <div className="app">
+          <Titlebar onOpenPalette={() => setPaletteOpen(true)} />
+          <div className="shell">
+            <ActivityBar activeView={activeView} sidebarOpen={sidebarOpen} onSelect={selectView} onOpenSettings={openSettings} />
+            {sidebarOpen && <SideBar view={activeView} openPanel={openPanel} />}
+            <div className="dock-host">
+              <Dock onReady={onReady} />
+            </div>
           </div>
         </div>
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} actions={actions} placeholder="Search commands…" />
