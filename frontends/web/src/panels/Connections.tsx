@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Button, Segmented, Text } from '@virta/ui-kit';
+import { Button, Input, Segmented, Text } from '@virta/ui-kit';
 import { PlatformGlyph, type Platform } from '@virta/feed-core';
-import { disconnectAccount, listAccounts, listMethods, setMethod, useCapabilities } from '../daemon';
-import type { AccountInfo } from '../daemon/wire.gen';
+import { disconnectAccount, getAuthConfig, listAccounts, listMethods, setAuthConfig, setMethod, useCapabilities } from '../daemon';
+import type { AccountInfo, AuthConfig } from '../daemon/wire.gen';
 import SignInDialog, { type SignInPlatform } from '../shell/SignInDialog';
 import styles from './Connections.module.css';
 
@@ -33,10 +33,19 @@ export default function Connections() {
   const [signIn, setSignIn] = useState<SignInPlatform | null>(null);
   const [methods, setMethods] = useState<Record<string, string>>({});
   const [accounts, setAccounts] = useState<AccountInfo[]>([]);
+  const [authCfg, setAuthCfg] = useState<AuthConfig | null>(null);
+  const [editing, setEditing] = useState<string | null>(null); // platform whose app-credentials editor is open
+  const [draftId, setDraftId] = useState('');
+  const [draftSecret, setDraftSecret] = useState('');
 
   const reloadAccounts = useCallback(() => {
     listAccounts()
       .then(setAccounts)
+      .catch(() => {});
+  }, []);
+  const reloadAuthCfg = useCallback(() => {
+    getAuthConfig()
+      .then(setAuthCfg)
       .catch(() => {});
   }, []);
 
@@ -45,7 +54,23 @@ export default function Connections() {
       .then(setMethods)
       .catch(() => {});
     reloadAccounts();
-  }, [reloadAccounts]);
+    reloadAuthCfg();
+  }, [reloadAccounts, reloadAuthCfg]);
+
+  const openEditor = (platform: string, currentId: string) => {
+    setEditing(platform);
+    setDraftId(currentId);
+    setDraftSecret('');
+  };
+  const saveCreds = async (platform: string) => {
+    try {
+      setAuthCfg(await setAuthConfig(platform, draftId.trim(), draftSecret));
+    } catch {
+      reloadAuthCfg();
+    }
+    setEditing(null);
+    void refresh();
+  };
 
   const disconnect = async (id: string) => {
     try {
@@ -78,6 +103,7 @@ export default function Connections() {
       {PLATFORMS.map((p) => {
         const c = caps[p.id];
         const account = accounts.find((a) => a.platform === p.id);
+        const cfg = p.id === 'twitch' ? authCfg?.twitch : p.id === 'kick' ? authCfg?.kick : undefined;
         const tags: { label: string; on: boolean }[] = [
           { label: 'Read', on: !!(c?.read_anonymous || c?.read_authed) },
           { label: 'Send', on: !!c?.send },
@@ -146,6 +172,47 @@ export default function Connections() {
                         ]
                   }
                 />
+              </div>
+            )}
+
+            {p.signable && (
+              <div className={styles.creds}>
+                {editing === p.id ? (
+                  <div className={styles.credForm}>
+                    <Input
+                      aria-label={`${p.label} client id`}
+                      placeholder="Client ID"
+                      value={draftId}
+                      onChange={(e) => setDraftId(e.currentTarget.value)}
+                    />
+                    {p.id === 'kick' && (
+                      <Input
+                        aria-label="Kick client secret"
+                        type="password"
+                        placeholder="Client secret (optional)"
+                        value={draftSecret}
+                        onChange={(e) => setDraftSecret(e.currentTarget.value)}
+                      />
+                    )}
+                    <div className={styles.credActions}>
+                      <Button variant="solid" size="sm" disabled={draftId.trim() === ''} onClick={() => void saveCreds(p.id)}>
+                        Save
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setEditing(null)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className={styles.credRow}>
+                    <Text variant="meta" tone="subtle">
+                      {cfg?.configured ? 'App credentials set' : 'No app credentials — sign-in disabled'}
+                    </Text>
+                    <button type="button" className={styles.link} onClick={() => openEditor(p.id, cfg?.client_id ?? '')}>
+                      {cfg?.configured ? 'Edit app' : 'Set up app'}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

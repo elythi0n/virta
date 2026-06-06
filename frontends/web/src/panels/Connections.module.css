@@ -91,6 +91,40 @@
   font-weight: 600;
 }
 
+.creds {
+  display: flex;
+  flex-direction: column;
+}
+.credRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--virta-space-8);
+}
+.credForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-8);
+}
+.credActions {
+  display: inline-flex;
+  gap: var(--virta-space-8);
+}
+.link {
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--virta-accent);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 600;
+  cursor: pointer;
+}
+.link:hover {
+  text-decoration: underline;
+}
+
 .note {
   margin: 0;
 }
