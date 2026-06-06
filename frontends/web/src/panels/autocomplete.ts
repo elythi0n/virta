@@ -1,5 +1,29 @@
-export type Suggestion = { value: string; label: string; image?: string };
+export type Suggestion = { value: string; label: string; image?: string; hint?: string };
 export type EmoteEntry = { code: string; url: string; lc: string };
+
+// The slash commands the daemon's send parser understands (mirrors sendHelpText), with arg hints.
+export const SLASH_COMMANDS: { name: string; hint: string }[] = [
+  { name: '/ban', hint: '<user> [reason]' },
+  { name: '/unban', hint: '<user>' },
+  { name: '/timeout', hint: '<user> [seconds] [reason]' },
+  { name: '/untimeout', hint: '<user>' },
+  { name: '/delete', hint: '<message-id>' },
+  { name: '/clear', hint: 'clear chat' },
+  { name: '/slow', hint: '[seconds]' },
+  { name: '/followers', hint: '[minutes]' },
+  { name: '/emoteonly', hint: 'emote-only mode' },
+  { name: '/uniquechat', hint: 'unique-chat mode' },
+  { name: '/me', hint: '<action>' },
+  { name: '/help', hint: 'list commands' },
+];
+
+// Slash-command suggestions for a leading "/token" (only valid at the start of a message).
+export function suggestCommands(token: string, max = 8): Suggestion[] {
+  const q = token.toLowerCase();
+  return SLASH_COMMANDS.filter((c) => c.name.startsWith(q) && c.name !== q)
+    .slice(0, max)
+    .map((c) => ({ value: c.name, label: c.name, hint: c.hint }));
+}
 
 // The whitespace-delimited word ending at the caret, and where it starts in the text.
 export function tokenAt(text: string, caret: number): { token: string; start: number } {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applySuggestion, suggest, tokenAt, type EmoteEntry } from './autocomplete';
+import { applySuggestion, suggest, suggestCommands, tokenAt, type EmoteEntry } from './autocomplete';
 
 const emote = (code: string): EmoteEntry => ({ code, url: `u/${code}`, lc: code.toLowerCase() });
 const EMOTES = ['Kappa', 'KappaPride', 'PogChamp', 'LUL'].map(emote);
@@ -28,6 +28,19 @@ describe('suggest', () => {
   it('suggests chatters for an @ token', () => {
     const out = suggest('@ali', [], ['alice', 'bob', 'Alistair']);
     expect(out.map((s) => s.value)).toEqual(['@alice', '@Alistair']);
+  });
+});
+
+describe('suggestCommands', () => {
+  it('matches slash commands by prefix and carries an arg hint', () => {
+    const out = suggestCommands('/t');
+    expect(out.map((s) => s.value)).toEqual(['/timeout']);
+    expect(out[0].hint).toBe('<user> [seconds] [reason]');
+  });
+
+  it('lists all on a bare slash and skips an exact match', () => {
+    expect(suggestCommands('/').length).toBeGreaterThan(5);
+    expect(suggestCommands('/ban').map((s) => s.value)).not.toContain('/ban');
   });
 });
 

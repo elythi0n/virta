@@ -99,6 +99,18 @@
   object-fit: contain;
   flex: none;
 }
+.optionLabel {
+  flex: none;
+}
+.optionHint {
+  margin-left: auto;
+  color: var(--virta-text-2);
+  font-family: var(--virta-font-mono);
+  font-size: var(--virta-type-meta-size);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .note {
   margin: 0;

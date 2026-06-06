@@ -4,7 +4,7 @@ import { PlatformGlyph, type Platform } from '@virta/feed-core';
 import { previewSend, sendMessage, useEmotes } from '../daemon';
 import SignInDialog, { type SignInPlatform } from '../shell/SignInDialog';
 import type { SendTarget } from '../daemon/wire.gen';
-import { applySuggestion, suggest, tokenAt, type Suggestion } from './autocomplete';
+import { applySuggestion, suggest, suggestCommands, tokenAt, type Suggestion } from './autocomplete';
 import styles from './Composer.module.css';
 
 const SIGNABLE = new Set(['twitch', 'kick']);
@@ -42,10 +42,13 @@ export default function Composer({ targets, chatters = [] }: Props) {
   const [focused, setFocused] = useState(false);
   const emotes = useEmotes();
   const prepared = useMemo(() => emotes.map((e) => ({ code: e.code, url: e.url, lc: e.code.toLowerCase() })), [emotes]);
-  const suggestions = useMemo(
-    () => (dismissed ? [] : suggest(tokenAt(text, caret).token, prepared, chatters)),
-    [dismissed, text, caret, prepared, chatters],
-  );
+  const suggestions = useMemo(() => {
+    if (dismissed) return [];
+    const { token, start } = tokenAt(text, caret);
+    // A leading "/word" is a slash command; otherwise emotes / @mentions.
+    if (token.startsWith('/') && start === 0) return suggestCommands(token);
+    return suggest(token, prepared, chatters);
+  }, [dismissed, text, caret, prepared, chatters]);
   const acOpen = focused && suggestions.length > 0;
 
   const accept = (s: Suggestion) => {
@@ -148,7 +151,8 @@ export default function Composer({ targets, chatters = [] }: Props) {
                   }}
                 >
                   {s.image && <img className={styles.optionImg} src={s.image} alt="" loading="lazy" />}
-                  {s.label}
+                  <span className={styles.optionLabel}>{s.label}</span>
+                  {s.hint && <span className={styles.optionHint}>{s.hint}</span>}
                 </button>
               </li>
             ))}
