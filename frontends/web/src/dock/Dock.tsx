@@ -6,9 +6,12 @@ import HeaderActions from './HeaderActions';
 // This module is the only place that imports dockview. The rest of the app receives the api
 // through onReady and never depends on vendor shapes directly, so the engine stays swappable.
 
-// Feed-like kinds share one renderer (the kind travels in params); Settings is its own panel.
+// Feed-like kinds share one renderer (the kind + optional channel set travel in params); Settings
+// is its own panel.
 const components = {
-  panel: (props: IDockviewPanelProps<{ kind: string }>) => <Panel kind={props.params.kind} />,
+  panel: (props: IDockviewPanelProps<{ kind: string; channels?: string[] }>) => (
+    <Panel kind={props.params.kind} channels={props.params.channels} />
+  ),
   settings: () => <Settings />,
 };
 

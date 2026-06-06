@@ -11,12 +11,14 @@ type FeedProps = {
   messages: FeedMessage[];
   /** Feed background (hex) author colors are contrast-clamped against; pass the theme's bg-0. */
   background: string;
+  /** Show the per-row source-channel tag (for feeds aggregating multiple channels). */
+  showSource?: boolean;
 };
 
 // Virtualized chat feed: only the visible window is in the DOM (stable keys by message id), so
 // throughput is bounded by the viewport, not the backlog. Pins to the bottom while the user is
 // there; scrolling up detaches and a pill offers to jump back to the latest.
-export default function Feed({ messages, background }: FeedProps) {
+export default function Feed({ messages, background, showSource }: FeedProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const stick = useRef(true); // live pin state, read inside the scroll handler
   const prevCount = useRef(0);
@@ -80,7 +82,7 @@ export default function Feed({ messages, background }: FeedProps) {
               className={styles.rowWrap}
               style={{ transform: `translateY(${vi.start}px)` }}
             >
-              <FeedRow message={messages[vi.index]} background={background} />
+              <FeedRow message={messages[vi.index]} background={background} showSource={showSource} />
             </div>
           ))}
         </div>

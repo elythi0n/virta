@@ -1,6 +1,5 @@
 .row {
-  display: grid;
-  grid-template-columns: auto auto 1fr;
+  display: flex;
   align-items: baseline;
   gap: var(--virta-space-8);
   padding: var(--virta-space-2) var(--virta-space-12);
@@ -24,15 +23,40 @@
 }
 
 .ts {
+  flex: none;
   color: var(--virta-text-2);
   font-family: var(--virta-font-mono);
   font-size: var(--virta-type-meta-size);
 }
+.source {
+  flex: none;
+  max-width: 100px;
+  padding: 0 var(--virta-space-4);
+  border-radius: var(--virta-radius-sm);
+  background: var(--virta-bg-2);
+  color: var(--virta-text-2);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.source[data-platform='twitch'] {
+  color: var(--virta-plat-twitch);
+}
+.source[data-platform='kick'] {
+  color: var(--virta-plat-kick);
+}
+.source[data-platform='x'] {
+  color: var(--virta-plat-x);
+}
 .author {
+  flex: none;
   color: var(--virta-text-1);
   font-weight: 600;
 }
 .body {
+  flex: 1 1 auto;
   color: var(--virta-text-0);
   min-width: 0;
   overflow-wrap: anywhere;

@@ -21,6 +21,13 @@ const EMOTES = {
 // Some author colors are deliberately too dark for the dark theme, to exercise the contrast clamp.
 const AUTHOR_COLORS = [hex(34, 34, 38), hex(91, 140, 255), hex(80, 200, 120), hex(70, 70, 170), hex(210, 153, 34)];
 
+// Several synthetic source channels so per-source attribution is visible offline.
+const SAMPLE_SOURCES: { platform: Platform; slug: string; label: string }[] = [
+  { platform: 'twitch', slug: 'shroud', label: 'shroud' },
+  { platform: 'kick', slug: 'trainwreck', label: 'Trainwreck' },
+  { platform: 'twitch', slug: 'forsen', label: 'forsen' },
+];
+
 const SAMPLE = [
   'gg that was clean',
   'no shot he actually hit that',
@@ -31,20 +38,21 @@ const SAMPLE = [
   'someone clip that PogU',
   'how is he this consistent',
 ];
-const PLATFORMS: Platform[] = ['twitch', 'kick', 'x'];
 
 let seq = 0;
 function makeMessage(): FeedMessage {
   const i = seq++;
+  const src = SAMPLE_SOURCES[i % SAMPLE_SOURCES.length];
   let body = SAMPLE[Math.floor(Math.random() * SAMPLE.length)];
   if (Math.random() < 0.18) body = `@viewer_${Math.floor(Math.random() * 900)} ${body}`;
   if (Math.random() < 0.08) body += ` https://clips.example/${i}`;
   return {
     id: `m${i}`,
     ts: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-    platform: PLATFORMS[i % PLATFORMS.length],
+    platform: src.platform,
     author: `viewer_${Math.floor(Math.random() * 900)}`,
     authorColor: AUTHOR_COLORS[i % AUTHOR_COLORS.length],
+    source: { slug: src.slug, label: src.label },
     body,
     segments: parseSegments(body, EMOTES),
   };
@@ -62,12 +70,20 @@ const STATUS_LABEL: Record<ConnectionStatus, string> = {
   reconnecting: 'Reconnecting…',
 };
 
-export default function FeedPanel() {
+type Props = {
+  /** The channel set this feed shows ("platform:slug"); undefined = all (the unified feed). */
+  channels?: string[];
+};
+
+export default function FeedPanel({ channels }: Props) {
   const { theme } = useTheme();
   const { messages, push } = useFeedBuffer({ max: MAX_MESSAGES });
-  const status = useDaemonStream(push);
+  const status = useDaemonStream(push, channels);
   const [rate, setRate] = useState<Rate>('live');
   const [background, setBackground] = useState(() => hex(14, 15, 18));
+
+  // A feed aggregating more than one channel shows the source tag; a single-channel feed hides it.
+  const showSource = channels === undefined || channels.length !== 1;
 
   // Clamp author colors against the live theme background.
   useEffect(() => {
@@ -109,7 +125,7 @@ export default function FeedPanel() {
         )}
       </div>
       <div className={styles.feedWrap}>
-        <Feed messages={messages} background={background} />
+        <Feed messages={messages} background={background} showSource={showSource} />
       </div>
     </div>
   );

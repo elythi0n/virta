@@ -26,6 +26,12 @@ describe('toFeedMessage', () => {
     expect(fm.authorColor).toBe('#abcdef');
     expect(fm.body).toBe('gg wp');
     expect(fm.ts).toMatch(/\d{1,2}:\d{2}/);
+    expect(fm.source).toEqual({ slug: 'shroud', label: 'shroud' });
+  });
+
+  it('uses the channel display name as the source label when present', () => {
+    const fm = toFeedMessage(message({ channel: { platform: 'twitch', id: '1', slug: 'shroud', display_name: 'Shroud' } }));
+    expect(fm.source).toEqual({ slug: 'shroud', label: 'Shroud' });
   });
 
   it('falls back to login and drops an empty color', () => {

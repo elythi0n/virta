@@ -13,6 +13,8 @@ export interface FeedMessage {
   author: string;
   /** Platform-provided author color (hex); contrast-clamped before use. */
   authorColor?: string;
+  /** Source channel, shown as an attribution tag when a feed aggregates several channels. */
+  source?: { slug: string; label: string };
   body: string;
   segments: Segment[];
 }

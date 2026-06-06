@@ -47,6 +47,7 @@ export function toFeedMessage(m: UnifiedMessage): FeedMessage {
     platform: m.platform as Platform,
     author: m.author.display_name || m.author.login,
     authorColor: m.author.color || undefined,
+    source: { slug: m.channel.slug, label: m.channel.display_name || m.channel.slug },
     body: m.segments.map((s) => s.text).join(''),
     segments: m.segments.map(toFeedSegment),
   };
