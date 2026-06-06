@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Feed, parseSegments, type FeedMessage, type Platform } from '@virta/feed-core';
+import { Feed, parseSegments, useFeedBuffer, type FeedMessage, type Platform } from '@virta/feed-core';
 import { Segmented } from '@virta/ui-kit';
 import { useTheme } from '../theme';
 import styles from './FeedPanel.module.css';
@@ -52,11 +52,11 @@ function makeMessage(): FeedMessage {
 type Rate = 'off' | 'live' | 'stress';
 const RATES: Record<Rate, number> = { off: 0, live: 12, stress: 200 }; // messages/second
 const MAX_MESSAGES = 8000; // bound memory; oldest drop once exceeded
-const TICK_MS = 100;
+const TICK_MS = 50;
 
 export default function FeedPanel() {
   const { theme } = useTheme();
-  const [messages, setMessages] = useState<FeedMessage[]>([]);
+  const { messages, push } = useFeedBuffer({ max: MAX_MESSAGES });
   const [rate, setRate] = useState<Rate>('live');
   const [background, setBackground] = useState(() => hex(14, 15, 18));
 
@@ -66,19 +66,14 @@ export default function FeedPanel() {
     if (value) setBackground(value);
   }, [theme]);
 
+  // Produce messages at the chosen rate; the buffer coalesces them to one render per frame.
   useEffect(() => {
     const perSecond = RATES[rate];
     if (perSecond === 0) return;
     const perTick = Math.max(1, Math.round((perSecond * TICK_MS) / 1000));
-    const id = setInterval(() => {
-      setMessages((prev) => {
-        const additions = Array.from({ length: perTick }, makeMessage);
-        const combined = prev.concat(additions);
-        return combined.length > MAX_MESSAGES ? combined.slice(combined.length - MAX_MESSAGES) : combined;
-      });
-    }, TICK_MS);
+    const id = setInterval(() => push(Array.from({ length: perTick }, makeMessage)), TICK_MS);
     return () => clearInterval(id);
-  }, [rate]);
+  }, [rate, push]);
 
   return (
     <div className={styles.panel}>

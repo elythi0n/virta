@@ -4,3 +4,5 @@ export type { FeedMessage, Platform } from './types';
 export { parseSegments } from './segments';
 export type { Segment, EmoteMeta } from './segments';
 export { clampForContrast, contrastRatio } from './contrast';
+export { useFeedBuffer, appendCapped } from './useFeedBuffer';
+export type { FeedBuffer } from './useFeedBuffer';
