@@ -1,5 +1,6 @@
 export { default as Feed } from './Feed';
 export { default as FeedRow } from './FeedRow';
+export { default as PlatformGlyph } from './PlatformGlyph';
 export type { Density } from './FeedRow';
 export type { FeedMessage, Platform, MessageType } from './types';
 export { parseSegments } from './segments';

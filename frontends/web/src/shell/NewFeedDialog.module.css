@@ -44,21 +44,10 @@
   color: var(--virta-accent);
 }
 
-.rail {
-  width: 3px;
+.glyph {
+  width: 14px;
   height: 14px;
-  border-radius: 2px;
   flex: none;
-  background: var(--virta-text-2);
-}
-.rail[data-platform='twitch'] {
-  background: var(--virta-plat-twitch);
-}
-.rail[data-platform='kick'] {
-  background: var(--virta-plat-kick);
-}
-.rail[data-platform='x'] {
-  background: var(--virta-plat-x);
 }
 
 .actions {

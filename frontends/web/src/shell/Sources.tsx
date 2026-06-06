@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Badge, Button, Input, Select, StatusDot, Text, type DotStatus } from '@virta/ui-kit';
+import { PlatformGlyph, type Platform } from '@virta/feed-core';
 import { useCapabilities, useChannels } from '../daemon';
 import SignInDialog, { type SignInPlatform } from './SignInDialog';
 import styles from './Sources.module.css';
@@ -61,7 +62,7 @@ export default function Sources() {
             const signedIn = caps[a.id]?.send ?? false;
             return (
               <li key={a.id} className={styles.row}>
-                <span className={styles.rail} data-platform={a.id} />
+                <PlatformGlyph platform={a.id} className={styles.glyph} />
                 <Text variant="ui" tone="muted" className={styles.slug}>
                   {a.label}
                 </Text>
@@ -114,8 +115,9 @@ export default function Sources() {
             channels.map((c) => (
               <li key={`${c.platform}:${c.slug}`} className={styles.row}>
                 <StatusDot status={stateDot(c.state)} label={c.state} />
+                <PlatformGlyph platform={c.platform as Platform} className={styles.glyph} />
                 <Text variant="ui" tone="muted" className={styles.slug}>
-                  {c.platform}/{c.slug}
+                  {c.slug}
                 </Text>
                 <button
                   type="button"

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button, Dialog, Input, Text } from '@virta/ui-kit';
+import { PlatformGlyph, type Platform } from '@virta/feed-core';
 import { useChannels } from '../daemon';
 import styles from './NewFeedDialog.module.css';
 
@@ -79,8 +80,8 @@ export default function NewFeedDialog({
                     onClick={() => toggle(key)}
                   >
                     <span className={styles.check}>{on ? '✓' : ''}</span>
-                    <span className={styles.rail} data-platform={c.platform} />
-                    {c.platform}/{c.slug}
+                    <PlatformGlyph platform={c.platform as Platform} className={styles.glyph} />
+                    {c.slug}
                   </button>
                 </li>
               );

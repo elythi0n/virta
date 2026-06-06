@@ -17,18 +17,10 @@
   text-transform: uppercase;
 }
 
-.rail {
-  width: 3px;
-  height: 16px;
-  border-radius: 2px;
+.glyph {
+  width: 15px;
+  height: 15px;
   flex: none;
-  background: var(--virta-text-2);
-}
-.rail[data-platform='twitch'] {
-  background: var(--virta-plat-twitch);
-}
-.rail[data-platform='kick'] {
-  background: var(--virta-plat-kick);
 }
 
 .add {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button, Input, Popover, Text } from '@virta/ui-kit';
+import { PlatformGlyph, type Platform } from '@virta/feed-core';
 import { previewSend, sendMessage } from '../daemon';
 import SignInDialog, { type SignInPlatform } from '../shell/SignInDialog';
 import type { SendTarget } from '../daemon/wire.gen';
@@ -98,12 +99,14 @@ export default function Composer({ targets }: Props) {
         <div className={styles.chips}>
           {reachable.map((t) => (
             <span key={t.channel} className={styles.chip}>
+              <PlatformGlyph platform={platformOf(t.channel) as Platform} className={styles.chipGlyph} />
               {label(t.channel)}
             </span>
           ))}
           {unreachable.map((t) => (
             <span key={t.channel} className={`${styles.chip} ${styles.off}`} title="Sign in to send here">
-              ⊘ {label(t.channel)}
+              <PlatformGlyph platform={platformOf(t.channel) as Platform} className={styles.chipGlyph} />
+              {label(t.channel)}
             </span>
           ))}
         </div>

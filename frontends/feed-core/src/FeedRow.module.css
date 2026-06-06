@@ -58,15 +58,6 @@
   height: 13px;
   align-self: center;
 }
-.glyph[data-platform='twitch'] {
-  color: var(--virta-plat-twitch);
-}
-.glyph[data-platform='kick'] {
-  color: var(--virta-plat-kick);
-}
-.glyph[data-platform='x'] {
-  color: var(--virta-plat-x);
-}
 
 .ts {
   flex: none;
