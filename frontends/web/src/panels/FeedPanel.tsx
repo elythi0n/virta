@@ -33,6 +33,23 @@ function saveDensity(id: string | undefined, d: Density) {
   }
 }
 
+// Chat-controls visibility (the eye toggle) is likewise remembered per panel; default on.
+const hudKey = (id?: string) => `virta.feed.hud.${id ?? 'default'}`;
+function loadHud(id?: string): boolean {
+  try {
+    return localStorage.getItem(hudKey(id)) !== '0';
+  } catch {
+    return true;
+  }
+}
+function saveHud(id: string | undefined, v: boolean) {
+  try {
+    localStorage.setItem(hudKey(id), v ? '1' : '0');
+  } catch {
+    // storage unavailable; visibility just won't persist across reloads
+  }
+}
+
 // Build a hex string from channels so no raw hex literal lives in the source (token-lint).
 const hex = (r: number, g: number, b: number) =>
   '#' + [r, g, b].map((n) => n.toString(16).padStart(2, '0')).join('');
@@ -156,7 +173,14 @@ export default function FeedPanel({ channels, panelId }: Props) {
   const [rate, setRate] = useState<Rate>('live');
   const [quick, setQuick] = useState<QuickFilter>('all');
   const [query, setQuery] = useState('');
-  const [hud, setHud] = useState(true); // false = preview only (hide the filter bar + composer)
+  const [hud, setHud] = useState(() => loadHud(panelId)); // false = preview only (hide filter bar + composer)
+  const toggleHud = () => {
+    setHud((v) => {
+      const next = !v;
+      saveHud(panelId, next);
+      return next;
+    });
+  };
   const [background, setBackground] = useState(() => hex(14, 15, 18));
 
   // Client-side view filter over the buffered feed; the full buffer keeps streaming underneath.
@@ -218,7 +242,7 @@ export default function FeedPanel({ channels, panelId }: Props) {
               className={styles.iconBtn}
               aria-label={hud ? 'Hide chat controls' : 'Show chat controls'}
               aria-pressed={!hud}
-              onClick={() => setHud((v) => !v)}
+              onClick={toggleHud}
             >
               <Icon name={hud ? 'eye' : 'eye-off'} size={16} />
             </button>
