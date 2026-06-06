@@ -102,6 +102,7 @@ func New(cfg Config) (*Server, error) {
 	mux.Handle("GET /v1/channels", s.auth(http.HandlerFunc(s.handleListChannels)))
 	mux.Handle("GET /v1/capabilities", s.auth(http.HandlerFunc(s.handleCapabilities)))
 	mux.Handle("GET /v1/streams", s.auth(http.HandlerFunc(s.handleListStreams)))
+	mux.Handle("GET /v1/emotes", s.auth(http.HandlerFunc(s.handleListEmotes)))
 	mux.Handle("GET /v1/filters", s.auth(http.HandlerFunc(s.handleListFilters)))
 	mux.Handle("PUT /v1/filters", s.auth(http.HandlerFunc(s.handleSetFilters)))
 	mux.Handle("GET /v1/connections/methods", s.auth(http.HandlerFunc(s.handleListMethods)))

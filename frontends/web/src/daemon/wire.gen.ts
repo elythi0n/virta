@@ -97,6 +97,11 @@ export interface EmoteCount {
   count: number;
 }
 
+export interface EmoteInfo {
+  code: string;
+  url: string;
+}
+
 export type EmoteProvider = string;
 
 export interface EmoteRef {

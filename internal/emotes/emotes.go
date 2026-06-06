@@ -42,6 +42,18 @@ func (s *Set) Len() int {
 	return len(s.byName)
 }
 
+// Entries returns every emote in the set (unordered), for listing (e.g. composer autocomplete).
+func (s *Set) Entries() []platform.EmoteRef {
+	if s == nil {
+		return nil
+	}
+	out := make([]platform.EmoteRef, 0, len(s.byName))
+	for _, e := range s.byName {
+		out = append(out, e)
+	}
+	return out
+}
+
 // merge builds a Set from provider results in precedence order — earlier groups win name
 // collisions.
 func merge(groups ...[]platform.EmoteRef) *Set {

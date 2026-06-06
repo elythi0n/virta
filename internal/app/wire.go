@@ -681,6 +681,32 @@ func (c channelControl) List() []api.ChannelInfo {
 	return out
 }
 
+// emoteSize picks a medium image size per provider for the URL template's {size} placeholder.
+var emoteSize = map[platform.EmoteProvider]string{"twitch": "2.0", "kick": "2", "7tv": "2x", "bttv": "2x", "ffz": "2x"}
+
+func emoteURL(e platform.EmoteRef) string {
+	size := emoteSize[e.Provider]
+	if size == "" {
+		size = "2x"
+	}
+	return strings.ReplaceAll(e.URLTemplate, "{size}", size)
+}
+
+func (c channelControl) Emotes() []api.EmoteInfo {
+	seen := map[string]struct{}{}
+	var out []api.EmoteInfo
+	for _, s := range c.eng.Channels() {
+		for _, e := range c.emotes.Snapshot(emotes.Key(s.Channel)).Entries() {
+			if _, dup := seen[e.Name]; dup {
+				continue
+			}
+			seen[e.Name] = struct{}{}
+			out = append(out, api.EmoteInfo{Code: e.Name, URL: emoteURL(e)})
+		}
+	}
+	return out
+}
+
 func (c channelControl) Streams() []api.StreamInfo {
 	statuses := c.eng.Channels()
 	out := make([]api.StreamInfo, 0, len(statuses))

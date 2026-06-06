@@ -22,6 +22,8 @@ type Channels interface {
 	Capabilities() map[string]Capabilities
 	// Streams returns live stream metadata (viewer count, title, thumbnail) for joined channels.
 	Streams() []StreamInfo
+	// Emotes returns the usable emotes across joined channels, for composer autocomplete.
+	Emotes() []EmoteInfo
 }
 
 // Capabilities mirrors a platform adapter's current capabilities for the wire, so a frontend can

@@ -43,6 +43,8 @@ func (f *fakeChannels) Capabilities() map[string]Capabilities { return f.caps }
 
 func (f *fakeChannels) Streams() []StreamInfo { return nil }
 
+func (f *fakeChannels) Emotes() []EmoteInfo { return nil }
+
 func (f *fakeChannels) joinCount() int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
