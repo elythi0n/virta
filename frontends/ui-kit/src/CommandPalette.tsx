@@ -1,4 +1,5 @@
 import { Command } from 'cmdk';
+import { formatShortcut } from './shortcut';
 import './CommandPalette.css';
 
 export interface CommandAction {
@@ -8,6 +9,8 @@ export interface CommandAction {
   group?: string;
   /** Extra terms to match on beyond the title. */
   keywords?: string[];
+  /** Keyboard shortcut spec (e.g. 'mod+b'); shown in the palette and dispatched by the keymap. */
+  shortcut?: string;
   perform: () => void;
 }
 
@@ -45,7 +48,8 @@ export default function CommandPalette({ open, onOpenChange, actions, placeholde
                   a.perform();
                 }}
               >
-                {a.title}
+                <span>{a.title}</span>
+                {a.shortcut && <kbd>{formatShortcut(a.shortcut)}</kbd>}
               </Command.Item>
             ))}
           </Command.Group>

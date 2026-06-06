@@ -22,6 +22,7 @@ export { default as Tooltip, TooltipProvider } from './Tooltip';
 
 export { default as CommandPalette } from './CommandPalette';
 export type { CommandAction } from './CommandPalette';
+export { matchesShortcut, formatShortcut } from './shortcut';
 
 export { default as Dialog } from './Dialog';
 

@@ -4,8 +4,10 @@ import Dock from './dock/Dock';
 import ActivityBar from './shell/ActivityBar';
 import SideBar from './shell/SideBar';
 import Titlebar from './shell/Titlebar';
-import { CommandPalette, TooltipProvider, type CommandAction } from '@virta/ui-kit';
+import ShortcutHelp from './shell/ShortcutHelp';
+import { CommandPalette, TooltipProvider, matchesShortcut, type CommandAction } from '@virta/ui-kit';
 import { PANEL_CATALOG, type ViewId } from './shell/views';
+import { loadLayout, saveLayoutDebounced } from './shell/layout';
 import { ThemeProvider } from './theme';
 
 export default function App() {
@@ -13,6 +15,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [theme, setTheme] = useState('graphite-dark');
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const apiRef = useRef<DockviewApi | null>(null);
 
   // Reflect the chosen theme onto the document so the token theme blocks switch.
@@ -23,17 +26,29 @@ export default function App() {
   const onReady = useCallback((event: DockviewReadyEvent) => {
     const api = event.api;
     apiRef.current = api;
-    if (api.panels.length > 0) return; // idempotent under React StrictMode remounts
 
-    const add = (id: string, kind: string, title: string, position?: Parameters<DockviewApi['addPanel']>[0]['position']) =>
-      api.addPanel({ id, component: 'panel', params: { kind }, title, position });
+    // Restore the saved workspace; fall back to a seeded default if there's none (or it's stale).
+    const saved = loadLayout();
+    let restored = false;
+    if (saved) {
+      try {
+        api.fromJSON(saved);
+        restored = true;
+      } catch {
+        restored = false;
+      }
+    }
+    if (!restored && api.panels.length === 0) {
+      const add = (id: string, kind: string, title: string, position?: Parameters<DockviewApi['addPanel']>[0]['position']) =>
+        api.addPanel({ id, component: 'panel', params: { kind }, title, position });
+      // A representative default workspace: feed + mod queue as tabs, stats over stream beside it.
+      add('feed', 'feed', 'Unified feed');
+      add('mods', 'mods', 'Mod queue', { referencePanel: 'feed', direction: 'within' });
+      add('stats', 'stats', 'Stats', { referencePanel: 'feed', direction: 'right' });
+      add('stream', 'stream', 'Stream', { referencePanel: 'stats', direction: 'below' });
+    }
 
-    // Seed a representative workspace: a left group with the feed + mod queue as tabs, and a
-    // right column splitting stats over the stream. Proves tabs, split, resize, drag rearrange.
-    add('feed', 'feed', 'Unified feed');
-    add('mods', 'mods', 'Mod queue', { referencePanel: 'feed', direction: 'within' });
-    add('stats', 'stats', 'Stats', { referencePanel: 'feed', direction: 'right' });
-    add('stream', 'stream', 'Stream', { referencePanel: 'stats', direction: 'below' });
+    api.onDidLayoutChange(() => saveLayoutDebounced(api));
   }, []);
 
   const selectView = useCallback(
@@ -84,27 +99,34 @@ export default function App() {
       perform: () => openPanel(p.kind, p.title),
     }));
     return [
+      { id: 'command-palette', title: 'Command Palette', group: 'Go', shortcut: 'mod+shift+p', perform: () => setPaletteOpen(true) },
+      { id: 'shortcut-help', title: 'Keyboard Shortcuts', group: 'Help', shortcut: 'mod+/', perform: () => setHelpOpen(true) },
       ...openPanels,
-      { id: 'open-settings', title: 'Open Settings', group: 'Open', perform: openSettings },
+      { id: 'open-settings', title: 'Open Settings', group: 'Open', shortcut: 'mod+,', perform: openSettings },
       { id: 'view-panels', title: 'Show Panels', group: 'View', perform: () => { setActiveView('panels'); setSidebarOpen(true); } },
       { id: 'view-sources', title: 'Show Sources', group: 'View', perform: () => { setActiveView('sources'); setSidebarOpen(true); } },
-      { id: 'toggle-sidebar', title: 'Toggle Side Bar', group: 'View', keywords: ['hide', 'show'], perform: () => setSidebarOpen((o) => !o) },
+      { id: 'toggle-sidebar', title: 'Toggle Side Bar', group: 'View', keywords: ['hide', 'show'], shortcut: 'mod+b', perform: () => setSidebarOpen((o) => !o) },
       { id: 'theme-graphite', title: 'Theme: Graphite (Dark)', group: 'Preferences', perform: () => setTheme('graphite-dark') },
       { id: 'theme-light', title: 'Theme: Light', group: 'Preferences', perform: () => setTheme('light') },
     ];
   }, [openPanel, openSettings]);
 
-  // Ctrl/Cmd+Shift+P toggles the command palette (VS Code's binding).
+  // One keymap: dispatch the first action whose shortcut matches. Skip when typing in a field.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'p') {
-        e.preventDefault();
-        setPaletteOpen((open) => !open);
+      const el = e.target as HTMLElement | null;
+      if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
+      for (const a of actions) {
+        if (a.shortcut && matchesShortcut(e, a.shortcut)) {
+          e.preventDefault();
+          a.perform();
+          return;
+        }
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [actions]);
 
   return (
     <ThemeProvider value={{ theme, setTheme }}>
@@ -120,6 +142,7 @@ export default function App() {
           </div>
         </div>
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} actions={actions} placeholder="Search commands…" />
+        <ShortcutHelp open={helpOpen} onOpenChange={setHelpOpen} actions={actions} />
       </TooltipProvider>
     </ThemeProvider>
   );

@@ -67,6 +67,8 @@
 [cmdk-item] {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: var(--virta-space-8);
   height: 36px;
   padding: 0 var(--virta-space-8);
   border-radius: var(--virta-radius-sm);
@@ -74,6 +76,15 @@
   font-size: var(--virta-type-ui-size);
   cursor: pointer;
   user-select: none;
+}
+[cmdk-item] kbd {
+  padding: 1px var(--virta-space-4);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-sm);
+  background: var(--virta-bg-0);
+  color: var(--virta-text-2);
+  font-family: var(--virta-font-mono);
+  font-size: var(--virta-type-meta-size);
 }
 [cmdk-item][data-selected='true'] {
   background: var(--virta-bg-2);
