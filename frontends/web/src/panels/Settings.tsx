@@ -6,6 +6,7 @@ import { useDensity } from '../density';
 import { useFeedDisplay } from '../feedDisplay';
 import { useTheme } from '../theme';
 import { DENSITIES } from './DensityControl';
+import Connections from './Connections';
 import styles from './Settings.module.css';
 
 type CategoryId =
@@ -143,12 +144,7 @@ function CategoryBody({ id }: { id: CategoryId }) {
     case 'about':
       return <About />;
     case 'connections':
-      return (
-        <Placeholder>
-          Sign in to platforms and add channels from the Sources panel. Per-platform connection
-          settings land here next.
-        </Placeholder>
-      );
+      return <Connections />;
     case 'storage':
       return (
         <Placeholder>
