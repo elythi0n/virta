@@ -35,6 +35,26 @@
   letter-spacing: 0.02em;
 }
 
+.betaBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 20px;
+  /* Accent-tinted pill — reads clearly without competing with the brand name */
+  background: color-mix(in srgb, var(--virta-accent) 14%, var(--virta-bg-2));
+  border: 1px solid color-mix(in srgb, var(--virta-accent) 35%, transparent);
+  color: var(--virta-accent);
+  font-family: var(--virta-font-ui);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1;
+  /* Nudge down slightly to sit on the baseline of the brand text */
+  margin-top: 1px;
+  user-select: none;
+}
+
 /* Interactive bits opt out of the window drag region. */
 .profileBtn,
 .search {

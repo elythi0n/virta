@@ -17,6 +17,7 @@ export default function Titlebar({ onOpenPalette }: Props) {
     <header className={styles.bar}>
       <div className={styles.left}>
         <span className={styles.brand}>Virta</span>
+        <span className={styles.betaBadge} aria-label="Beta">Beta</span>
         <Popover
           open={menuOpen}
           onOpenChange={setMenuOpen}

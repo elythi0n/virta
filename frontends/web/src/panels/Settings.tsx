@@ -242,7 +242,7 @@ function About() {
   return (
     <div className={styles.aboutBlock}>
       <div className={styles.aboutHeader}>
-        <span className={styles.aboutLogo}>V</span>
+        <img src="/favicon-96x96.png" alt="Virta" width={48} height={48} className={styles.aboutLogo} />
         <div>
           <Text variant="title" as="p" className={styles.aboutName}>Virta</Text>
           {version && <Text variant="meta" tone="subtle" className={styles.aboutVersion}>{version}</Text>}
@@ -258,9 +258,6 @@ function About() {
         <span className={styles.aboutSep}>·</span>
         <a className={styles.aboutLink} href="https://github.com/elythi0n/virta" target="_blank" rel="noopener noreferrer">GitHub</a>
       </div>
-      <Text variant="meta" tone="subtle" as="p" className={styles.aboutLicense}>
-        MIT License. Third-party licenses are listed in the binary's embedded LICENSES file.
-      </Text>
     </div>
   );
 }
