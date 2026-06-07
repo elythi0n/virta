@@ -6,151 +6,168 @@
   overflow: hidden;
 }
 
-/* ---- Header ---- */
+/* ── Header ─────────────────────────────────────────────────────────── */
 .head {
   flex: none;
   display: flex;
   align-items: flex-start;
   gap: var(--virta-space-12);
-  color: var(--virta-text-1);
   padding: var(--virta-space-16);
   border-bottom: 1px solid var(--virta-line);
 }
+.headIcon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--virta-radius-sm);
+  background: var(--virta-bg-2);
+  border: 1px solid var(--virta-line);
+  color: var(--virta-text-1);
+  margin-top: 2px;
+}
+.headText {
+  flex: 1;
+  min-width: 0;
+}
 .title {
   margin: 0;
+  color: var(--virta-text-0);
 }
 .lead {
   margin: var(--virta-space-4) 0 0;
-  max-width: 56ch;
+  line-height: 1.5;
 }
 
-/* ---- Filter tabs ---- */
+/* ── Filter bar ─────────────────────────────────────────────────────── */
 .filterBar {
   flex: none;
   display: flex;
   gap: var(--virta-space-4);
-  padding: var(--virta-space-12) var(--virta-space-16);
+  padding: var(--virta-space-8) var(--virta-space-16);
   border-bottom: 1px solid var(--virta-line);
   background: var(--virta-bg-1);
 }
-.filterTab {
+.tab {
   display: inline-flex;
   align-items: center;
-  gap: var(--virta-space-8);
-  padding: var(--virta-space-4) var(--virta-space-12);
-  border: 1px solid var(--virta-line);
-  border-radius: var(--virta-radius-md);
-  background: var(--virta-bg-0);
-  color: var(--virta-text-1);
+  gap: var(--virta-space-4);
+  padding: 3px var(--virta-space-8);
+  border: 1px solid transparent;
+  border-radius: var(--virta-radius-sm);
+  background: none;
+  color: var(--virta-text-2);
   font-family: var(--virta-font-ui);
-  font-size: var(--virta-type-ui-size);
+  font-size: var(--virta-type-meta-size);
   font-weight: 600;
+  letter-spacing: 0.01em;
   cursor: pointer;
   transition:
     border-color var(--virta-motion-fast) ease,
     background var(--virta-motion-fast) ease,
     color var(--virta-motion-fast) ease;
 }
-.filterTab:hover {
-  border-color: var(--virta-text-2);
+.tab:hover {
   color: var(--virta-text-0);
+  background: var(--virta-bg-2);
+  border-color: var(--virta-line);
 }
-.filterTabOn {
-  border-color: var(--virta-accent);
-  background: color-mix(in srgb, var(--virta-accent) 10%, var(--virta-bg-0));
+.tabOn {
+  border-color: color-mix(in srgb, var(--virta-accent) 50%, transparent);
+  background: color-mix(in srgb, var(--virta-accent) 12%, var(--virta-bg-0));
   color: var(--virta-accent);
 }
-.filterCount {
+.tabOn:hover {
+  background: color-mix(in srgb, var(--virta-accent) 18%, var(--virta-bg-0));
+}
+.tabCount {
   font-family: var(--virta-font-mono);
-  font-size: var(--virta-type-meta-size);
+  font-size: 10px;
   font-weight: 700;
-  color: var(--virta-text-2);
   font-variant-numeric: tabular-nums;
-}
-.filterTabOn .filterCount {
-  color: var(--virta-accent);
+  opacity: 0.7;
 }
 
-/* ---- Plugin grid ---- */
+/* ── Grid ───────────────────────────────────────────────────────────── */
 .grid {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   padding: var(--virta-space-16);
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: var(--virta-space-12);
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--virta-space-8);
   align-content: start;
   list-style: none;
   margin: 0;
 }
 
-/* ---- Plugin card ---- */
+/* li fills its grid cell so the card can be height:100% */
+.item {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Card ───────────────────────────────────────────────────────────── */
 .card {
-  position: relative;
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: var(--virta-space-8);
-  padding: var(--virta-space-16) var(--virta-space-12) var(--virta-space-12);
+  padding: var(--virta-space-12);
   border: 1px solid var(--virta-line);
   border-radius: var(--virta-radius-md);
-  background: var(--virta-bg-1);
-  height: 100%;
+  background: var(--virta-bg-2);
   transition:
     border-color var(--virta-motion-fast) ease,
     background var(--virta-motion-fast) ease;
 }
 .card:hover {
-  border-color: color-mix(in srgb, var(--virta-text-2) 60%, var(--virta-line));
-  background: var(--virta-bg-2);
+  border-color: color-mix(in srgb, var(--virta-text-2) 70%, var(--virta-line));
+  background: color-mix(in srgb, var(--virta-bg-2) 80%, var(--virta-bg-1));
 }
 
-.cardInstalled {
-  border-color: color-mix(in srgb, var(--virta-ok) 40%, var(--virta-line));
-  background: color-mix(in srgb, var(--virta-ok) 4%, var(--virta-bg-1));
+/* Installed: left accent stripe via box-shadow (doesn't affect layout) */
+.installed {
+  border-color: color-mix(in srgb, var(--virta-ok) 35%, var(--virta-line));
+  box-shadow: inset 3px 0 0 var(--virta-ok);
 }
-.cardInstalled:hover {
-  border-color: color-mix(in srgb, var(--virta-ok) 65%, var(--virta-line));
-}
-
-.cardSoon {
-  opacity: 0.65;
+.installed:hover {
+  border-color: color-mix(in srgb, var(--virta-ok) 60%, var(--virta-line));
 }
 
-/* Checkmark badge, top-right corner */
-.checkmark {
-  position: absolute;
-  top: -1px;
-  right: -1px;
+/* Coming soon: muted out */
+.soon {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* ── Card top row: icon + badge ─────────────────────────────────────── */
+.cardTop {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 0 var(--virta-radius-md) 0 var(--virta-radius-md);
-  background: var(--virta-ok);
-  color: var(--virta-bg-0);
+  justify-content: space-between;
+  gap: var(--virta-space-8);
 }
-
-/* Icon */
 .cardIcon {
   flex: none;
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--virta-radius-md);
-  background: var(--virta-bg-0);
+  width: 30px;
+  height: 30px;
+  border-radius: var(--virta-radius-sm);
+  background: var(--virta-bg-1);
   border: 1px solid var(--virta-line);
   color: var(--virta-text-1);
-  margin-bottom: var(--virta-space-4);
 }
-.cardInstalled .cardIcon {
-  border-color: color-mix(in srgb, var(--virta-ok) 30%, var(--virta-line));
-  color: var(--virta-text-0);
+.installed .cardIcon {
+  background: color-mix(in srgb, var(--virta-ok) 12%, var(--virta-bg-1));
+  border-color: color-mix(in srgb, var(--virta-ok) 40%, var(--virta-line));
+  color: var(--virta-ok);
 }
 
-/* Name */
+/* ── Name ───────────────────────────────────────────────────────────── */
 .cardName {
   font-family: var(--virta-font-ui);
   font-size: var(--virta-type-ui-size);
@@ -160,48 +177,51 @@
   line-height: 1.2;
 }
 
-/* Author + badge row */
-.cardMeta {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--virta-space-6);
-}
-.cardAuthor {
-  font-family: var(--virta-font-ui);
-  font-size: var(--virta-type-meta-size);
-  color: var(--virta-text-2);
-}
-
-/* Description */
+/* ── Description ────────────────────────────────────────────────────── */
 .cardDesc {
   flex: 1;
   margin: 0;
-  color: var(--virta-text-2);
+  font-family: var(--virta-font-ui);
   font-size: var(--virta-type-meta-size);
-  line-height: 1.5;
+  line-height: 1.55;
+  color: var(--virta-text-2);
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-/* Tag pills */
+/* ── Footer: author + tags ──────────────────────────────────────────── */
+.cardFooter {
+  margin-top: auto;
+  padding-top: var(--virta-space-4);
+  border-top: 1px solid var(--virta-line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--virta-space-4);
+}
+.cardAuthor {
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 500;
+  color: var(--virta-text-2);
+  letter-spacing: 0.01em;
+}
 .cardTags {
   display: flex;
   flex-wrap: wrap;
   gap: var(--virta-space-4);
-  margin-top: auto;
-  padding-top: var(--virta-space-4);
+  justify-content: flex-end;
 }
 .tag {
   font-family: var(--virta-font-mono);
   font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   color: var(--virta-text-2);
-  padding: 1px var(--virta-space-6);
+  padding: 1px 4px;
   border-radius: var(--virta-radius-sm);
-  background: var(--virta-bg-0);
+  background: var(--virta-bg-1);
   border: 1px solid var(--virta-line);
 }
