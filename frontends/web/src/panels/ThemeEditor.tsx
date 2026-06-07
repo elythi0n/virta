@@ -156,7 +156,7 @@ export default function ThemeEditor({ currentTheme, onApply }: Props) {
       ) : (
         <>
           <div className={styles.group}>
-            <Text variant="meta" tone="subtle" as="h4" className={styles.groupLabel}>Built-in</Text>
+            <Text variant="heading" tone="subtle" as="h4" className={styles.groupLabel}>Built-in</Text>
             {builtIns.map(t => (
               <ThemeRow key={t.id} theme={t} current={t.id === currentTheme}
                 onApply={() => onApply(t.id)}
@@ -165,7 +165,7 @@ export default function ThemeEditor({ currentTheme, onApply }: Props) {
           </div>
           {custom.length > 0 && (
             <div className={styles.group}>
-              <Text variant="meta" tone="subtle" as="h4" className={styles.groupLabel}>Custom</Text>
+              <Text variant="heading" tone="subtle" as="h4" className={styles.groupLabel}>Custom</Text>
               {custom.map(t => (
                 <ThemeRow key={t.id} theme={t} current={t.id === currentTheme}
                   onApply={() => onApply(t.id)}
@@ -178,7 +178,7 @@ export default function ThemeEditor({ currentTheme, onApply }: Props) {
       )}
 
       <div className={styles.importGroup}>
-        <Text variant="meta" tone="subtle" as="h4" className={styles.groupLabel}>
+        <Text variant="heading" tone="subtle" as="h4" className={styles.groupLabel}>
           Import theme
         </Text>
         <Text variant="meta" tone="subtle" as="p">

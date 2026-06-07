@@ -86,22 +86,22 @@ export default function SearchPanel() {
 
       <div className={styles.results}>
         {status === 'idle' && (
-          <Text variant="meta" tone="subtle" as="p" className={styles.note}>
+          <Text variant="body" tone="subtle" as="p" className={styles.note}>
             Search your logged chat history. Message logging must be enabled for history to exist; turn it on in your active workspace profile.
           </Text>
         )}
         {status === 'searching' && (
-          <Text variant="meta" tone="subtle" as="p" className={styles.note}>
+          <Text variant="body" tone="subtle" as="p" className={styles.note}>
             Searching…
           </Text>
         )}
         {status === 'error' && (
-          <Text variant="meta" tone="subtle" as="p" className={styles.note}>
+          <Text variant="body" tone="subtle" as="p" className={styles.note}>
             Couldn't reach the daemon. Is virtad running?
           </Text>
         )}
         {status === 'done' && results.length === 0 && (
-          <Text variant="meta" tone="subtle" as="p" className={styles.note}>
+          <Text variant="body" tone="subtle" as="p" className={styles.note}>
             No matches{q.trim() ? ` for "${q.trim()}"` : ''}.
           </Text>
         )}

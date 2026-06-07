@@ -115,7 +115,7 @@ export default function FiltersPanel() {
   return (
     <div className={styles.panel}>
       <div className={styles.toolbar}>
-        <Text variant="meta" tone="subtle">
+        <Text variant="body" tone="subtle">
           Rules run in order on every message.
         </Text>
         <div className={styles.actions}>

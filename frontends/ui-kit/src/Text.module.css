@@ -8,6 +8,11 @@
   line-height: var(--virta-type-ui-line);
   font-weight: var(--virta-type-ui-weight);
 }
+.v-body {
+  font-size: var(--virta-type-body-size);
+  line-height: var(--virta-type-body-line);
+  font-weight: var(--virta-type-body-weight);
+}
 .v-meta {
   font-size: var(--virta-type-meta-size);
   line-height: var(--virta-type-meta-line);
@@ -17,6 +22,12 @@
   font-size: var(--virta-type-title-size);
   line-height: var(--virta-type-title-line);
   font-weight: var(--virta-type-title-weight);
+  letter-spacing: -0.015em;
+}
+.v-heading {
+  font-size: var(--virta-type-heading-size);
+  line-height: var(--virta-type-heading-line);
+  font-weight: var(--virta-type-heading-weight);
 }
 .v-mono {
   font-family: var(--virta-font-mono);

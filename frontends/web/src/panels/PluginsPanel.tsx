@@ -35,10 +35,10 @@ export default function PluginsPanel() {
       <header className={styles.head}>
         <Icon name="plugins" size={20} />
         <div>
-          <Text variant="ui" as="h2" className={styles.title}>
+          <Text variant="title" as="h2" className={styles.title}>
             Plugins
           </Text>
-          <Text variant="meta" tone="subtle" as="p" className={styles.lead}>
+          <Text variant="body" tone="subtle" as="p" className={styles.lead}>
             Plugins extend Virta with new panels, chat commands, and live data — through the same
             contribution registry the built-in panels already use.
           </Text>
@@ -46,14 +46,14 @@ export default function PluginsPanel() {
       </header>
 
       <section className={styles.section}>
-        <Text variant="meta" tone="subtle" as="h3" className={styles.sectionTitle}>
+        <Text variant="heading" tone="subtle" as="h3" className={styles.sectionTitle}>
           Installed
         </Text>
         <div className={styles.empty}>
-          <Text variant="ui" tone="subtle">
+          <Text variant="body" tone="subtle">
             No plugins installed yet.
           </Text>
-          <Text variant="meta" tone="subtle">
+          <Text variant="ui" tone="subtle">
             Installing plugins from a URL is planned for a future release. The plugin infrastructure
             (contribution registry, event bus, schema-driven settings) ships in this version.
           </Text>
@@ -61,10 +61,10 @@ export default function PluginsPanel() {
       </section>
 
       <section className={styles.section}>
-        <Text variant="meta" tone="subtle" as="h3" className={styles.sectionTitle}>
+        <Text variant="heading" tone="subtle" as="h3" className={styles.sectionTitle}>
           Settings preview <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>— demo only</span>
         </Text>
-        <Text variant="meta" tone="subtle" as="p" className={styles.note}>
+        <Text variant="body" tone="subtle" as="p" className={styles.note}>
           A plugin declares a JSON Schema; Virta renders the settings form automatically — no plugin
           writes its own UI. The example below shows how the upcoming Markets plugin&rsquo;s config
           would render. This is a demo — the Markets plugin is not yet installed.

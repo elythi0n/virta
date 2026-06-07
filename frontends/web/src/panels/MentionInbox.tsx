@@ -44,7 +44,7 @@ export default function MentionInbox() {
   if (names.length === 0) {
     return (
       <div className={styles.empty}>
-        <Text variant="ui" tone="subtle">
+        <Text variant="body" tone="subtle">
           Add your names in Settings → Appearance to collect mentions here.
         </Text>
       </div>
@@ -53,7 +53,7 @@ export default function MentionInbox() {
   if (messages.length === 0) {
     return (
       <div className={styles.empty}>
-        <Text variant="meta" tone="subtle">
+        <Text variant="body" tone="subtle">
           No mentions yet. Messages naming {mentionNames.join(', ')} will appear here.
         </Text>
       </div>

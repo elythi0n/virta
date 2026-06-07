@@ -2,6 +2,9 @@
 :root {
   --virta-font-ui: "Geist Variable", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --virta-font-mono: "Geist Mono Variable", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --virta-type-body-size: 14px;
+  --virta-type-body-line: 22px;
+  --virta-type-body-weight: 400;
   --virta-type-chat-comfortable-size: 15px;
   --virta-type-chat-comfortable-line: 23px;
   --virta-type-chat-comfortable-weight: 400;
@@ -17,14 +20,17 @@
   --virta-type-chat-tiny-size: 12px;
   --virta-type-chat-tiny-line: 17px;
   --virta-type-chat-tiny-weight: 400;
+  --virta-type-heading-size: 14px;
+  --virta-type-heading-line: 20px;
+  --virta-type-heading-weight: 600;
   --virta-type-meta-size: 11px;
   --virta-type-meta-line: 16px;
   --virta-type-meta-weight: 400;
   --virta-type-mono-size: 12px;
   --virta-type-mono-line: 18px;
   --virta-type-mono-weight: 400;
-  --virta-type-title-size: 15px;
-  --virta-type-title-line: 22px;
+  --virta-type-title-size: 16px;
+  --virta-type-title-line: 24px;
   --virta-type-title-weight: 600;
   --virta-type-ui-size: 13px;
   --virta-type-ui-line: 20px;

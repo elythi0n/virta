@@ -69,8 +69,8 @@ export default function WebhooksPanel() {
     <div className={styles.panel}>
       {data.endpoints.length === 0 && !adding ? (
         <div className={styles.empty}>
-          <Text variant="ui" tone="subtle">No webhooks configured.</Text>
-          <Text variant="meta" tone="subtle">Add an endpoint to receive events when raids, subs, or messages arrive.</Text>
+          <Text variant="body" tone="subtle">No webhooks configured.</Text>
+          <Text variant="body" tone="subtle">Add an endpoint to receive events when raids, subs, or messages arrive.</Text>
           <Button variant="subtle" size="sm" onClick={() => setAdding(true)}>+ Add endpoint</Button>
         </div>
       ) : (
@@ -101,7 +101,7 @@ export default function WebhooksPanel() {
 
       {adding && (
         <div className={styles.form}>
-          <Text variant="meta" tone="subtle" as="h4" className={styles.formTitle}>New webhook endpoint</Text>
+          <Text variant="heading" tone="subtle" as="h4" className={styles.formTitle}>New webhook endpoint</Text>
           <div className={styles.row2}>
             <div className={styles.fieldBlock}>
               <label className={styles.label}>Name</label>
@@ -138,7 +138,7 @@ export default function WebhooksPanel() {
       {log && (
         <div className={styles.logModal}>
           <div className={styles.logHead}>
-            <Text variant="ui" as="h4">Delivery log — {log.id}</Text>
+            <Text variant="heading" as="h4">Delivery log — {log.id}</Text>
             <button type="button" className={styles.closeBtn} aria-label="Close delivery log" onClick={() => setLog(null)}>×</button>
           </div>
           {log.attempts.length === 0 ? (

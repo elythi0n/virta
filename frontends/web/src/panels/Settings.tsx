@@ -315,7 +315,7 @@ function Integrations() {
 
   return (
     <>
-      <Text variant="meta" tone="subtle" as="p" className={styles.introNote}>
+      <Text variant="body" tone="subtle" as="p" className={styles.introNote}>
         Mint scoped tokens for integrations (Stream Deck, bots, OBS). Tokens are shown once at creation — revoke and re-mint if lost. The full API is at{' '}
         <a href="/docs" target="_blank" rel="noreferrer" className={styles.link}>/docs</a>.
       </Text>
@@ -569,7 +569,7 @@ function IntelligenceSettings() {
 
   return (
     <>
-      <Text variant="meta" tone="subtle" as="p" className={styles.introNote}>
+      <Text variant="body" tone="subtle" as="p" className={styles.introNote}>
         AI features are opt-in, off by default. When enabled, only configured providers receive data;
         local-only mode (Ollama) involves no external calls at all.
       </Text>
@@ -612,7 +612,7 @@ function PlatformIntegration() {
   const report = useIntegration();
   return (
     <>
-      <Text variant="meta" tone="subtle" as="p" className={styles.introNote}>
+      <Text variant="body" tone="subtle" as="p" className={styles.introNote}>
         How Virta integrates with this {report.os === 'web' ? 'browser' : report.os}
         {report.session ? ` (${report.session})` : ''}. The lowest rung is always a working in-app
         fallback, never a missing feature.
@@ -698,7 +698,7 @@ export default function Settings() {
       <div className={styles.main}>
         <nav className={styles.nav} aria-label="Settings categories">
           {filtered.length === 0 ? (
-            <Text variant="meta" tone="subtle" className={styles.navEmpty}>
+            <Text variant="ui" tone="subtle" className={styles.navEmpty}>
               No matches
             </Text>
           ) : (

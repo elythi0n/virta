@@ -155,7 +155,7 @@ export default function CelebrationsPane({ panelId }: Props) {
       >
         <div className={styles.filterBody}>
           <section className={styles.group}>
-            <Text variant="meta" tone="subtle" as="h3" className={styles.groupLabel}>
+            <Text variant="heading" tone="subtle" as="h3" className={styles.groupLabel}>
               Types
             </Text>
             <div className={styles.typeGrid}>
@@ -182,7 +182,7 @@ export default function CelebrationsPane({ panelId }: Props) {
           </section>
 
           <section className={styles.group}>
-            <Text variant="meta" tone="subtle" as="h3" className={styles.groupLabel}>
+            <Text variant="heading" tone="subtle" as="h3" className={styles.groupLabel}>
               Sources
             </Text>
             {sourceOptions.length === 0 ? (

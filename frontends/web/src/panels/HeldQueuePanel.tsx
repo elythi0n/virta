@@ -16,10 +16,10 @@ export default function HeldQueuePanel() {
     return (
       <div className={styles.empty}>
         <Icon name="mods" size={22} />
-        <Text variant="ui" tone="subtle">
+        <Text variant="body" tone="subtle">
           Nothing held for review.
         </Text>
-        <Text variant="meta" tone="subtle">
+        <Text variant="body" tone="subtle">
           When Twitch AutoMod catches a message, it appears here for you to approve (post it) or
           deny (drop it). Enable AutoMod in your Twitch Creator Dashboard → Moderation settings.
         </Text>

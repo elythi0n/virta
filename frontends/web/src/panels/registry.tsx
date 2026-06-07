@@ -47,7 +47,7 @@ export const PANELS: PanelContribution[] = [
   { kind: 'x-chat', title: 'X chat', icon: 'x', render: (p) => <FeedPanel channels={p.channels} panelId={p.panelId} /> },
   { kind: 'stream', title: 'Stream', icon: 'stream', render: (p) => <StreamPane channel={p.channels?.[0]} /> },
   { kind: 'mods', title: 'Mod queue', icon: 'mods', render: () => <HeldQueuePanel /> },
-  { kind: 'ask', title: 'Ask', icon: 'chat', render: () => <AskPanel /> },
+  { kind: 'ask', title: 'Ask AI', icon: 'chat', render: () => <AskPanel /> },
   { kind: 'search', title: 'Search', icon: 'search', render: () => <SearchPanel /> },
   { kind: 'stats', title: 'Stats', icon: 'stats', render: () => <Placeholder title="Stats" /> },
   // Opened programmatically, not from the catalog.

@@ -1,7 +1,7 @@
 import type { ElementType, ComponentPropsWithoutRef, ReactNode } from 'react';
 import styles from './Text.module.css';
 
-export type TextVariant = 'ui' | 'meta' | 'title' | 'mono' | 'chat-compact' | 'chat-cozy' | 'chat-comfortable';
+export type TextVariant = 'ui' | 'body' | 'meta' | 'title' | 'heading' | 'mono' | 'chat-compact' | 'chat-cozy' | 'chat-comfortable';
 export type TextTone = 'default' | 'muted' | 'subtle' | 'inherit';
 
 type TextProps = {

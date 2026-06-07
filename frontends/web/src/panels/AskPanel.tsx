@@ -95,10 +95,10 @@ export default function AskPanel() {
     return (
       <div className={styles.gate}>
         <Icon name="chat" size={24} />
-        <Text variant="ui" as="h3" className={styles.gateTitle}>Ask pane is disabled</Text>
-        <Text variant="meta" tone="subtle">
-          To use Ask, you need two things: message logging enabled (so there's history to query) and
-          an AI provider configured. Head to{' '}
+        <Text variant="title" as="h3" className={styles.gateTitle}>Ask AI is disabled</Text>
+        <Text variant="body" tone="subtle">
+          To use Ask AI, you need two things: message logging enabled (so there's history to query)
+          and an AI provider configured. Head to{' '}
           <b>Settings → Intelligence</b> to connect a provider — Ollama works offline with no API key.
           Nothing leaves your machine until you explicitly enable and configure a provider.
         </Text>
@@ -111,8 +111,11 @@ export default function AskPanel() {
       <div className={styles.feed}>
         {turns.length === 0 && (
           <div className={styles.empty}>
-            <Text variant="meta" tone="subtle">
-              Ask anything about your logged chat. Examples: "Who is our top fan this month?" · "What did Alice say about the game?"
+            <Text variant="body" tone="subtle">
+              Ask anything about your logged chat.
+            </Text>
+            <Text variant="ui" tone="subtle">
+              Try: "Who is our top fan this month?" or "What did Alice say about the game?"
             </Text>
           </div>
         )}
@@ -197,7 +200,7 @@ export default function AskPanel() {
           onKeyDown={e => e.key === 'Enter' && !e.shiftKey && void handleAsk()}
         />
         <Button variant="solid" size="md" disabled={!question.trim() || running} onClick={() => void handleAsk()}>
-          {running ? '…' : 'Ask'}
+          {running ? '…' : 'Ask AI'}
         </Button>
         {running && abortRef.current && (
           <Button variant="ghost" size="md" onClick={() => { abortRef.current?.(); setRunning(false); }}>Stop</Button>
