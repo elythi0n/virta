@@ -13,6 +13,7 @@ import { PANEL_CATALOG, type ViewId } from './shell/views';
 import { loadLayout, saveLayoutDebounced } from './shell/layout';
 import { ActionsProvider } from './actions';
 import { OpenChannelProvider } from './openChannel';
+import { OpenStreamProvider } from './openStream';
 import { DensityProvider } from './density';
 import { FeedDisplayProvider } from './feedDisplay';
 import { A11yProvider } from './a11y';
@@ -324,6 +325,7 @@ export default function App() {
         >
         <ActionsProvider value={actions}>
           <OpenChannelProvider value={openChannel}>
+          <OpenStreamProvider value={openStream}>
           <TooltipProvider>
           <div className="app">
           <Titlebar onOpenPalette={() => setPaletteOpen(true)} />
@@ -356,6 +358,7 @@ export default function App() {
           <ShortcutHelp open={helpOpen} onOpenChange={setHelpOpen} actions={actions} />
           <NewFeedDialog open={newFeedOpen} onClose={() => setNewFeedOpen(false)} onSubmit={openFeedSet} />
           </TooltipProvider>
+          </OpenStreamProvider>
           </OpenChannelProvider>
         </ActionsProvider>
         </FeedDisplayProvider>

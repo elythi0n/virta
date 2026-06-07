@@ -10,6 +10,7 @@ import MentionInbox from './MentionInbox';
 import PluginsPanel from './PluginsPanel';
 import SearchPanel from './SearchPanel';
 import StreamPane from './StreamPane';
+import WatchPane from './WatchPane';
 import styles from './Panel.module.css';
 
 export interface PanelRenderProps {
@@ -45,14 +46,14 @@ export const PANELS: PanelContribution[] = [
   { kind: 'mentions', title: 'Mentions', icon: 'mentions', render: () => <MentionInbox /> },
   { kind: 'celebrations', title: 'Celebrations', icon: 'gift', render: (p) => <CelebrationsPane panelId={p.panelId} /> },
   { kind: 'filters', title: 'Filters', icon: 'filter', render: () => <FiltersPanel /> },
-  { kind: 'stream', title: 'Stream', icon: 'stream', render: (p) => <StreamPane channel={p.channels?.[0]} /> },
+  { kind: 'stream', title: 'Streams', icon: 'stream', render: () => <StreamPane /> },
   { kind: 'mods', title: 'Mod queue', icon: 'mods', render: () => <HeldQueuePanel /> },
   { kind: 'ask', title: 'Ask AI', icon: 'chat', render: () => <AskPanel /> },
   { kind: 'search', title: 'Search', icon: 'search', render: () => <SearchPanel /> },
   { kind: 'stats', title: 'Stats', icon: 'stats', render: () => <Placeholder title="Stats" /> },
   { kind: 'obs', title: 'OBS', icon: 'stream', render: () => <OBSPanel /> },
   // Opened programmatically, not from the catalog.
-  { kind: 'watch', title: 'Stream', icon: 'stream', catalog: false, render: (p) => <StreamPane channel={p.channels?.[0]} /> },
+  { kind: 'watch', title: 'Stream', icon: 'stream', catalog: false, render: (p) => <WatchPane channel={p.channels?.[0]} /> },
   { kind: 'plugins', title: 'Plugins', icon: 'plugins', catalog: false, render: () => <PluginsPanel /> },
 ];
 
