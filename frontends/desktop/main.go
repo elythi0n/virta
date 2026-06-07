@@ -12,6 +12,7 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/linux"
 )
 
 // assets holds the built web UI (frontends/web/dist), copied in by `make app` before the build.
@@ -38,6 +39,13 @@ func main() {
 		OnShutdown:       app.shutdown,
 		// Expose App methods so the frontend can call window controls.
 		Bind: []interface{}{app},
+		// Without an explicit Linux config Wails defaults WebviewGpuPolicy to
+		// Never, which disables hardware acceleration entirely. Twitch's Amazon IVS
+		// player requires GPU access (WebGPU or hardware video decoding); OnDemand
+		// lets the GPU be used when the page requests it.
+		Linux: &linux.Options{
+			WebviewGpuPolicy: linux.WebviewGpuPolicyOnDemand,
+		},
 	})
 	if err != nil {
 		panic(err)
