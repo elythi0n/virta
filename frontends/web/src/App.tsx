@@ -355,17 +355,18 @@ export default function App() {
               onOpenSettings={openSettings}
               onOpenPlugins={() => openPanel('plugins', 'Plugins')}
             />
-            {sidebarOpen && (
-              <SideBar
-                view={activeView}
-                openPanel={openPanel}
-                openChannel={openChannel}
-                openStream={openStream}
-                listFeeds={listFeeds}
-                mergeChannelIntoFeed={mergeChannelIntoFeed}
-                onNewFeed={() => setNewFeedOpen(true)}
-              />
-            )}
+            {/* Keep SideBar mounted but hidden so its hooks (channels, streams, stats) don't
+                reset on every open — avoiding the stale "offline" flash on re-open. */}
+            <SideBar
+              view={activeView}
+              openPanel={openPanel}
+              openChannel={openChannel}
+              openStream={openStream}
+              listFeeds={listFeeds}
+              mergeChannelIntoFeed={mergeChannelIntoFeed}
+              onNewFeed={() => setNewFeedOpen(true)}
+              hidden={!sidebarOpen}
+            />
             <div className="dock-host">
               <Dock onReady={onReady} />
             </div>

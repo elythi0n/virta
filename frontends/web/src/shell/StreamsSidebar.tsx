@@ -7,9 +7,11 @@ import { groupStreams, type StreamGroup } from './streamGroups';
 import styles from './StreamsSidebar.module.css';
 
 function stateDot(state: string): DotStatus {
-  if (state === 'connected') return 'live';
-  if (state === 'error') return 'offline';
-  return 'idle';
+  // Engine health states: "ok" = connected, "degraded" = partial, "down" = failed.
+  // "connecting" is emitted by the hosted-mode channel list for channels not yet in the engine.
+  if (state === 'ok') return 'live';
+  if (state === 'down' || state === 'error') return 'offline';
+  return 'idle'; // degraded, connecting, unknown
 }
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);

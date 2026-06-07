@@ -23,6 +23,8 @@ type Props = {
   listFeeds: () => { id: string; title: string }[];
   mergeChannelIntoFeed: (panelId: string, channelKey: string) => void;
   onNewFeed: () => void;
+  /** When true the sidebar is visually hidden but stays mounted so its hooks keep running. */
+  hidden?: boolean;
 };
 
 const TITLES: Record<ViewId, string> = {
@@ -30,7 +32,7 @@ const TITLES: Record<ViewId, string> = {
   streams: 'Streams',
 };
 
-export default function SideBar({ view, openPanel, openChannel, openStream, listFeeds, mergeChannelIntoFeed, onNewFeed }: Props) {
+export default function SideBar({ view, openPanel, openChannel, openStream, listFeeds, mergeChannelIntoFeed, onNewFeed, hidden }: Props) {
   const [layout, setLayout] = useState<StreamLayout>(loadLayout);
   const toggleLayout = () =>
     setLayout((l) => {
@@ -44,7 +46,7 @@ export default function SideBar({ view, openPanel, openChannel, openStream, list
     });
 
   return (
-    <aside className={styles.side} aria-label={TITLES[view]}>
+    <aside className={styles.side} aria-label={TITLES[view]} hidden={hidden} style={hidden ? { display: 'none' } : undefined}>
       <header className={styles.head}>
         <Text variant="meta" tone="subtle">
           {TITLES[view]}

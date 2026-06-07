@@ -14,5 +14,6 @@
   background: var(--virta-warn);
 }
 .offline {
-  background: var(--virta-text-2);
+  background: var(--virta-danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--virta-danger) 20%, transparent);
 }
