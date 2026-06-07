@@ -293,3 +293,102 @@
 }
 .errorNote { color: var(--virta-danger); }
 .link { color: var(--virta-accent); }
+
+/* AI provider picker */
+.providerGrid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-8);
+}
+.providerCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-8);
+  padding: var(--virta-space-12);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-md);
+  background: var(--virta-bg-0);
+  transition: border-color var(--virta-motion-fast) ease;
+}
+.providerOn {
+  border-color: var(--virta-ok);
+  background: color-mix(in srgb, var(--virta-ok) 4%, var(--virta-bg-0));
+}
+.providerHead {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+}
+.providerLogo {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+}
+.providerName {
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  font-weight: 600;
+  color: var(--virta-text-0);
+  flex: 1;
+}
+.connectedPill {
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 700;
+  color: var(--virta-ok);
+  letter-spacing: 0.04em;
+}
+.clearKeyBtn {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--virta-radius-sm);
+  background: none;
+  color: var(--virta-text-2);
+  font-size: 14px;
+  cursor: pointer;
+}
+.clearKeyBtn:hover {
+  background: var(--virta-bg-2);
+  color: var(--virta-danger);
+}
+.providerInputRow {
+  display: flex;
+  gap: var(--virta-space-4);
+  align-items: center;
+}
+.providerInputRow > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+.showHideBtn {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-sm);
+  background: var(--virta-bg-0);
+  color: var(--virta-text-2);
+  cursor: pointer;
+  transition: border-color var(--virta-motion-fast) ease;
+}
+.showHideBtn:hover {
+  border-color: var(--virta-text-2);
+  color: var(--virta-text-0);
+}
+.providerHint {
+  margin: 0;
+}
+
+/* Provider brand colors — only on the logo glyph, never as backgrounds or text. */
+.providerLogo[data-provider='anthropic'] { color: var(--virta-brand-anthropic); }
+.providerLogo[data-provider='openai']    { color: var(--virta-brand-openai); }
+.providerLogo[data-provider='xai']       { color: var(--virta-text-1); }
+.providerLogo[data-provider='ollama']    { color: var(--virta-accent); }

@@ -42,6 +42,7 @@ type Tokens struct {
 	Radius   map[string]int      `json:"radius"`
 	Motion   map[string]int      `json:"motion"`
 	Platform map[string]string   `json:"platform"`
+	Brand    map[string]string   `json:"brand"`   // third-party brand accent colors (AI providers etc.)
 	Themes   map[string]Theme    `json:"themes"`
 }
 
@@ -109,6 +110,9 @@ func (t *Tokens) CSS() string {
 	for _, k := range sortedKeys(strKeys(t.Platform)) {
 		fmt.Fprintf(&b, "  --virta-plat-%s: %s;\n", k, t.Platform[k])
 	}
+	for _, k := range sortedKeys(strKeys(t.Brand)) {
+		fmt.Fprintf(&b, "  --virta-brand-%s: %s;\n", k, t.Brand[k])
+	}
 	// Default theme colors live at :root too.
 	writeColors(&b, t.Themes[defaultTheme].Color)
 	b.WriteString("}\n")
@@ -157,6 +161,9 @@ func (t *Tokens) TS() string {
 	}
 	for _, k := range sortedKeys(strKeys(t.Platform)) {
 		fmt.Fprintf(&b, "  %q: %q,\n", "plat-"+k, "var(--virta-plat-"+k+")")
+	}
+	for _, k := range sortedKeys(strKeys(t.Brand)) {
+		fmt.Fprintf(&b, "  %q: %q,\n", "brand-"+k, "var(--virta-brand-"+k+")")
 	}
 	b.WriteString("} as const;\n\n")
 
