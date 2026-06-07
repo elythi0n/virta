@@ -233,7 +233,6 @@ function Shortcuts() {
 
 function About() {
   const [version, setVersion] = useState<string | null>(null);
-  const [inspecting, setInspecting] = useState(false);
   const isDesktop = useIsDesktop();
 
   useEffect(() => {
@@ -242,16 +241,6 @@ function About() {
       .then((d: { version?: string }) => setVersion(d.version ?? null))
       .catch(() => {});
   }, []);
-
-  const openInspector = () => {
-    setInspecting(true);
-    // Wails devtools build: try to open the WebKit inspector window.
-    // If developer extras are enabled (make app-debug build), calling ShowInspector
-    // via the bound Go method works; otherwise fall back to the remote inspector hint.
-    void window.go?.main?.App?.OpenInspector?.()
-      .catch(() => {})
-      .finally(() => setInspecting(false));
-  };
 
   return (
     <div className={styles.aboutBlock}>
@@ -277,16 +266,17 @@ function About() {
           <Text variant="meta" tone="subtle" as="p">
             Developer tools
           </Text>
-          <button
-            type="button"
-            className={styles.aboutDevBtn}
-            onClick={openInspector}
-            disabled={inspecting}
-          >
-            {inspecting ? 'Opening…' : 'Open WebKit Inspector'}
-          </button>
           <Text variant="meta" tone="subtle" as="p" className={styles.aboutDevHint}>
-            Requires a debug build: <code>make app-debug</code>
+            To open DevTools, run the app in dev mode. In a terminal:
+          </Text>
+          <div className={styles.aboutDevHint}>
+            <code>cd frontends/web &amp;&amp; npm run dev</code>
+          </div>
+          <div className={styles.aboutDevHint}>
+            <code>cd frontends/desktop &amp;&amp; ~/go/bin/wails dev</code>
+          </div>
+          <Text variant="meta" tone="subtle" as="p" className={styles.aboutDevHint}>
+            Then right-click → Inspect Element anywhere in the app.
           </Text>
         </div>
       )}

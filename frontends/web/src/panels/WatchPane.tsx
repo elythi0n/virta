@@ -54,7 +54,7 @@ export default function WatchPane({ channel }: { channel?: string }) {
           <button
             type="button"
             className={styles.openBtn}
-            onClick={() => window.open(url, '_blank', 'noopener')}
+            onClick={() => void window.go?.main?.App?.BrowserOpen?.(url)}
           >
             <Icon name="popout" size={14} />
             Watch {slug} on {platform.charAt(0).toUpperCase() + platform.slice(1)}

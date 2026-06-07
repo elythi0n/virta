@@ -57,6 +57,11 @@ func (a *App) WindowToggleMaximise() { wailsruntime.WindowToggleMaximise(a.ctx) 
 // WindowClose quits the application cleanly.
 func (a *App) WindowClose() { wailsruntime.Quit(a.ctx) }
 
+// BrowserOpen opens url in the user's default system browser via xdg-open (Linux),
+// open (macOS), or ShellExecute (Windows). Use this instead of window.open, which
+// Wails v2 blocks because it is single-window.
+func (a *App) BrowserOpen(url string) { wailsruntime.BrowserOpenURL(a.ctx, url) }
+
 // OpenInspector opens the WebKit developer tools inspector. This only works in a
 // debug build produced by `make app-debug` (which compiles with -tags devtools,
 // enabling WebKit's developer extras). In a standard build the JS executes but

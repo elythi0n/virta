@@ -11,6 +11,7 @@ declare global {
           WindowToggleMaximise?(): Promise<void>;
           WindowClose?(): Promise<void>;
           OpenInspector?(): Promise<void>;
+          BrowserOpen?(url: string): Promise<void>;
         };
       };
     };
