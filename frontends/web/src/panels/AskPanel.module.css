@@ -1,64 +1,131 @@
 .pane {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
   background: var(--virta-bg-0);
+  overflow: hidden;
 }
+
+/* ── Conversation feed ─────────────────────────────────────────────── */
 .feed {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: var(--virta-space-16);
+  padding: var(--virta-space-24) var(--virta-space-16);
+  /* Extra bottom padding so last message isn't hidden behind the floating input */
+  padding-bottom: 180px;
   display: flex;
   flex-direction: column;
-  gap: var(--virta-space-12);
+  gap: var(--virta-space-16);
 }
+
+/* ── Empty / suggestions ───────────────────────────────────────────── */
 .empty {
-  display: grid;
-  place-items: center;
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--virta-space-16);
+  padding: var(--virta-space-32);
   text-align: center;
-  padding: var(--virta-space-16);
 }
-.gate {
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: var(--virta-space-8);
-  height: 100%;
-  padding: var(--virta-space-16);
-  text-align: center;
+.emptyIcon {
   color: var(--virta-text-2);
-  background: var(--virta-bg-0);
+  opacity: 0.6;
 }
-.gateTitle {
+.emptyTitle {
   margin: 0;
+  color: var(--virta-text-1);
   font-weight: 600;
 }
-.turn { display: flex; flex-direction: column; }
-.user { align-items: flex-end; }
-.userText {
-  margin: 0;
-  max-width: 80%;
+.suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-8);
+  width: 100%;
+  max-width: 380px;
+}
+.suggestion {
+  padding: var(--virta-space-8) var(--virta-space-12);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-md);
+  background: var(--virta-bg-1);
+  color: var(--virta-text-1);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--virta-motion-fast) ease,
+    color var(--virta-motion-fast) ease,
+    background var(--virta-motion-fast) ease;
+}
+.suggestion:hover {
+  border-color: color-mix(in srgb, var(--virta-accent) 50%, var(--virta-line));
+  color: var(--virta-text-0);
+  background: var(--virta-bg-2);
+}
+
+/* ── Gate (AI disabled) ────────────────────────────────────────────── */
+.gate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--virta-space-12);
+  height: 100%;
+  padding: var(--virta-space-32);
+  text-align: center;
+  background: var(--virta-bg-0);
+}
+.gateIcon { color: var(--virta-text-2); opacity: 0.5; }
+.gateTitle { margin: 0; font-weight: 600; color: var(--virta-text-0); }
+.gateBody { margin: 0; max-width: 360px; line-height: 1.6; }
+.gateCode {
+  font-family: var(--virta-font-mono);
+  font-size: var(--virta-type-meta-size);
+  background: var(--virta-bg-2);
+  padding: 1px 5px;
+  border-radius: var(--virta-radius-sm);
+  border: 1px solid var(--virta-line);
+  color: var(--virta-accent);
+}
+
+/* ── Message turns ─────────────────────────────────────────────────── */
+.userTurn {
+  display: flex;
+  justify-content: flex-end;
+}
+.userBubble {
+  max-width: 78%;
   padding: var(--virta-space-8) var(--virta-space-12);
   background: var(--virta-accent);
   color: var(--virta-bg-0);
-  border-radius: 12px 12px 0 12px;
+  border-radius: 16px 16px 2px 16px;
   font-family: var(--virta-font-ui);
   font-size: var(--virta-type-ui-size);
+  line-height: 1.5;
   word-break: break-word;
 }
-.assistant { align-items: flex-start; }
-.assistantText {
-  max-width: 90%;
+
+.assistantTurn {
+  display: flex;
+  justify-content: flex-start;
+}
+.assistantBubble {
+  max-width: 92%;
   color: var(--virta-text-0);
   font-family: var(--virta-font-ui);
   font-size: var(--virta-type-ui-size);
-  line-height: var(--virta-type-ui-line);
+  line-height: 1.65;
   white-space: pre-wrap;
   word-break: break-word;
 }
-.toolCall, .toolResult {
+
+/* ── Tool calls ────────────────────────────────────────────────────── */
+.toolBlock {
   border: 1px solid var(--virta-line);
   border-radius: var(--virta-radius-md);
   overflow: hidden;
@@ -74,9 +141,17 @@
   font-size: var(--virta-type-meta-size);
   color: var(--virta-text-2);
   list-style: none;
+  user-select: none;
 }
 .toolSummary::-webkit-details-marker { display: none; }
-.toolIcon { flex: none; color: var(--virta-accent); }
+.toolDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--virta-accent);
+  flex: none;
+  opacity: 0.6;
+}
 .toolCode {
   margin: 0;
   padding: var(--virta-space-8) var(--virta-space-12);
@@ -86,59 +161,260 @@
   background: var(--virta-bg-0);
   white-space: pre-wrap;
   overflow: auto;
-  max-height: 200px;
+  max-height: 180px;
 }
+
+/* ── Error turn ────────────────────────────────────────────────────── */
 .errorTurn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: var(--virta-space-8);
+  padding: var(--virta-space-8) var(--virta-space-12);
+  border-radius: var(--virta-radius-md);
+  background: color-mix(in srgb, var(--virta-danger) 10%, var(--virta-bg-0));
+  border: 1px solid color-mix(in srgb, var(--virta-danger) 30%, var(--virta-line));
   color: var(--virta-danger);
   font-family: var(--virta-font-ui);
   font-size: var(--virta-type-meta-size);
 }
+
+/* ── Thinking dots ─────────────────────────────────────────────────── */
 .thinking {
   display: flex;
-  gap: 4px;
-  padding: var(--virta-space-8) 0;
+  gap: 5px;
+  padding: var(--virta-space-4) 0;
 }
 .thinking span {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: var(--virta-accent);
-  animation: blink 1.2s ease-in-out infinite;
+  background: var(--virta-text-2);
+  animation: blink 1.4s ease-in-out infinite;
 }
-.dot2 { animation-delay: .2s !important; }
-.dot3 { animation-delay: .4s !important; }
-@keyframes blink { 0%,80%,100%{opacity:.2} 40%{opacity:1} }
+.thinking span:nth-child(2) { animation-delay: .2s; }
+.thinking span:nth-child(3) { animation-delay: .4s; }
+@keyframes blink { 0%,80%,100%{opacity:.15} 40%{opacity:0.8} }
 @media (prefers-reduced-motion: reduce) {
-  .thinking span { animation: none; opacity: .5; }
+  .thinking span { animation: none; opacity: 0.4; }
 }
-.costBar {
-  padding: var(--virta-space-4) var(--virta-space-16);
-  border-top: 1px solid var(--virta-line);
-  text-align: right;
+
+/* ── Floating input wrapper ────────────────────────────────────────── */
+.inputWrap {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0 var(--virta-space-16) var(--virta-space-16);
+  /* Gradient fade so content behind the input blends out */
+  background: linear-gradient(to top,
+    var(--virta-bg-0) 70%,
+    color-mix(in srgb, var(--virta-bg-0) 80%, transparent) 90%,
+    transparent 100%
+  );
+  padding-top: var(--virta-space-32);
 }
-.inputBar {
-  display: flex;
-  gap: var(--virta-space-8);
-  align-items: center;
-  padding: var(--virta-space-12) var(--virta-space-16);
-  border-top: 1px solid var(--virta-line);
-  background: var(--virta-bg-1);
+.tokenRow {
+  text-align: center;
+  margin-bottom: var(--virta-space-4);
 }
-.modelSelect {
-  flex: none;
-  max-width: 180px;
-  padding: var(--virta-space-4) var(--virta-space-8);
-  background: var(--virta-bg-0);
+
+/* The card itself */
+.inputCard {
+  background: var(--virta-bg-2);
   border: 1px solid var(--virta-line);
-  border-radius: var(--virta-radius-sm);
+  border-radius: var(--virta-radius-lg);
+  padding: var(--virta-space-12);
+  transition: border-color var(--virta-motion-fast) ease;
+}
+.inputCard:focus-within {
+  border-color: color-mix(in srgb, var(--virta-accent) 50%, var(--virta-line));
+}
+
+/* Auto-grow textarea */
+.textarea {
+  display: block;
+  width: 100%;
+  min-height: 24px;
+  max-height: 180px;
+  padding: 0;
+  background: none;
+  border: 0;
+  outline: none;
+  resize: none;
+  color: var(--virta-text-0);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  line-height: 1.55;
+  overflow-y: auto;
+  caret-color: var(--virta-accent);
+}
+.textarea::placeholder { color: var(--virta-text-2); }
+.textarea:disabled { cursor: not-allowed; opacity: 0.5; }
+
+/* Footer row inside the card */
+.inputFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--virta-space-8);
+  gap: var(--virta-space-8);
+}
+
+/* Model picker button */
+.modelBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px var(--virta-space-8);
+  border: 1px solid var(--virta-line);
+  border-radius: 20px;
+  background: var(--virta-bg-1);
   color: var(--virta-text-1);
   font-family: var(--virta-font-ui);
   font-size: var(--virta-type-meta-size);
+  font-weight: 500;
+  cursor: pointer;
+  max-width: 200px;
+  transition:
+    border-color var(--virta-motion-fast) ease,
+    color var(--virta-motion-fast) ease;
 }
-.modelSelect:focus-visible {
-  outline: 2px solid var(--virta-accent);
-  outline-offset: 1px;
+.modelBtn:hover { border-color: var(--virta-text-2); color: var(--virta-text-0); }
+.modelDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--virta-text-2);
+  flex: none;
+}
+/* Provider-specific dot colors */
+.modelDot[data-provider='anthropic'] { background: var(--virta-brand-anthropic); }
+.modelDot[data-provider='openai']    { background: var(--virta-brand-openai); }
+.modelDot[data-provider='ollama']    { background: var(--virta-accent); }
+.modelDot[data-provider='xai']       { background: var(--virta-text-1); }
+.modelName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.modelChevron {
+  flex: none;
+  opacity: 0.5;
+}
+
+/* Model dropdown menu */
+.modelMenu {
+  min-width: 240px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+.modelGroup {
+  padding: var(--virta-space-8) var(--virta-space-12) var(--virta-space-4);
+  font-family: var(--virta-font-ui);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--virta-text-2);
+}
+.modelItem {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  width: 100%;
+  padding: var(--virta-space-8) var(--virta-space-12);
+  border: 0;
+  background: none;
+  color: var(--virta-text-1);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--virta-radius-sm);
+  transition: background var(--virta-motion-fast) ease, color var(--virta-motion-fast) ease;
+}
+.modelItem:hover:not(:disabled) { background: var(--virta-bg-2); color: var(--virta-text-0); }
+.modelItem:disabled { opacity: 0.4; cursor: not-allowed; }
+.modelItemOn { color: var(--virta-accent); }
+.modelItemOn::before {
+  content: '✓';
+  font-size: 11px;
+  flex: none;
+}
+.modelItemName { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.noTools {
+  flex: none;
+  font-size: 10px;
+  font-family: var(--virta-font-mono);
+  color: var(--virta-warn);
+  background: color-mix(in srgb, var(--virta-warn) 12%, transparent);
+  padding: 1px 5px;
+  border-radius: var(--virta-radius-sm);
+}
+.modelPrice {
+  flex: none;
+  font-family: var(--virta-font-mono);
+  font-size: 10px;
+  color: var(--virta-text-2);
+}
+.modelEmpty {
+  padding: var(--virta-space-12);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  color: var(--virta-text-2);
+  text-align: center;
+}
+
+/* Send button — filled circle */
+.sendBtn {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--virta-accent);
+  color: var(--virta-bg-0);
+  border: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition:
+    opacity var(--virta-motion-fast) ease,
+    transform var(--virta-motion-fast) ease;
+}
+.sendBtn:hover:not(:disabled) { opacity: 0.88; transform: scale(1.05); }
+.sendBtn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* Stop button — filled circle with a square inside */
+.stopBtn {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--virta-text-2);
+  border: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background var(--virta-motion-fast) ease;
+}
+.stopBtn:hover { background: var(--virta-text-1); }
+.stopSquare {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--virta-bg-0);
+}
+
+/* Keyboard hint below the card */
+.hint {
+  margin: var(--virta-space-4) 0 0;
+  text-align: center;
+  font-family: var(--virta-font-ui);
+  font-size: 10px;
+  color: var(--virta-text-2);
+  opacity: 0.6;
+  letter-spacing: 0.02em;
 }

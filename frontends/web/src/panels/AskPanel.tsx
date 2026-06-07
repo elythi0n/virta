@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Button, Input, Text } from '@virta/ui-kit';
+import { Popover, Text } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { askStream, getIntelConfig, listModels } from '../daemon';
 import type { AskEvent, IntelConfig, ModelGroup } from '../daemon/wire.gen';
@@ -12,26 +12,39 @@ type TurnItem =
   | { kind: 'tool_result'; name: string; json: string }
   | { kind: 'error'; text: string };
 
-// The Ask pane: a conversational interface over logged chat history using the LLM tool belt.
-// Answers cite tool calls; cost footer shows tokens used. Gated by logging.
+function autoResize(el: HTMLTextAreaElement) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 180) + 'px';
+}
+
+// Flat list of all models for easier lookup.
+function flatModels(groups: ModelGroup[]) {
+  return groups.flatMap(g => g.models.map(m => ({ ...m, providerName: g.display_name, providerId: g.provider_id })));
+}
+
 export default function AskPanel() {
   const [config, setConfig] = useState<IntelConfig | null>(null);
   const [groups, setGroups] = useState<ModelGroup[]>([]);
   const [model, setModel] = useState('');
+  const [modelOpen, setModelOpen] = useState(false);
   const [question, setQuestion] = useState('');
   const [turns, setTurns] = useState<TurnItem[]>([]);
   const [running, setRunning] = useState(false);
+  const [tokens, setTokens] = useState({ in: 0, out: 0 });
   const abortRef = useRef<(() => void) | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const [tokens, setTokens] = useState({ in: 0, out: 0 });
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     getIntelConfig().then(setConfig).catch(() => {});
     listModels().then(g => {
       setGroups(g);
-      if (!model && g.length > 0 && g[0].models.length > 0) {
-        setModel(g[0].models.find(m => m.supports_tools)?.id ?? g[0].models[0].id);
-      }
+      setModel(prev => {
+        if (prev) return prev;
+        // Prefer the first tool-capable model; fall back to whatever is first.
+        const all = flatModels(g);
+        return all.find(m => m.supports_tools)?.id ?? all[0]?.id ?? '';
+      });
     }).catch(() => {});
   }, []);
 
@@ -39,13 +52,13 @@ export default function AskPanel() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
-  const runningRef = useRef(running);
-  runningRef.current = running;
-
   const handleAsk = useCallback(() => {
-    if (!question.trim() || runningRef.current) return;
     const q = question.trim();
+    const m = model;
+    if (!q || !m || running) return;
     setQuestion('');
+    // Reset textarea height.
+    if (textareaRef.current) { textareaRef.current.style.height = 'auto'; }
     setRunning(true);
     setTurns(prev => [...prev, { kind: 'text', role: 'user', text: q }]);
 
@@ -62,45 +75,38 @@ export default function AskPanel() {
       scrollBottom();
     };
 
-    const onEvent = (ev: AskEvent) => {
+    abortRef.current = askStream(q, m, (ev: AskEvent) => {
       switch (ev.kind) {
-        case 'text':
-          appendAssistant(ev.text ?? '');
-          break;
-        case 'tool_use':
-          setTurns(prev => [...prev, { kind: 'tool_use', name: ev.tool_name ?? '', args: ev.tool_args ?? '' }]);
-          scrollBottom();
-          break;
-        case 'tool_result':
-          setTurns(prev => [...prev, { kind: 'tool_result', name: ev.tool_name ?? '', json: ev.tool_result ?? '' }]);
-          scrollBottom();
-          break;
-        case 'done':
-          if ((ev.input_tokens ?? 0) > 0) setTokens(t => ({ in: t.in + (ev.input_tokens ?? 0), out: t.out + (ev.output_tokens ?? 0) }));
-          break;
-        case 'error':
-          setTurns(prev => [...prev, { kind: 'error', text: ev.error ?? 'Unknown error' }]);
-          scrollBottom();
-          break;
+        case 'text':        appendAssistant(ev.text ?? ''); break;
+        case 'tool_use':    setTurns(p => [...p, { kind: 'tool_use', name: ev.tool_name ?? '', args: ev.tool_args ?? '' }]); scrollBottom(); break;
+        case 'tool_result': setTurns(p => [...p, { kind: 'tool_result', name: ev.tool_name ?? '', json: ev.tool_result ?? '' }]); scrollBottom(); break;
+        case 'done':        if ((ev.input_tokens ?? 0) > 0) setTokens(t => ({ in: t.in + (ev.input_tokens ?? 0), out: t.out + (ev.output_tokens ?? 0) })); break;
+        case 'error':       setTurns(p => [...p, { kind: 'error', text: ev.error ?? 'Unknown error' }]); scrollBottom(); break;
       }
-    };
-
-    abortRef.current = askStream(q, model, onEvent, () => setRunning(false), (msg) => {
-      setTurns(prev => [...prev, { kind: 'error', text: msg }]);
+    }, () => setRunning(false), (msg) => {
+      setTurns(p => [...p, { kind: 'error', text: msg }]);
       setRunning(false);
     });
-  }, [question, model, scrollBottom]);
+  }, [question, model, running, scrollBottom]);
+
+  const handleStop = useCallback(() => {
+    abortRef.current?.();
+    setRunning(false);
+  }, []);
+
+  const selectedModel = flatModels(groups).find(m => m.id === model);
+  const canSend = question.trim().length > 0 && model !== '' && !running;
+  const modelsLoading = config !== null && groups.length === 0;
 
   if (config && !config.enabled) {
     return (
       <div className={styles.gate}>
-        <Icon name="chat" size={24} />
-        <Text variant="title" as="h3" className={styles.gateTitle}>Ask AI is disabled</Text>
-        <Text variant="body" tone="subtle">
-          To use Ask AI, you need two things: message logging enabled (so there's history to query)
-          and an AI provider configured. Head to{' '}
-          <b>Settings → Intelligence</b> to connect a provider — Ollama works offline with no API key.
-          Nothing leaves your machine until you explicitly enable and configure a provider.
+        <div className={styles.gateIcon}><Icon name="chat" size={28} /></div>
+        <Text variant="title" as="h3" className={styles.gateTitle}>Ask AI is off</Text>
+        <Text variant="body" tone="subtle" className={styles.gateBody}>
+          Enable it in <b>Settings → Intelligence</b>, then add a provider.
+          Ollama runs locally with no API key — just set{' '}
+          <code className={styles.gateCode}>http://ollama:11434</code> as the base URL.
         </Text>
       </div>
     );
@@ -108,34 +114,40 @@ export default function AskPanel() {
 
   return (
     <div className={styles.pane}>
+      {/* ── Conversation feed ── */}
       <div className={styles.feed}>
         {turns.length === 0 && (
           <div className={styles.empty}>
-            <Text variant="body" tone="subtle">
-              Ask anything about your logged chat.
-            </Text>
-            <Text variant="ui" tone="subtle">
-              Try: "Who is our top fan this month?" or "What did Alice say about the game?"
-            </Text>
+            <div className={styles.emptyIcon}><Icon name="chat" size={32} /></div>
+            <Text variant="title" as="p" className={styles.emptyTitle}>Ask about your chat</Text>
+            <div className={styles.suggestions}>
+              {['Who is our top fan this month?', 'What did people say about the last game?', 'Summarize today\'s chat'].map(s => (
+                <button key={s} type="button" className={styles.suggestion} onClick={() => setQuestion(s)}>
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
         )}
+
         {turns.map((t, i) => {
           switch (t.kind) {
             case 'text':
-              return (
-                <div key={i} className={`${styles.turn} ${t.role === 'user' ? styles.user : styles.assistant}`}>
-                  {t.role === 'user' ? (
-                    <Text variant="ui" as="p" className={styles.userText}>{t.text}</Text>
-                  ) : (
-                    <div className={styles.assistantText}>{t.text}</div>
-                  )}
+              return t.role === 'user' ? (
+                <div key={i} className={styles.userTurn}>
+                  <div className={styles.userBubble}>{t.text}</div>
+                </div>
+              ) : (
+                <div key={i} className={styles.assistantTurn}>
+                  <div className={styles.assistantBubble}>{t.text}</div>
                 </div>
               );
             case 'tool_use':
               return (
-                <details key={i} className={styles.toolCall}>
+                <details key={i} className={styles.toolBlock}>
                   <summary className={styles.toolSummary}>
-                    <span className={styles.toolIcon}><Icon name="search" size={13} /></span>
+                    <span className={styles.toolDot} aria-hidden />
+                    <Icon name="search" size={12} />
                     Called <code>{t.name}</code>
                   </summary>
                   <pre className={styles.toolCode}>{t.args}</pre>
@@ -143,9 +155,10 @@ export default function AskPanel() {
               );
             case 'tool_result':
               return (
-                <details key={i} className={styles.toolResult}>
+                <details key={i} className={styles.toolBlock}>
                   <summary className={styles.toolSummary}>
-                    <span className={styles.toolIcon}><Icon name="check" size={13} /></span>
+                    <span className={styles.toolDot} aria-hidden />
+                    <Icon name="check" size={12} />
                     Result from <code>{t.name}</code>
                   </summary>
                   <pre className={styles.toolCode}>{tryPretty(t.json)}</pre>
@@ -154,64 +167,109 @@ export default function AskPanel() {
             case 'error':
               return (
                 <div key={i} className={styles.errorTurn}>
-                  <Icon name="ban" size={14} />
-                  <Text variant="meta" tone="subtle">{t.text}</Text>
+                  <Icon name="ban" size={13} />
+                  <span>{t.text}</span>
                 </div>
               );
           }
         })}
+
         {running && (
           <div className={styles.thinking}>
-            <span className={styles.dot1} /><span className={styles.dot2} /><span className={styles.dot3} />
+            <span /><span /><span />
           </div>
         )}
         <div ref={bottomRef} />
       </div>
 
-      {(tokens.in > 0 || tokens.out > 0) && (
-        <div className={styles.costBar}>
-          <Text variant="meta" tone="subtle">
-            {fmt(tokens.in)} in · {fmt(tokens.out)} out tokens
-          </Text>
-        </div>
-      )}
-
-      <div className={styles.inputBar}>
-        {groups.length > 0 && (
-          <select className={styles.modelSelect} value={model} onChange={e => setModel(e.target.value)}>
-            {groups.map(g => (
-              <optgroup key={g.provider_id} label={g.display_name}>
-                {g.models.map(m => (
-                  <option key={m.id} value={m.id} disabled={!m.supports_tools}>
-                    {m.display_name}{m.price_in_per_mtok ? ` ·$${m.price_in_per_mtok}/$${m.price_out_per_mtok}` : ''}
-                    {!m.supports_tools ? ' ⚠ no tools' : ''}
-                  </option>
+      {/* ── Floating input ── */}
+      <div className={styles.inputWrap}>
+        {(tokens.in > 0 || tokens.out > 0) && (
+          <div className={styles.tokenRow}>
+            <Text variant="meta" tone="subtle">{fmt(tokens.in)} in · {fmt(tokens.out)} out</Text>
+          </div>
+        )}
+        <div className={styles.inputCard}>
+          <textarea
+            ref={textareaRef}
+            className={styles.textarea}
+            placeholder="Ask anything about your chat…"
+            value={question}
+            disabled={running}
+            rows={1}
+            onChange={e => { setQuestion(e.currentTarget.value); autoResize(e.currentTarget); }}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAsk(); } }}
+          />
+          <div className={styles.inputFooter}>
+            {/* Model picker */}
+            <Popover
+              open={modelOpen}
+              onOpenChange={setModelOpen}
+              side="top"
+              align="start"
+              trigger={
+                <button type="button" className={styles.modelBtn} aria-label="Select model">
+                  <span className={styles.modelDot} data-provider={selectedModel?.providerId} aria-hidden />
+                  <span className={styles.modelName}>
+                    {modelsLoading ? 'Loading…' : (selectedModel?.display_name ?? 'Choose model')}
+                  </span>
+                  <Icon name="chevron-down" size={12} className={styles.modelChevron} />
+                </button>
+              }
+            >
+              <div className={styles.modelMenu}>
+                {groups.map(g => (
+                  <div key={g.provider_id}>
+                    <div className={styles.modelGroup}>{g.display_name}</div>
+                    {g.models.map(m => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        className={`${styles.modelItem} ${m.id === model ? styles.modelItemOn : ''}`}
+                        onClick={() => { setModel(m.id); setModelOpen(false); }}
+                        disabled={!m.supports_tools}
+                        title={!m.supports_tools ? 'This model does not support tool use' : undefined}
+                      >
+                        <span className={styles.modelItemName}>{m.display_name}</span>
+                        {!m.supports_tools && <span className={styles.noTools}>no tools</span>}
+                        {m.price_in_per_mtok != null && m.price_in_per_mtok > 0 && (
+                          <span className={styles.modelPrice}>${m.price_in_per_mtok}/${m.price_out_per_mtok}</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
                 ))}
-              </optgroup>
-            ))}
-          </select>
-        )}
-        <Input
-          aria-label="Ask a question"
-          placeholder="Who is our top fan this month?"
-          value={question}
-          disabled={running}
-          onChange={e => setQuestion(e.currentTarget.value)}
-          onKeyDown={e => e.key === 'Enter' && !e.shiftKey && void handleAsk()}
-        />
-        <Button variant="solid" size="md" disabled={!question.trim() || running} onClick={() => void handleAsk()}>
-          {running ? '…' : 'Ask AI'}
-        </Button>
-        {running && abortRef.current && (
-          <Button variant="ghost" size="md" onClick={() => { abortRef.current?.(); setRunning(false); }}>Stop</Button>
-        )}
+                {groups.length === 0 && (
+                  <div className={styles.modelEmpty}>No providers configured — add one in Settings → Intelligence.</div>
+                )}
+              </div>
+            </Popover>
+
+            {/* Send / stop */}
+            {running ? (
+              <button type="button" className={styles.stopBtn} onClick={handleStop} aria-label="Stop">
+                <span className={styles.stopSquare} aria-hidden />
+              </button>
+            ) : (
+              <button
+                type="button"
+                className={styles.sendBtn}
+                disabled={!canSend}
+                onClick={handleAsk}
+                aria-label="Send"
+              >
+                <Icon name="arrow-up" size={16} />
+              </button>
+            )}
+          </div>
+        </div>
+        <p className={styles.hint}>Enter to send · Shift+Enter for new line</p>
       </div>
     </div>
   );
 }
 
 function fmt(n: number) { return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n); }
-
 function tryPretty(s: string) {
   try { return JSON.stringify(JSON.parse(s), null, 2); } catch { return s; }
 }
