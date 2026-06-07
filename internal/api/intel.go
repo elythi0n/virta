@@ -13,17 +13,33 @@ func IsURLValue(v string) bool {
 	return strings.HasPrefix(v, "http://") || strings.HasPrefix(v, "https://")
 }
 
-// Intel is the intelligence surface: Ask (agent loop), model listing, and LLM config.
+// Intel is the intelligence surface: Ask (agent loop), model listing, config, and conversations.
 // Injected via SetIntel.
 type Intel interface {
 	// ListModels returns available models grouped by provider, from the live registry.
 	ListModels(ctx context.Context) ([]ModelGroup, error)
 	// Ask starts an agent run and streams events. The caller reads from the channel until closed.
 	Ask(ctx context.Context, model, question string) (<-chan AskEvent, error)
+	// GenerateTitle streams a short title for the given user message using the specified model.
+	GenerateTitle(ctx context.Context, model, firstMessage string) (<-chan AskEvent, error)
 	// Config returns the current meter/LLM configuration.
 	Config() IntelConfig
 	// SetConfig replaces the configuration (from the settings UI).
 	SetConfig(ctx context.Context, cfg IntelConfig) error
+	// ListConversations returns recent conversations newest-first.
+	ListConversations(ctx context.Context) ([]ConversationSummary, error)
+	// SaveConversation creates or updates a conversation.
+	SaveConversation(ctx context.Context, id, title, model string, messages []byte) error
+	// DeleteConversation removes a conversation.
+	DeleteConversation(ctx context.Context, id string) error
+}
+
+// ConversationSummary is the list-view form of a conversation (no messages).
+type ConversationSummary struct {
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	Model     string `json:"model"`
+	UpdatedAt string `json:"updated_at"` // RFC3339
 }
 
 // ModelGroup is one provider's models for the settings/picker UI.
@@ -151,4 +167,91 @@ func (s *Server) handleSetIntelConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, map[string]any{"ok": true})
+}
+
+func (s *Server) handleListConversations(w http.ResponseWriter, r *http.Request) {
+	if s.intel == nil {
+		http.Error(w, "intelligence unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	list, err := s.intel.ListConversations(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if list == nil {
+		list = []ConversationSummary{}
+	}
+	writeJSON(w, map[string]any{"conversations": list})
+}
+
+func (s *Server) handleSaveConversation(w http.ResponseWriter, r *http.Request) {
+	if s.intel == nil {
+		http.Error(w, "intelligence unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	var req struct {
+		ID       string          `json:"id"`
+		Title    string          `json:"title"`
+		Model    string          `json:"model"`
+		Messages json.RawMessage `json:"messages"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ID == "" {
+		http.Error(w, "expected JSON with id", http.StatusBadRequest)
+		return
+	}
+	if err := s.intel.SaveConversation(r.Context(), req.ID, req.Title, req.Model, req.Messages); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) handleDeleteConversation(w http.ResponseWriter, r *http.Request) {
+	if s.intel == nil {
+		http.Error(w, "intelligence unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	id := r.PathValue("id")
+	if id == "" {
+		http.Error(w, "missing id", http.StatusBadRequest)
+		return
+	}
+	if err := s.intel.DeleteConversation(r.Context(), id); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleGenerateTitle streams a short AI-generated title for the given first message.
+// Uses the same NDJSON format as /v1/intel/ask so the frontend can stream the title in.
+func (s *Server) handleGenerateTitle(w http.ResponseWriter, r *http.Request) {
+	if s.intel == nil {
+		http.Error(w, "intelligence unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	var req struct {
+		Message string `json:"message"`
+		Model   string `json:"model"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Message == "" {
+		http.Error(w, "expected JSON with message", http.StatusBadRequest)
+		return
+	}
+	ch, err := s.intel.GenerateTitle(r.Context(), req.Model, req.Message)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/x-ndjson")
+	w.Header().Set("X-Accel-Buffering", "no")
+	enc := json.NewEncoder(w)
+	flush, _ := w.(http.Flusher)
+	for ev := range ch {
+		_ = enc.Encode(ev)
+		if flush != nil {
+			flush.Flush()
+		}
+	}
 }

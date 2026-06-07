@@ -61,12 +61,13 @@ func (c *Core) Rebind(q string) string { return c.dia.Rebind(q) }
 func (c *Core) Ping(ctx context.Context) error { return c.db.PingContext(ctx) }
 func (c *Core) Close() error                   { return c.db.Close() }
 
-func (c *Core) Settings() store.SettingsRepo { return settingsRepo{c} }
-func (c *Core) Profiles() store.ProfileRepo  { return profileRepo{c} }
-func (c *Core) Accounts() store.AccountRepo  { return accountRepo{c} }
-func (c *Core) Channels() store.ChannelRepo  { return channelRepo{c} }
-func (c *Core) Messages() store.MessageRepo  { return messageRepo{c} }
-func (c *Core) Emotes() store.EmoteRepo      { return emoteRepo{c} }
+func (c *Core) Settings() store.SettingsRepo           { return settingsRepo{c} }
+func (c *Core) Profiles() store.ProfileRepo             { return profileRepo{c} }
+func (c *Core) Accounts() store.AccountRepo             { return accountRepo{c} }
+func (c *Core) Channels() store.ChannelRepo             { return channelRepo{c} }
+func (c *Core) Messages() store.MessageRepo             { return messageRepo{c} }
+func (c *Core) Emotes() store.EmoteRepo                 { return emoteRepo{c} }
+func (c *Core) Conversations() store.ConversationRepo   { return conversationRepo{c} }
 
 // rebinding query helpers — every query flows through Rebind so placeholders are adapted once.
 func (c *Core) exec(ctx context.Context, q string, args ...any) (sql.Result, error) {
@@ -689,4 +690,93 @@ func (r emoteRepo) GetFile(ctx context.Context, urlHash string) (store.EmoteFile
 	}
 	f.FetchedAt = tsLoad(fetched)
 	return f, nil
+}
+
+// ---- conversations ----
+
+type conversationRepo struct{ c *Core }
+
+func (r conversationRepo) scan(row interface{ Scan(...any) error }) (store.Conversation, error) {
+	var c store.Conversation
+	var msgs string
+	var created, updated int64
+	if err := row.Scan(&c.ID, &c.Title, &msgs, &c.Model, &created, &updated); err != nil {
+		return store.Conversation{}, err
+	}
+	c.Messages = json.RawMessage(msgs)
+	c.CreatedAt = tsLoad(created)
+	c.UpdatedAt = tsLoad(updated)
+	return c, nil
+}
+
+const convCols = `id, title, messages, model, created_at, updated_at`
+
+func (r conversationRepo) Create(ctx context.Context, id, title, model string, messages json.RawMessage) (store.Conversation, error) {
+	now := r.c.clk.Now()
+	if messages == nil {
+		messages = json.RawMessage("[]")
+	}
+	userID := uid(ctx)
+	_, err := r.c.exec(ctx,
+		`INSERT INTO conversations (id, user_id, title, model, messages, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		id, userID, title, model, string(messages), tsStore(now), tsStore(now))
+	if err != nil {
+		return store.Conversation{}, err
+	}
+	return store.Conversation{ID: id, Title: title, Messages: messages, Model: model, CreatedAt: now, UpdatedAt: now}, nil
+}
+
+func (r conversationRepo) Get(ctx context.Context, id string) (store.Conversation, error) {
+	c, err := r.scan(r.c.queryRow(ctx,
+		`SELECT `+convCols+` FROM conversations WHERE id = ? AND user_id = ?`, id, uid(ctx)))
+	if errors.Is(err, sql.ErrNoRows) {
+		return store.Conversation{}, store.ErrNotFound
+	}
+	return c, err
+}
+
+func (r conversationRepo) List(ctx context.Context) ([]store.Conversation, error) {
+	rows, err := r.c.query(ctx,
+		`SELECT `+convCols+` FROM conversations WHERE user_id = ? ORDER BY updated_at DESC LIMIT 100`, uid(ctx))
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []store.Conversation
+	for rows.Next() {
+		c, err := r.scan(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+func (r conversationRepo) Update(ctx context.Context, id, title, model string, messages json.RawMessage) error {
+	if messages == nil {
+		messages = json.RawMessage("[]")
+	}
+	res, err := r.c.exec(ctx,
+		`UPDATE conversations SET title = ?, model = ?, messages = ?, updated_at = ? WHERE id = ? AND user_id = ?`,
+		title, model, string(messages), tsStore(r.c.clk.Now()), id, uid(ctx))
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return store.ErrNotFound
+	}
+	return nil
+}
+
+func (r conversationRepo) Delete(ctx context.Context, id string) error {
+	res, err := r.c.exec(ctx,
+		`DELETE FROM conversations WHERE id = ? AND user_id = ?`, id, uid(ctx))
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return store.ErrNotFound
+	}
+	return nil
 }

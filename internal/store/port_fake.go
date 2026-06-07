@@ -34,6 +34,7 @@ type Memory struct {
 	messages      []StoredMessage
 	emoteSets     map[string]EmoteSet
 	emoteFiles    map[string]EmoteFile
+	conversations map[string]Conversation
 }
 
 // NewMemory creates an empty in-memory store using clk for timestamps.
@@ -72,10 +73,11 @@ func (m *Memory) Rebind(q string) string        { return q }
 
 func (m *Memory) Settings() SettingsRepo { return memSettings{m} }
 func (m *Memory) Profiles() ProfileRepo  { return memProfiles{m} }
-func (m *Memory) Accounts() AccountRepo  { return memAccounts{m} }
-func (m *Memory) Channels() ChannelRepo  { return memChannels{m} }
-func (m *Memory) Messages() MessageRepo  { return memMessages{m} }
-func (m *Memory) Emotes() EmoteRepo      { return memEmotes{m} }
+func (m *Memory) Accounts() AccountRepo       { return memAccounts{m} }
+func (m *Memory) Channels() ChannelRepo       { return memChannels{m} }
+func (m *Memory) Messages() MessageRepo       { return memMessages{m} }
+func (m *Memory) Emotes() EmoteRepo           { return memEmotes{m} }
+func (m *Memory) Conversations() ConversationRepo { return memConversations{m} }
 
 // ---- settings ----
 
@@ -522,6 +524,66 @@ func (r memEmotes) GetFile(_ context.Context, urlHash string) (EmoteFile, error)
 		return EmoteFile{}, ErrNotFound
 	}
 	return f, nil
+}
+
+// ---- conversations ----
+
+type memConversations struct{ m *Memory }
+
+func (r memConversations) Create(_ context.Context, id, title, model string, messages json.RawMessage) (Conversation, error) {
+	if messages == nil {
+		messages = json.RawMessage("[]")
+	}
+	c := Conversation{ID: id, Title: title, Messages: messages, Model: model}
+	r.m.mu.Lock()
+	if r.m.conversations == nil {
+		r.m.conversations = map[string]Conversation{}
+	}
+	r.m.conversations[id] = c
+	r.m.mu.Unlock()
+	return c, nil
+}
+func (r memConversations) Get(_ context.Context, id string) (Conversation, error) {
+	r.m.mu.Lock()
+	c, ok := r.m.conversations[id]
+	r.m.mu.Unlock()
+	if !ok {
+		return Conversation{}, ErrNotFound
+	}
+	return c, nil
+}
+func (r memConversations) List(_ context.Context) ([]Conversation, error) {
+	r.m.mu.Lock()
+	defer r.m.mu.Unlock()
+	out := make([]Conversation, 0, len(r.m.conversations))
+	for _, c := range r.m.conversations {
+		out = append(out, c)
+	}
+	return out, nil
+}
+func (r memConversations) Update(_ context.Context, id, title, model string, messages json.RawMessage) error {
+	r.m.mu.Lock()
+	defer r.m.mu.Unlock()
+	c, ok := r.m.conversations[id]
+	if !ok {
+		return ErrNotFound
+	}
+	c.Title = title
+	c.Model = model
+	if messages != nil {
+		c.Messages = messages
+	}
+	r.m.conversations[id] = c
+	return nil
+}
+func (r memConversations) Delete(_ context.Context, id string) error {
+	r.m.mu.Lock()
+	defer r.m.mu.Unlock()
+	if _, ok := r.m.conversations[id]; !ok {
+		return ErrNotFound
+	}
+	delete(r.m.conversations, id)
+	return nil
 }
 
 var _ Store = (*Memory)(nil)

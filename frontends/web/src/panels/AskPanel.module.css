@@ -264,6 +264,122 @@
   margin-top: var(--virta-space-8);
   gap: var(--virta-space-8);
 }
+.footerLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-4);
+  min-width: 0;
+  flex: 1;
+}
+
+/* ── Conversation picker ─────────────────────────────────────────── */
+.convBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px var(--virta-space-8);
+  border: 1px solid var(--virta-line);
+  border-radius: 20px;
+  background: var(--virta-bg-1);
+  color: var(--virta-text-1);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 500;
+  cursor: pointer;
+  max-width: 160px;
+  min-width: 0;
+  transition:
+    border-color var(--virta-motion-fast) ease,
+    color var(--virta-motion-fast) ease;
+}
+.convBtn:hover { border-color: var(--virta-text-2); color: var(--virta-text-0); }
+.convIcon { flex: none; opacity: 0.6; }
+.convTitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Conversation dropdown */
+.convMenu {
+  min-width: 260px;
+  max-width: 320px;
+}
+.convNewBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  width: 100%;
+  padding: var(--virta-space-8) var(--virta-space-12);
+  border: 0;
+  background: none;
+  color: var(--virta-accent);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: var(--virta-radius-sm);
+  text-align: left;
+}
+.convNewBtn:hover { background: var(--virta-bg-2); }
+.convDivider {
+  height: 1px;
+  background: var(--virta-line);
+  margin: var(--virta-space-4) 0;
+}
+.convList {
+  max-height: 260px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.convItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--virta-space-8) var(--virta-space-12);
+  border-radius: var(--virta-radius-sm);
+  cursor: pointer;
+  transition: background var(--virta-motion-fast) ease;
+}
+.convItem:hover { background: var(--virta-bg-2); }
+.convItemActive { background: color-mix(in srgb, var(--virta-accent) 8%, var(--virta-bg-0)); }
+.convItemTitle {
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  font-weight: 500;
+  color: var(--virta-text-0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.convItemMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  color: var(--virta-text-2);
+}
+.convDeleteBtn {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: var(--virta-radius-sm);
+  background: none;
+  color: var(--virta-text-2);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--virta-motion-fast) ease, color var(--virta-motion-fast) ease;
+}
+.convItem:hover .convDeleteBtn { opacity: 1; }
+.convDeleteBtn:hover { color: var(--virta-danger); }
 
 /* Model picker button */
 .modelBtn {

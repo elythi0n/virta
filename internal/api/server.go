@@ -448,8 +448,12 @@ func (s *Server) routes() []route {
 		{"DELETE", "/v1/themes/{id}", ScopeControl, s.handleDeleteTheme, "Delete a custom theme"},
 		{"GET", "/v1/intel/models", ScopeRead, s.handleListModels, "List available AI models"},
 		{"POST", "/v1/intel/ask", ScopeRead, s.handleAsk, "Ask a question over logged chat (agent loop, NDJSON stream)"},
+		{"POST", "/v1/intel/title", ScopeRead, s.handleGenerateTitle, "Stream a short AI-generated title for a conversation"},
 		{"GET", "/v1/intel/config", ScopeRead, s.handleGetIntelConfig, "Get LLM configuration"},
 		{"PUT", "/v1/intel/config", ScopeControl, s.handleSetIntelConfig, "Update LLM configuration"},
+		{"GET", "/v1/intel/conversations", ScopeRead, s.handleListConversations, "List saved Ask AI conversations"},
+		{"POST", "/v1/intel/conversations", ScopeControl, s.handleSaveConversation, "Create or update a conversation"},
+		{"DELETE", "/v1/intel/conversations/{id}", ScopeControl, s.handleDeleteConversation, "Delete a conversation"},
 		{"GET", "/dev", ScopeRead, s.handleDev, "Developer event probe page"},
 	}
 }

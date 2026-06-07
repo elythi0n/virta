@@ -32,6 +32,8 @@ export { listTokens, mintToken, revokeToken } from './tokens';
 export { listThemes, importTheme, exportTheme, deleteTheme } from './themes';
 export { listModels, getIntelConfig, setIntelConfig, askStream } from './intel';
 export { getHostedStatus, register, login, logout, getMe } from './account';
+export { listConversations, saveConversation, deleteConversation, generateTitleStream } from './conversations';
+export type { ConversationSummary, SaveConversationPayload } from './conversations';
 export type { VirtaUser, HostedStatus } from './account';
 export { HostedAuthProvider, useHostedAuth, useIsGuest } from './hostedAuth';
 export type { HostedAuthState } from './hostedAuth';

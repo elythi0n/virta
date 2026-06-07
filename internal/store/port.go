@@ -45,6 +45,7 @@ type Store interface {
 	Channels() ChannelRepo
 	Messages() MessageRepo
 	Emotes() EmoteRepo
+	Conversations() ConversationRepo
 
 	// Migrate brings the schema to the current version. Safe to call on every startup.
 	Migrate(ctx context.Context) error
@@ -225,4 +226,23 @@ type EmoteRepo interface {
 	GetSet(ctx context.Context, key string) (EmoteSet, error)
 	PutFile(ctx context.Context, f EmoteFile) error
 	GetFile(ctx context.Context, urlHash string) (EmoteFile, error)
+}
+
+// Conversation is one saved Ask AI session.
+type Conversation struct {
+	ID        string          `json:"id"`
+	Title     string          `json:"title"`
+	Messages  json.RawMessage `json:"messages"` // []TurnItem JSON from the frontend
+	Model     string          `json:"model"`
+	CreatedAt time.Time       `json:"created_at"`
+	UpdatedAt time.Time       `json:"updated_at"`
+}
+
+// ConversationRepo persists Ask AI conversation history.
+type ConversationRepo interface {
+	Create(ctx context.Context, id, title, model string, messages json.RawMessage) (Conversation, error)
+	Get(ctx context.Context, id string) (Conversation, error)
+	List(ctx context.Context) ([]Conversation, error)
+	Update(ctx context.Context, id, title, model string, messages json.RawMessage) error
+	Delete(ctx context.Context, id string) error
 }

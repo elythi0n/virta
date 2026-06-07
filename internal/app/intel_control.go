@@ -3,8 +3,10 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/elythi0n/virta/internal/api"
 	"github.com/elythi0n/virta/internal/intel"
@@ -20,17 +22,18 @@ import (
 //
 // Ask streaming, model listing, and config CRUD all go through this single struct.
 type intelControl struct {
-	tb       *intel.ToolBelt
-	registry *llm.Registry
-	meter    *llm.Meter
-	settings store.SettingsRepo
-	mu       sync.RWMutex
-	cfg      api.IntelConfig
+	tb            *intel.ToolBelt
+	registry      *llm.Registry
+	meter         *llm.Meter
+	settings      store.SettingsRepo
+	conversations store.ConversationRepo
+	mu            sync.RWMutex
+	cfg           api.IntelConfig
 }
 
 // newIntelControl constructs the intelligence controller and reloads any previously-persisted
 // configuration (so provider keys and model selection survive daemon restarts).
-func newIntelControl(tb *intel.ToolBelt, settings store.SettingsRepo) *intelControl {
+func newIntelControl(tb *intel.ToolBelt, settings store.SettingsRepo, conversations store.ConversationRepo) *intelControl {
 	reg := llm.NewRegistry()
 	cfg := api.IntelConfig{
 		Enabled:        false,
@@ -41,7 +44,7 @@ func newIntelControl(tb *intel.ToolBelt, settings store.SettingsRepo) *intelCont
 		_ = json.Unmarshal(raw.Data, &cfg)
 	}
 	meter := llm.NewMeter(reg, apiCfgToMeterCfg(cfg))
-	c := &intelControl{tb: tb, registry: reg, meter: meter, settings: settings, cfg: cfg}
+	c := &intelControl{tb: tb, registry: reg, meter: meter, settings: settings, conversations: conversations, cfg: cfg}
 	// Re-register any previously-saved providers.
 	c.applyProviders(cfg)
 	return c
@@ -210,4 +213,98 @@ func apiCfgToMeterCfg(cfg api.IntelConfig) llm.MeterConfig {
 		mc.Limits = append(mc.Limits, llm.BudgetLimit{Period: llm.PeriodMonthly, USD: cfg.MonthlyLimitUSD})
 	}
 	return mc
+}
+
+// GenerateTitle streams a short AI-generated title for the first user message of a conversation.
+// It uses a simple completion (no tools) with a title-focused system prompt.
+func (c *intelControl) GenerateTitle(ctx context.Context, model, firstMessage string) (<-chan api.AskEvent, error) {
+	c.mu.RLock()
+	cfg := c.cfg
+	c.mu.RUnlock()
+	if !cfg.Enabled {
+		return nil, fmt.Errorf("AI features are disabled")
+	}
+	if model == "" {
+		model = c.registry.SelectedModel()
+	}
+
+	ch := make(chan api.AskEvent, 32)
+	go func() {
+		defer close(ch)
+		req := llm.CompletionRequest{
+			Model:     model,
+			MaxTokens: 20,
+			Messages: []llm.Message{
+				{Role: llm.RoleSystem, Content: "You are a conversation title generator. Given a user's first message, write a short title of 3-6 words. Output ONLY the title — no punctuation at the end, no quotes, no explanation."},
+				{Role: llm.RoleUser, Content: firstMessage},
+			},
+		}
+		stream, err := c.registry.Complete(ctx, req)
+		if err != nil {
+			ch <- api.AskEvent{Kind: "error", ErrorMsg: err.Error()}
+			return
+		}
+		defer stream.Close()
+		for {
+			ev, err := stream.Next()
+			if err != nil {
+				ch <- api.AskEvent{Kind: "done"}
+				return
+			}
+			switch ev.Kind {
+			case llm.EventText:
+				ch <- api.AskEvent{Kind: "text", Text: ev.Text}
+			case llm.EventDone:
+				ch <- api.AskEvent{Kind: "done"}
+				return
+			}
+		}
+	}()
+	return ch, nil
+}
+
+func (c *intelControl) ListConversations(ctx context.Context) ([]api.ConversationSummary, error) {
+	if c.conversations == nil {
+		return []api.ConversationSummary{}, nil
+	}
+	list, err := c.conversations.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]api.ConversationSummary, 0, len(list))
+	for _, conv := range list {
+		out = append(out, api.ConversationSummary{
+			ID:        conv.ID,
+			Title:     conv.Title,
+			Model:     conv.Model,
+			UpdatedAt: conv.UpdatedAt.Format(time.RFC3339),
+		})
+	}
+	return out, nil
+}
+
+func (c *intelControl) SaveConversation(ctx context.Context, id, title, model string, messages []byte) error {
+	if c.conversations == nil {
+		return nil
+	}
+	if title == "" {
+		title = "New conversation"
+	}
+	msgs := json.RawMessage(messages)
+	if len(msgs) == 0 {
+		msgs = json.RawMessage("[]")
+	}
+	// Upsert: try update first, create on not-found.
+	err := c.conversations.Update(ctx, id, title, model, msgs)
+	if err != nil && err.Error() == "store: not found" {
+		_, err = c.conversations.Create(ctx, id, title, model, msgs)
+	}
+	return err
+}
+
+func (c *intelControl) DeleteConversation(ctx context.Context, id string) error {
+	if c.conversations == nil {
+		return nil
+	}
+	return c.conversations.Delete(ctx, id)
 }
