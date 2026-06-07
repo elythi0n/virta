@@ -984,40 +984,28 @@ func ringToLogged(rows []scrollback.Msg) []api.LoggedMessage {
 	return out
 }
 
-// channelID resolves a "platform:slug" key to the channel's stored id; ok is false when no such
-// channel has been seen (so callers return an empty page rather than an error).
-func (c historyControl) channelID(ctx context.Context, key string) (string, bool, error) {
+// channelID resolves a "platform:slug" key to the value used as channel_id in the messages table.
+// The logbook sink stores messages with channel_id = "platform:slug" (not the channels-table ULID),
+// so we return the key itself rather than looking up the row ID.
+func (c historyControl) channelID(_ context.Context, key string) (string, bool, error) {
 	ref, err := parseTarget(key)
 	if err != nil {
 		return "", false, err
 	}
-	ch, err := c.store.Channels().GetBySlug(ctx, ref.Platform, ref.Slug)
-	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			return "", false, nil
-		}
-		return "", false, err
-	}
-	return ch.ID, true, nil
+	return string(ref.Platform) + ":" + ref.Slug, true, nil
 }
 
 // toLogged maps stored rows to the wire form, translating each row's channel id back to its
-// "platform:slug" key via a one-shot lookup of the known channels.
-func (c historyControl) toLogged(ctx context.Context, msgs []store.StoredMessage) ([]api.LoggedMessage, error) {
+// "platform:slug" key — m.ChannelID already holds that value (set by logbook.channelID).
+func (c historyControl) toLogged(_ context.Context, msgs []store.StoredMessage) ([]api.LoggedMessage, error) {
 	if len(msgs) == 0 {
 		return []api.LoggedMessage{}, nil
-	}
-	keyByID := map[string]string{}
-	if chans, err := c.store.Channels().List(ctx); err == nil {
-		for _, ch := range chans {
-			keyByID[ch.ID] = platform.ChannelRef{Platform: ch.Platform, Slug: ch.Slug}.Key()
-		}
 	}
 	out := make([]api.LoggedMessage, 0, len(msgs))
 	for _, m := range msgs {
 		out = append(out, api.LoggedMessage{
 			ID:       m.ID,
-			Channel:  keyByID[m.ChannelID],
+			Channel:  m.ChannelID, // already "platform:slug" — no reverse lookup needed
 			Platform: string(m.Platform),
 			Author:   m.AuthorName,
 			Body:     m.Body,

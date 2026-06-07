@@ -17,7 +17,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elythi0n/virta/internal/platform"
 	"github.com/elythi0n/virta/internal/store"
 )
 
@@ -413,42 +412,34 @@ func Descriptions() []ToolSchema {
 
 // --- helpers ---
 
-func (tb *ToolBelt) resolveChannel(ctx context.Context, key string) (string, error) {
+func (tb *ToolBelt) resolveChannel(_ context.Context, key string) (string, error) {
+	// Messages are stored in the DB with channel_id = "platform:slug" (set by the logbook sink).
+	// Return the key itself — do NOT look up the channels-table ULID, which would never match.
 	parts := strings.SplitN(key, ":", 2)
 	if len(parts) != 2 {
 		return "", fmt.Errorf("invalid channel key %q (expected platform:slug)", key)
 	}
-	var plat platform.Platform
 	switch strings.ToLower(parts[0]) {
-	case "twitch":
-		plat = platform.Twitch
-	case "kick":
-		plat = platform.Kick
-	case "x":
-		plat = platform.X
+	case "twitch", "kick", "x":
+		// valid
 	default:
 		return "", fmt.Errorf("unknown platform %q", parts[0])
 	}
-	ch, err := tb.store.Channels().GetBySlug(ctx, plat, parts[1])
-	if err != nil {
-		return "", err
+	// Validate slug is non-empty.
+	if strings.TrimSpace(parts[1]) == "" {
+		return "", fmt.Errorf("channel key %q has an empty slug", key)
 	}
-	return ch.ID, nil
+	return key, nil // "kick:eslcs" — matches messages.channel_id in the DB
 }
 
-func (tb *ToolBelt) toRows(ctx context.Context, msgs []store.StoredMessage) []MessageRow {
-	// Build a reverse map of channelID → key for display.
-	keyByID := map[string]string{}
-	if chans, err := tb.store.Channels().List(ctx); err == nil {
-		for _, c := range chans {
-			keyByID[c.ID] = string(c.Platform) + ":" + c.Slug
-		}
-	}
+func (tb *ToolBelt) toRows(_ context.Context, msgs []store.StoredMessage) []MessageRow {
+	// m.ChannelID is already "platform:slug" (set by the logbook sink when writing to DB).
+	// No reverse lookup needed.
 	rows := make([]MessageRow, 0, len(msgs))
 	for _, m := range msgs {
 		rows = append(rows, MessageRow{
 			ID:      m.ID,
-			Channel: keyByID[m.ChannelID],
+			Channel: m.ChannelID,
 			Author:  m.AuthorName,
 			Body:    m.Body,
 			Type:    string(m.Type),
