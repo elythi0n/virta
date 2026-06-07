@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Popover, Text } from '@virta/ui-kit';
-import Icon from '../Icon';
+import Icon, { type IconName } from '../Icon';
 import { askStream, getIntelConfig, listModels } from '../daemon';
 import { listConversations, saveConversation, deleteConversation, generateTitleStream } from '../daemon/conversations';
 import type { ConversationSummary } from '../daemon/conversations';
 import type { AskEvent, IntelConfig, ModelGroup } from '../daemon/wire.gen';
+import ProviderIcon from '../ProviderIcon';
+import Markdown from './Markdown';
 import styles from './AskPanel.module.css';
 
+// ── Types ──────────────────────────────────────────────────────────────────
 type TurnRole = 'user' | 'assistant';
 type TurnItem =
   | { kind: 'text'; role: TurnRole; text: string }
@@ -14,13 +17,18 @@ type TurnItem =
   | { kind: 'tool_result'; name: string; json: string }
   | { kind: 'error'; text: string };
 
+// Paired tool turn: a tool_use + its matching tool_result combined for rendering.
+type ToolPair = { kind: 'tool'; name: string; args: string; result: string | null };
+type RenderItem = Exclude<TurnItem, { kind: 'tool_use' } | { kind: 'tool_result' }> | ToolPair;
+
+// ── Helpers ────────────────────────────────────────────────────────────────
 function autoResize(el: HTMLTextAreaElement) {
   el.style.height = 'auto';
   el.style.height = Math.min(el.scrollHeight, 180) + 'px';
 }
 
 function flatModels(groups: ModelGroup[]) {
-  return groups.flatMap(g => g.models.map(m => ({ ...m, providerName: g.display_name, providerId: g.provider_id })));
+  return groups.flatMap(g => g.models.map(m => ({ ...m, providerId: g.provider_id, providerName: g.display_name })));
 }
 
 function newConvId() {
@@ -36,9 +44,142 @@ function relativeDate(iso: string): string {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-// ProviderIcon import kept minimal — only used for the model dot
-import ProviderIcon from '../ProviderIcon';
+/** Pair consecutive tool_use + tool_result items into a single ToolPair for rendering. */
+function pairTools(turns: TurnItem[]): RenderItem[] {
+  const out: RenderItem[] = [];
+  let i = 0;
+  while (i < turns.length) {
+    const t = turns[i];
+    if (t.kind === 'tool_use') {
+      const next = turns[i + 1];
+      if (next?.kind === 'tool_result' && next.name === t.name) {
+        out.push({ kind: 'tool', name: t.name, args: t.args, result: next.json });
+        i += 2;
+        continue;
+      }
+      // In-flight: no result yet
+      out.push({ kind: 'tool', name: t.name, args: t.args, result: null });
+      i++;
+      continue;
+    }
+    if (t.kind === 'tool_result') {
+      // Orphaned result — skip (was already consumed above)
+      i++;
+      continue;
+    }
+    out.push(t as RenderItem);
+    i++;
+  }
+  return out;
+}
 
+// ── Tool card metadata ─────────────────────────────────────────────────────
+const TOOL_ICON: Record<string, IconName> = {
+  search_messages: 'search',
+  get_user_history: 'clock',
+  top_chatters: 'mentions',
+  channel_stats: 'stats',
+  get_messages_range: 'list',
+  list_channels: 'stream',
+};
+
+const TOOL_LABEL: Record<string, string> = {
+  search_messages: 'Search messages',
+  get_user_history: 'User history',
+  top_chatters: 'Top chatters',
+  channel_stats: 'Channel stats',
+  get_messages_range: 'Message range',
+  list_channels: 'List channels',
+};
+
+function toolIcon(name: string): IconName  { return TOOL_ICON[name] ?? 'search'; }
+function toolLabel(name: string): string   { return TOOL_LABEL[name] ?? name.replace(/_/g, ' '); }
+
+function tryPretty(s: string): string {
+  try { return JSON.stringify(JSON.parse(s), null, 2); } catch { return s; }
+}
+
+function isToolError(json: string): boolean {
+  try { const p = JSON.parse(json); return typeof p === 'object' && p !== null && 'error' in p; } catch { return false; }
+}
+
+function toolArgSummary(argsJson: string): string {
+  try {
+    const obj = JSON.parse(argsJson);
+    const entries = Object.entries(obj).filter(([, v]) => v !== undefined && v !== '');
+    if (entries.length === 0) return '';
+    const [k, v] = entries[0];
+    const val = String(v);
+    return `${k}: ${val.length > 40 ? val.slice(0, 40) + '…' : val}`;
+  } catch { return ''; }
+}
+
+// ── Components ────────────────────────────────────────────────────────────
+function ToolCard({ name, args, result }: { name: string; args: string; result: string | null }) {
+  const [open, setOpen] = useState(false);
+  const pending = result === null;
+  const hasError = !pending && isToolError(result);
+  const summary = toolArgSummary(args);
+
+  let argEntries: [string, unknown][] = [];
+  try { argEntries = Object.entries(JSON.parse(args)); } catch { /* ignore */ }
+
+  return (
+    <div className={`${styles.toolCard} ${hasError ? styles.toolCardError : ''}`}>
+      <button
+        type="button"
+        className={styles.toolHeader}
+        onClick={() => !pending && setOpen(o => !o)}
+        disabled={pending}
+        aria-expanded={open}
+      >
+        <span className={styles.toolIconWrap}>
+          <Icon name={toolIcon(name)} size={13} />
+        </span>
+        <span className={styles.toolName}>{toolLabel(name)}</span>
+        {summary && !open && <span className={styles.toolSummaryChip}>{summary}</span>}
+        <span className={`${styles.toolStatus} ${pending ? styles.toolStatusPending : hasError ? styles.toolStatusError : styles.toolStatusDone}`}>
+          {pending ? (
+            <><span className={styles.spinner} aria-hidden />Running</>
+          ) : hasError ? (
+            <>✕ Error</>
+          ) : (
+            <>✓ Done</>
+          )}
+        </span>
+        {!pending && (
+          <Icon name="chevron-down" size={12} className={open ? styles.chevronOpen : styles.chevron} />
+        )}
+      </button>
+
+      {open && result !== null && (
+        <div className={styles.toolBody}>
+          {argEntries.length > 0 && (
+            <div className={styles.toolSection}>
+              <div className={styles.toolSectionLabel}>Input</div>
+              <dl className={styles.toolArgList}>
+                {argEntries.map(([k, v]) => (
+                  <div key={k} className={styles.toolArgRow}>
+                    <dt className={styles.toolArgKey}>{k}</dt>
+                    <dd className={styles.toolArgVal}>{String(v ?? '—')}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
+          <div className={styles.toolSection}>
+            <div className={styles.toolSectionLabel}>{hasError ? 'Error' : 'Output'}</div>
+            <pre className={`${styles.toolResult} ${hasError ? styles.toolResultError : ''}`}>
+              {tryPretty(result)}
+            </pre>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main panel ────────────────────────────────────────────────────────────
 export default function AskPanel() {
   const [config, setConfig] = useState<IntelConfig | null>(null);
   const [groups, setGroups] = useState<ModelGroup[]>([]);
@@ -50,7 +191,6 @@ export default function AskPanel() {
   const [running, setRunning] = useState(false);
   const [tokens, setTokens] = useState({ in: 0, out: 0 });
 
-  // Conversation state
   const [convId, setConvId] = useState(() => newConvId());
   const [convTitle, setConvTitle] = useState('New conversation');
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
@@ -63,10 +203,7 @@ export default function AskPanel() {
 
   useEffect(() => {
     getIntelConfig()
-      .then(cfg => {
-        setConfig(cfg);
-        if (cfg.selected_model) setModel(cfg.selected_model);
-      })
+      .then(cfg => { setConfig(cfg); if (cfg.selected_model) setModel(cfg.selected_model); })
       .catch(() => {});
 
     listModels().then(g => {
@@ -87,33 +224,19 @@ export default function AskPanel() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
-  // Auto-save after every completed turn pair.
   const saveTurns = useCallback((nextTurns: TurnItem[], currentModel: string, title: string) => {
-    void saveConversation({
-      id: convId,
-      title,
-      model: currentModel,
-      messages: nextTurns,
-    }).catch(() => {});
+    void saveConversation({ id: convId, title, model: currentModel, messages: nextTurns }).catch(() => {});
   }, [convId]);
 
-  // Generate a streaming title after the first exchange.
   const generateTitle = useCallback((firstUserMessage: string, currentModel: string) => {
     if (titleStreamingRef.current) return;
     titleStreamingRef.current = true;
     let built = '';
-    generateTitleStream(
-      firstUserMessage,
-      currentModel,
-      chunk => {
-        built += chunk;
-        setConvTitle(built);
-      },
+    generateTitleStream(firstUserMessage, currentModel,
+      chunk => { built += chunk; setConvTitle(built); },
       () => {
         titleStreamingRef.current = false;
-        const final = built.trim() || 'New conversation';
-        setConvTitle(final);
-        // Refresh the conversation list so the new title appears.
+        setConvTitle(built.trim() || 'New conversation');
         listConversations().then(setConversations).catch(() => {});
       },
     );
@@ -128,8 +251,7 @@ export default function AskPanel() {
     setRunning(true);
 
     const isFirst = turns.length === 0;
-    const userTurn: TurnItem = { kind: 'text', role: 'user', text: q };
-    setTurns(prev => [...prev, userTurn]);
+    setTurns(prev => [...prev, { kind: 'text', role: 'user', text: q }]);
 
     let assistantBuf = '';
     let finalTurns: TurnItem[] = [];
@@ -167,31 +289,24 @@ export default function AskPanel() {
 
   const handleStop = useCallback(() => { abortRef.current?.(); setRunning(false); }, []);
 
-  const loadConversation = useCallback(async (id: string, title: string, convModel: string) => {
+  const startNew = useCallback(() => {
     setConvOpen(false);
-    // We store only summaries (no messages in list). Fetch messages from the server.
-    // For now, start a fresh UI state and set the id/title — messages will re-populate as the user chats.
-    // A real implementation would store and fetch full message history.
-    setConvId(id);
-    setConvTitle(title);
-    setTurns([]);
-    setTokens({ in: 0, out: 0 });
+    setConvId(newConvId()); setConvTitle('New conversation');
+    setTurns([]); setTokens({ in: 0, out: 0 });
+    titleStreamingRef.current = false;
+  }, []);
+
+  const loadConversation = useCallback((_id: string, title: string, convModel: string) => {
+    setConvOpen(false);
+    setConvId(_id); setConvTitle(title);
+    setTurns([]); setTokens({ in: 0, out: 0 });
     if (convModel) setModel(convModel);
     titleStreamingRef.current = false;
   }, []);
 
-  const startNew = useCallback(() => {
-    setConvOpen(false);
-    setConvId(newConvId());
-    setConvTitle('New conversation');
-    setTurns([]);
-    setTokens({ in: 0, out: 0 });
-    titleStreamingRef.current = false;
-  }, []);
-
-  const handleDeleteConv = useCallback(async (e: React.MouseEvent, id: string) => {
+  const handleDeleteConv = useCallback((e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    await deleteConversation(id).catch(() => {});
+    void deleteConversation(id).catch(() => {});
     setConversations(prev => prev.filter(c => c.id !== id));
     if (id === convId) startNew();
   }, [convId, startNew]);
@@ -199,6 +314,7 @@ export default function AskPanel() {
   const selectedModel = flatModels(groups).find(m => m.id === model);
   const canSend = question.trim().length > 0 && model !== '' && !running;
   const modelBtnLabel = !modelsReady ? 'Loading…' : groups.length === 0 ? 'No models' : (selectedModel?.display_name ?? 'Select model');
+  const renderItems = pairTools(turns);
 
   if (config && !config.enabled) {
     return (
@@ -218,7 +334,7 @@ export default function AskPanel() {
     <div className={styles.pane}>
       {/* ── Feed ── */}
       <div className={styles.feed}>
-        {turns.length === 0 && (
+        {renderItems.length === 0 && (
           <div className={styles.empty}>
             <div className={styles.emptyIcon}><Icon name="chat" size={32} /></div>
             <Text variant="title" as="p" className={styles.emptyTitle}>Ask about your chat</Text>
@@ -230,34 +346,54 @@ export default function AskPanel() {
           </div>
         )}
 
-        {turns.map((t, i) => {
-          switch (t.kind) {
-            case 'text':
-              return t.role === 'user' ? (
-                <div key={i} className={styles.userTurn}><div className={styles.userBubble}>{t.text}</div></div>
-              ) : (
-                <div key={i} className={styles.assistantTurn}><div className={styles.assistantBubble}>{t.text}</div></div>
-              );
-            case 'tool_use':
-              return (
-                <details key={i} className={styles.toolBlock}>
-                  <summary className={styles.toolSummary}><span className={styles.toolDot} aria-hidden /><Icon name="search" size={12} />Called <code>{t.name}</code></summary>
-                  <pre className={styles.toolCode}>{t.args}</pre>
-                </details>
-              );
-            case 'tool_result':
-              return (
-                <details key={i} className={styles.toolBlock}>
-                  <summary className={styles.toolSummary}><span className={styles.toolDot} aria-hidden /><Icon name="check" size={12} />Result from <code>{t.name}</code></summary>
-                  <pre className={styles.toolCode}>{tryPretty(t.json)}</pre>
-                </details>
-              );
-            case 'error':
-              return <div key={i} className={styles.errorTurn}><Icon name="ban" size={13} /><span>{t.text}</span></div>;
+        {renderItems.map((t, i) => {
+          if (t.kind === 'text' && t.role === 'user') {
+            return (
+              <div key={i} className={styles.userTurn}>
+                <div className={styles.userBubble}>{t.text}</div>
+              </div>
+            );
           }
+          if (t.kind === 'text' && t.role === 'assistant') {
+            return (
+              <div key={i} className={styles.assistantTurn}>
+                <div className={styles.assistantAvatar} aria-hidden>
+                  <Icon name="chat" size={12} />
+                </div>
+                <div className={styles.assistantBody}>
+                  <Markdown>{t.text}</Markdown>
+                </div>
+              </div>
+            );
+          }
+          if (t.kind === 'tool') {
+            return (
+              <div key={i} className={styles.toolTurn}>
+                <ToolCard name={t.name} args={t.args} result={t.result} />
+              </div>
+            );
+          }
+          if (t.kind === 'error') {
+            return (
+              <div key={i} className={styles.errorTurn}>
+                <Icon name="ban" size={13} />
+                <span>{t.text}</span>
+              </div>
+            );
+          }
+          return null;
         })}
 
-        {running && <div className={styles.thinking}><span /><span /><span /></div>}
+        {running && (
+          <div className={styles.assistantTurn}>
+            <div className={styles.assistantAvatar} aria-hidden>
+              <Icon name="chat" size={12} />
+            </div>
+            <div className={styles.thinking}>
+              <span /><span /><span />
+            </div>
+          </div>
+        )}
         <div ref={bottomRef} />
       </div>
 
@@ -282,46 +418,32 @@ export default function AskPanel() {
           <div className={styles.inputFooter}>
             <div className={styles.footerLeft}>
               {/* Conversation picker */}
-              <Popover
-                open={convOpen}
-                onOpenChange={setConvOpen}
-                side="top"
-                align="start"
-                trigger={
-                  <button type="button" className={styles.convBtn} aria-label="Conversation">
-                    <Icon name="chat" size={12} className={styles.convIcon} />
-                    <span className={styles.convTitle}>{convTitle}</span>
-                    <Icon name="chevron-down" size={11} className={styles.modelChevron} />
-                  </button>
-                }
-              >
+              <Popover open={convOpen} onOpenChange={setConvOpen} side="top" align="start" trigger={
+                <button type="button" className={styles.convBtn}>
+                  <Icon name="chat" size={12} className={styles.convIcon} />
+                  <span className={styles.convTitle}>{convTitle}</span>
+                  <Icon name="chevron-down" size={11} className={styles.modelChevron} />
+                </button>
+              }>
                 <div className={styles.convMenu}>
                   <button type="button" className={styles.convNewBtn} onClick={startNew}>
-                    <Icon name="plus" size={14} />
-                    New conversation
+                    <Icon name="plus" size={14} />New conversation
                   </button>
                   {conversations.length > 0 && (
                     <>
                       <div className={styles.convDivider} />
                       <div className={styles.convList}>
                         {conversations.map(c => (
-                          <div
-                            key={c.id}
-                            className={`${styles.convItem} ${c.id === convId ? styles.convItemActive : ''}`}
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => void loadConversation(c.id, c.title, c.model)}
-                            onKeyDown={e => e.key === 'Enter' && void loadConversation(c.id, c.title, c.model)}
-                          >
+                          <div key={c.id} className={`${styles.convItem} ${c.id === convId ? styles.convItemActive : ''}`}
+                            role="button" tabIndex={0}
+                            onClick={() => loadConversation(c.id, c.title, c.model)}
+                            onKeyDown={e => e.key === 'Enter' && loadConversation(c.id, c.title, c.model)}>
                             <div className={styles.convItemTitle}>{c.title}</div>
                             <div className={styles.convItemMeta}>
                               <span>{relativeDate(c.updated_at)}</span>
-                              <button
-                                type="button"
-                                className={styles.convDeleteBtn}
+                              <button type="button" className={styles.convDeleteBtn}
                                 aria-label={`Delete ${c.title}`}
-                                onClick={e => void handleDeleteConv(e, c.id)}
-                              >
+                                onClick={e => handleDeleteConv(e, c.id)}>
                                 <Icon name="trash" size={12} />
                               </button>
                             </div>
@@ -334,21 +456,15 @@ export default function AskPanel() {
               </Popover>
 
               {/* Model picker */}
-              <Popover
-                open={modelOpen}
-                onOpenChange={setModelOpen}
-                side="top"
-                align="start"
-                trigger={
-                  <button type="button" className={styles.modelBtn} aria-label="Select model">
-                    <span className={styles.modelProviderIcon} data-provider={selectedModel?.providerId} aria-hidden>
-                      <ProviderIcon provider={selectedModel?.providerId ?? ''} size={14} />
-                    </span>
-                    <span className={styles.modelName}>{modelBtnLabel}</span>
-                    <Icon name="chevron-down" size={11} className={styles.modelChevron} />
-                  </button>
-                }
-              >
+              <Popover open={modelOpen} onOpenChange={setModelOpen} side="top" align="start" trigger={
+                <button type="button" className={styles.modelBtn}>
+                  <span className={styles.modelProviderIcon} data-provider={selectedModel?.providerId} aria-hidden>
+                    <ProviderIcon provider={selectedModel?.providerId ?? ''} size={14} />
+                  </span>
+                  <span className={styles.modelName}>{modelBtnLabel}</span>
+                  <Icon name="chevron-down" size={11} className={styles.modelChevron} />
+                </button>
+              }>
                 <div className={styles.modelMenu}>
                   {groups.map(g => (
                     <div key={g.provider_id}>
@@ -359,12 +475,9 @@ export default function AskPanel() {
                         {g.display_name}
                       </div>
                       {g.models.map(m => (
-                        <button
-                          key={m.id}
-                          type="button"
+                        <button key={m.id} type="button"
                           className={`${styles.modelItem} ${m.id === model ? styles.modelItemOn : ''}`}
-                          onClick={() => { setModel(m.id); setModelOpen(false); }}
-                        >
+                          onClick={() => { setModel(m.id); setModelOpen(false); }}>
                           <span className={styles.modelItemName}>{m.display_name}</span>
                           {!m.supports_tools && <span className={styles.noTools} title="May not support tool use">⚠</span>}
                           {m.price_in_per_mtok != null && m.price_in_per_mtok > 0 && (
@@ -381,7 +494,6 @@ export default function AskPanel() {
               </Popover>
             </div>
 
-            {/* Send / stop */}
             {running ? (
               <button type="button" className={styles.stopBtn} onClick={handleStop} aria-label="Stop">
                 <span className={styles.stopSquare} aria-hidden />
@@ -399,6 +511,3 @@ export default function AskPanel() {
 }
 
 function fmt(n: number) { return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n); }
-function tryPretty(s: string) {
-  try { return JSON.stringify(JSON.parse(s), null, 2); } catch { return s; }
-}
