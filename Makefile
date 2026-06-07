@@ -129,7 +129,8 @@ app:
 		$(WAILS) build -s $$tags; \
 	}
 
-## app-debug: same as app but with the WebKit inspector enabled (right-click → Inspect).
+## app-debug: debug build with WebKit inspector (right-click → Inspect Element).
+## Output goes to frontends/desktop/build/bin/virta-debug to avoid overwriting the release binary.
 app-debug:
 	@test -x "$(WAILS)" || { echo "wails CLI not found: run 'go install github.com/wailsapp/wails/v2/cmd/wails@latest' and install your OS's WebKit dev libraries"; exit 1; }
 	cd frontends/web && npm install && npm run build
@@ -143,11 +144,10 @@ app-debug:
 	@cd frontends/desktop && go mod tidy && { \
 		tags="-tags devtools"; \
 		if pkg-config --modversion webkit2gtk-4.1 >/dev/null 2>&1 && ! pkg-config --modversion webkit2gtk-4.0 >/dev/null 2>&1; then tags="-tags webkit2_41,devtools"; fi; \
-		echo "+ $(WAILS) build -s $$tags"; \
-		$(WAILS) build -s $$tags; \
+		echo "+ $(WAILS) build -s $$tags -o virta-debug"; \
+		$(WAILS) build -s $$tags -o virta-debug; \
 	}
-	@echo "✓ debug bundle (right-click → Inspect Element): frontends/desktop/build/bin"
-	@echo "✓ desktop bundle: frontends/desktop/build/bin"
+	@echo "✓ debug bundle: frontends/desktop/build/bin/virta-debug  (right-click → Inspect Element)"
 
 ## app-appimage: Linux AppImage. Requires appimagetool + the app target's prerequisites.
 app-appimage: app

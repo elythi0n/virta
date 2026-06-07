@@ -11,10 +11,30 @@
   border: 0;
 }
 .placeholder {
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--virta-space-12);
   height: 100%;
-  padding: var(--virta-space-16);
+  padding: var(--virta-space-24);
   text-align: center;
   background: var(--virta-bg-0);
 }
+.desktopNote { margin: 0; max-width: 280px; }
+.openBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  padding: var(--virta-space-8) var(--virta-space-16);
+  border: 1px solid var(--virta-accent);
+  border-radius: var(--virta-radius-md);
+  background: color-mix(in srgb, var(--virta-accent) 10%, transparent);
+  color: var(--virta-accent);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--virta-motion-fast) ease;
+}
+.openBtn:hover { background: color-mix(in srgb, var(--virta-accent) 20%, transparent); }
