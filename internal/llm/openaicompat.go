@@ -144,7 +144,7 @@ func (p *OpenAICompatProvider) Complete(ctx context.Context, req CompletionReque
 	if len(req.Tools) > 0 {
 		tools := make([]fn, 0, len(req.Tools))
 		for _, t := range req.Tools {
-			tools = append(tools, fn{Type: "function", Function: fnParam{Name: t.Name, Description: t.Description, Parameters: t.InputSchema}})
+			tools = append(tools, fn{Type: "function", Function: fnParam{Name: t.Name, Description: t.Description, Parameters: sanitizeSchema(t.InputSchema)}})
 		}
 		body["tools"] = tools
 	}
@@ -237,6 +237,27 @@ func (p *OpenAICompatProvider) listModelsRaw(ctx context.Context) ([]byte, error
 		return nil, fmt.Errorf("%s: %d: %s", p.id, resp.StatusCode, string(body))
 	}
 	return io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+}
+
+// sanitizeSchema ensures "required" in a JSON Schema map is never null — some strict providers
+// (xAI, Grok) reject null as an invalid type for a required JSON Schema keyword.
+func sanitizeSchema(s map[string]any) map[string]any {
+	if s == nil {
+		return s
+	}
+	out := make(map[string]any, len(s))
+	for k, v := range s {
+		if k == "required" && v == nil {
+			out[k] = []string{} // null → empty array
+			continue
+		}
+		if sub, ok := v.(map[string]any); ok {
+			out[k] = sanitizeSchema(sub)
+			continue
+		}
+		out[k] = v
+	}
+	return out
 }
 
 // ollamaDisplayName converts a raw model ID into a human-readable display name.

@@ -11,6 +11,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 	"time"
@@ -410,18 +411,26 @@ func clamped(n, max int) int {
 	return n
 }
 
-// schemaOf generates a minimal JSON Schema from struct field names and jsonschema tags.
+// schemaOf generates a JSON Schema for a struct value, reading json and jsonschema struct tags.
+// The required array is always a non-nil slice so it marshals as [] not null — strict validators
+// (xAI, Grok) reject null for the required field.
 func schemaOf(v any) map[string]any {
-	// Simplified: in production you'd use a real jsonschema library. This produces a correct
-	// enough schema for Anthropic's tool runner and MCP clients to validate.
 	props := map[string]any{}
-	var required []string
-	// We encode → decode to get the field names via json tags.
-	b, _ := json.Marshal(v)
-	var raw map[string]json.RawMessage
-	_ = json.Unmarshal(b, &raw)
-	for k := range raw {
-		props[k] = map[string]any{"type": "string"}
+	required := []string{} // non-nil: marshals as [] not null
+	t := reflect.TypeOf(v)
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		// Derive the JSON field name from the json tag (or field name).
+		jsonTag := field.Tag.Get("json")
+		name := strings.SplitN(jsonTag, ",", 2)[0]
+		if name == "" || name == "-" {
+			name = field.Name
+		}
+		// Mark as required if the jsonschema tag says so.
+		if strings.Contains(field.Tag.Get("jsonschema"), "required") {
+			required = append(required, name)
+		}
+		props[name] = map[string]any{"type": "string"}
 	}
 	return map[string]any{
 		"type":       "object",
