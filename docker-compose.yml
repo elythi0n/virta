@@ -23,7 +23,7 @@ services:
       VIRTA_ADDR:      "0.0.0.0:8344"
       VIRTA_TOKEN:     "${VIRTA_TOKEN:?set VIRTA_TOKEN to a long random secret}"
       VIRTA_STORAGE:   "postgres"
-      VIRTA_DB_DSN:    "postgres://virta:${POSTGRES_PASSWORD:-virta}@db:5432/virta?sslmode=disable"
+      VIRTA_DB_DSN:    "postgres://virta:${POSTGRES_PASSWORD:?set a strong random POSTGRES_PASSWORD}@db:5432/virta?sslmode=disable"
       # Set to 1 to enable multi-user account registration/login:
       VIRTA_HOSTED:    "${VIRTA_HOSTED:-0}"
       # Set to 1 to force-enable message logging (required for Ask AI history tools).
@@ -52,7 +52,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER:     virta
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-virta}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?set a strong random POSTGRES_PASSWORD}"
       POSTGRES_DB:       virta
     volumes:
       - virta-db:/var/lib/postgresql/data
@@ -83,8 +83,6 @@ services:
   ollama:
     image: ollama/ollama:latest
     restart: unless-stopped
-    ports:
-      - "0.0.0.0:11434:11434"
     volumes:
       - virta-ollama:/root/.ollama
     healthcheck:

@@ -7,7 +7,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/elythi0n/virta/internal/llm"
@@ -45,6 +47,38 @@ func NewOllama(baseURL string) *OpenAICompatProvider {
 		baseURL += "/v1"
 	}
 	return newCompat("ollama", "Ollama (local · free)", baseURL, "")
+}
+
+// ValidateProviderURL checks that a user-supplied provider base URL does not point to a
+// private or loopback address, preventing SSRF via a crafted Ollama/custom endpoint.
+// It resolves the hostname and rejects any IP in loopback, private, link-local, or
+// unspecified ranges. Localhost is blocked by name as well.
+func ValidateProviderURL(raw string) error {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("provider URL scheme must be http or https")
+	}
+	host := u.Hostname()
+	if strings.EqualFold(host, "localhost") {
+		return fmt.Errorf("provider URL host %q is not allowed", host)
+	}
+	addrs, err := net.LookupHost(host)
+	if err != nil {
+		return fmt.Errorf("cannot resolve provider host %q: %w", host, err)
+	}
+	for _, addr := range addrs {
+		ip := net.ParseIP(addr)
+		if ip == nil {
+			continue
+		}
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsUnspecified() || ip.IsMulticast() {
+			return fmt.Errorf("provider URL host %q resolves to a private or reserved address; not allowed", host)
+		}
+	}
+	return nil
 }
 
 // NewCustom returns a provider pointing at any OpenAI-compatible endpoint.

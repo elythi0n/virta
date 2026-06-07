@@ -106,7 +106,15 @@ type endpointWorker struct {
 // NewManager builds a Manager with the given http.Client (nil = default with 10s timeout).
 func NewManager(log *slog.Logger, hc *http.Client) *Manager {
 	if hc == nil {
-		hc = &http.Client{Timeout: deliveryTimeout}
+		hc = &http.Client{
+			Timeout: deliveryTimeout,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				if len(via) > 0 {
+					return http.ErrUseLastResponse // no redirects
+				}
+				return nil
+			},
+		}
 	}
 	if log == nil {
 		log = slog.New(slog.DiscardHandler)

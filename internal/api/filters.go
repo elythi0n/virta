@@ -54,6 +54,7 @@ func (s *Server) handleSetFilters(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "filters unavailable", http.StatusServiceUnavailable)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4<<20)
 	var req struct {
 		Filters []FilterRule `json:"filters"`
 	}

@@ -95,6 +95,7 @@ func (s *Server) handleJoinChannel(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "channel control unavailable", http.StatusServiceUnavailable)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4<<20)
 	var req channelRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Platform == "" || req.Slug == "" {
 		http.Error(w, "expected JSON body with platform and slug", http.StatusBadRequest)

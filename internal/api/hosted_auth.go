@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
+	"strings"
 
 	"github.com/elythi0n/virta/internal/hosted"
 )
@@ -36,6 +38,7 @@ func (s *Server) handleHostedRegister(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4<<20)
 	var req struct {
 		Email       string `json:"email"`
 		DisplayName string `json:"display_name"`
@@ -56,7 +59,7 @@ func (s *Server) handleHostedRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	hosted.SetSessionCookie(w, token, isHTTPS(r))
-	writeJSON(w, map[string]any{"user": user, "token": token})
+	writeJSON(w, map[string]any{"user": user})
 }
 
 func (s *Server) handleHostedLogin(w http.ResponseWriter, r *http.Request) {
@@ -64,6 +67,7 @@ func (s *Server) handleHostedLogin(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4<<20)
 	var req struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
@@ -82,7 +86,7 @@ func (s *Server) handleHostedLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	hosted.SetSessionCookie(w, token, isHTTPS(r))
-	writeJSON(w, map[string]any{"user": user, "token": token})
+	writeJSON(w, map[string]any{"user": user})
 }
 
 func (s *Server) handleHostedLogout(w http.ResponseWriter, r *http.Request) {
@@ -114,26 +118,33 @@ func (s *Server) handleHostedStatus(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, map[string]any{"hosted": s.hostedAuth != nil})
 }
 
-// clientIP extracts the real client IP, respecting X-Forwarded-For in hosted mode.
+// clientIP extracts the real client IP. X-Forwarded-For is only trusted when the immediate
+// peer is loopback (indicating a local reverse proxy). The rightmost non-empty entry from
+// X-Forwarded-For is used to avoid trusting client-supplied headers.
 func clientIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		// Take the first (leftmost) IP which is the original client.
-		for i := 0; i < len(xff); i++ {
-			if xff[i] == ',' {
-				return xff[:i]
+	host, _, _ := net.SplitHostPort(r.RemoteAddr)
+	ip := net.ParseIP(host)
+	if ip != nil && ip.IsLoopback() {
+		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+			parts := strings.Split(xff, ",")
+			if clean := strings.TrimSpace(parts[len(parts)-1]); clean != "" {
+				return clean
 			}
-		}
-		return xff
-	}
-	host := r.RemoteAddr
-	for i := len(host) - 1; i >= 0; i-- {
-		if host[i] == ':' {
-			return host[:i]
 		}
 	}
 	return host
 }
 
+// isHTTPS reports whether the request arrived over TLS. X-Forwarded-Proto is only
+// trusted when the immediate peer is loopback (a local reverse proxy).
 func isHTTPS(r *http.Request) bool {
-	return r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
+	if r.TLS != nil {
+		return true
+	}
+	host, _, _ := net.SplitHostPort(r.RemoteAddr)
+	ip := net.ParseIP(host)
+	if ip != nil && ip.IsLoopback() {
+		return r.Header.Get("X-Forwarded-Proto") == "https"
+	}
+	return false
 }

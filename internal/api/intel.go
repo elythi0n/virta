@@ -109,6 +109,7 @@ func (s *Server) handleAsk(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "intelligence unavailable", http.StatusServiceUnavailable)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4<<20)
 	var req struct {
 		Question string `json:"question"`
 		Model    string `json:"model"`
@@ -138,6 +139,10 @@ func (s *Server) handleAsk(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleGetIntelConfig(w http.ResponseWriter, _ *http.Request) {
+	if s.hostedAuth != nil {
+		http.Error(w, "LLM configuration is operator-only in hosted mode", http.StatusForbidden)
+		return
+	}
 	if s.intel == nil {
 		http.Error(w, "intelligence unavailable", http.StatusServiceUnavailable)
 		return
@@ -155,10 +160,15 @@ func (s *Server) handleGetIntelConfig(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (s *Server) handleSetIntelConfig(w http.ResponseWriter, r *http.Request) {
+	if s.hostedAuth != nil {
+		http.Error(w, "LLM configuration is operator-only in hosted mode", http.StatusForbidden)
+		return
+	}
 	if s.intel == nil {
 		http.Error(w, "intelligence unavailable", http.StatusServiceUnavailable)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4<<20)
 	var cfg IntelConfig
 	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
 		http.Error(w, "invalid JSON", http.StatusBadRequest)
@@ -192,6 +202,7 @@ func (s *Server) handleSaveConversation(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "intelligence unavailable", http.StatusServiceUnavailable)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4<<20)
 	var req struct {
 		ID       string          `json:"id"`
 		Title    string          `json:"title"`
@@ -233,6 +244,7 @@ func (s *Server) handleGenerateTitle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "intelligence unavailable", http.StatusServiceUnavailable)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4<<20)
 	var req struct {
 		Message string `json:"message"`
 		Model   string `json:"model"`

@@ -3,7 +3,6 @@ import { Button, Dialog, Input, Popover, Text } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { joinChannel } from '../daemon';
 import { login, logout, register } from '../daemon/account';
-import type { VirtaUser } from '../daemon/account';
 import { clearGuestChannels, loadGuestChannels } from '../daemon/localChannels';
 import { useHostedAuth } from '../daemon/hostedAuth';
 import styles from './AccountMenu.module.css';
@@ -37,7 +36,7 @@ export default function AccountMenu() {
     setBusy(true); setError('');
     try {
       const res = await login(email, password);
-      const loggedIn = (res as { user: VirtaUser }).user;
+      const loggedIn = res.user;
       await syncGuestChannels();
       setUser(loggedIn);
       setMode('idle'); setEmail(''); setPassword('');
@@ -53,7 +52,7 @@ export default function AccountMenu() {
     setBusy(true); setError('');
     try {
       const res = await register(email, name, password);
-      const loggedIn = (res as { user: VirtaUser }).user;
+      const loggedIn = res.user;
       await syncGuestChannels();
       setUser(loggedIn);
       setMode('idle'); setEmail(''); setName(''); setPassword('');

@@ -84,6 +84,7 @@ func (s *Server) handleInstallPlugin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "plugin host unavailable", http.StatusServiceUnavailable)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4<<20)
 	var req struct {
 		URL string `json:"url"`
 	}

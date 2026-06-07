@@ -60,6 +60,7 @@ func (s *Server) handleImportProfile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "portability unavailable", http.StatusServiceUnavailable)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4<<20)
 	var exp ProfileExport
 	if err := json.NewDecoder(r.Body).Decode(&exp); err != nil || exp.Name == "" {
 		http.Error(w, "expected a valid profile export JSON", http.StatusBadRequest)

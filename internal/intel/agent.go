@@ -157,10 +157,11 @@ func (tb *ToolBelt) runAgent(ctx context.Context, meter *llm.Meter, model, quest
 
 	for round := 0; round < maxToolRounds; round++ {
 		stream, err := meter.Complete(ctx, llm.FeatureAsk, llm.CompletionRequest{
-			Model:    model,
-			System:   systemPrompt,
-			Messages: messages,
-			Tools:    llmTools,
+			Model:     model,
+			System:    systemPrompt,
+			Messages:  messages,
+			Tools:     llmTools,
+			MaxTokens: 4096,
 		})
 		if err != nil {
 			out <- AgentEvent{Kind: AEKError, Err: err}

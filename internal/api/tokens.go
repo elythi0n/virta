@@ -147,6 +147,10 @@ func NewTokenSecret() (string, error) {
 // ---- handlers ----
 
 func (s *Server) handleListTokens(w http.ResponseWriter, _ *http.Request) {
+	if s.hostedAuth != nil {
+		http.Error(w, "API token management is operator-only in hosted mode", http.StatusForbidden)
+		return
+	}
 	if s.tokens == nil {
 		http.Error(w, "token management unavailable", http.StatusServiceUnavailable)
 		return
@@ -164,10 +168,15 @@ type mintTokenRequest struct {
 }
 
 func (s *Server) handleMintToken(w http.ResponseWriter, r *http.Request) {
+	if s.hostedAuth != nil {
+		http.Error(w, "API token management is operator-only in hosted mode", http.StatusForbidden)
+		return
+	}
 	if s.tokens == nil {
 		http.Error(w, "token management unavailable", http.StatusServiceUnavailable)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4<<20)
 	var req mintTokenRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" || len(req.Scopes) == 0 {
 		http.Error(w, "expected JSON body with name and scopes", http.StatusBadRequest)
@@ -191,6 +200,10 @@ func (s *Server) handleMintToken(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleRevokeToken(w http.ResponseWriter, r *http.Request) {
+	if s.hostedAuth != nil {
+		http.Error(w, "API token management is operator-only in hosted mode", http.StatusForbidden)
+		return
+	}
 	if s.tokens == nil {
 		http.Error(w, "token management unavailable", http.StatusServiceUnavailable)
 		return

@@ -69,6 +69,7 @@ func (s *Server) handleSend(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "send unavailable", http.StatusServiceUnavailable)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4<<20)
 	var req sendRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.Channels) == 0 || req.Text == "" {
 		http.Error(w, "expected JSON body with channels and text", http.StatusBadRequest)
@@ -87,6 +88,7 @@ func (s *Server) handleSendPreview(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "send unavailable", http.StatusServiceUnavailable)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4<<20)
 	var req previewRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.Channels) == 0 {
 		http.Error(w, "expected JSON body with channels", http.StatusBadRequest)
@@ -105,6 +107,7 @@ func (s *Server) handleSendQueue(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "send unavailable", http.StatusServiceUnavailable)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4<<20)
 	var req previewRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.Channels) == 0 {
 		http.Error(w, "expected JSON body with channels", http.StatusBadRequest)

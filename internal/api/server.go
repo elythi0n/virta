@@ -231,6 +231,10 @@ func (s *Server) serveInjectedHTML(w http.ResponseWriter) {
 	body := injectBeforeHead(html, bootstrap)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store") // token is in the page; don't cache
+	w.Header().Set("Content-Security-Policy",
+		"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "+
+			"img-src 'self' https: data:; connect-src 'self' ws: wss:; font-src 'self' data:; "+
+			"object-src 'none'; base-uri 'self'; frame-ancestors 'none'")
 	_, _ = w.Write(body)
 }
 
@@ -268,6 +272,9 @@ func (s *Server) handleOverlay(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "overlay not built", http.StatusNotFound)
 		return
 	}
+	// Prevent the bearer token (passed as a query param) from leaking via the Referer header
+	// to any third-party resource the overlay page might load.
+	w.Header().Set("Referrer-Policy", "no-referrer")
 	r2 := r.Clone(r.Context())
 	r2.URL.Path = "/overlay.html"
 	s.webui.ServeHTTP(w, r2)
@@ -398,7 +405,7 @@ type route struct {
 
 func (s *Server) routes() []route {
 	return []route{
-		{"GET", "/v1/diagnostics", ScopeRead, s.handleDiagnostics, "Server diagnostics (clients, log ring)"},
+		{"GET", "/v1/diagnostics", ScopeAdmin, s.handleDiagnostics, "Server diagnostics (clients, log ring, crash paths)"},
 		{"GET", "/v1/stream", ScopeRead, s.handleStream, "Live event stream (WebSocket)"},
 		{"GET", "/v1/channels", ScopeRead, s.handleListChannels, "List joined channels"},
 		{"GET", "/v1/capabilities", ScopeRead, s.handleCapabilities, "Per-platform capabilities"},

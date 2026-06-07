@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Button, Dialog, Input, Popover, Text, Tooltip } from '@virta/ui-kit';
 import Icon from '../Icon';
-import { login, logout, register, type VirtaUser } from '../daemon/account';
+import { login, logout, register } from '../daemon/account';
 import { clearGuestChannels, joinChannel, loadGuestChannels } from '../daemon';
 import { useHostedAuth } from '../daemon/hostedAuth';
 import styles from './AccountItem.module.css';
@@ -35,7 +35,7 @@ export default function AccountItem() {
     try {
       const res = await login(email, password);
       await syncGuest();
-      setUser((res as { user: VirtaUser }).user);
+      setUser(res.user);
       setMode('idle'); setEmail(''); setPassword('');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Login failed');
@@ -48,7 +48,7 @@ export default function AccountItem() {
     try {
       const res = await register(email, name, password);
       await syncGuest();
-      setUser((res as { user: VirtaUser }).user);
+      setUser(res.user);
       setMode('idle'); setEmail(''); setName(''); setPassword('');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Registration failed');

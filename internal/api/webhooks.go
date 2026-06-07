@@ -2,15 +2,18 @@ package api
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
 )
 
-// validateWebhookURL rejects non-HTTPS scheme, localhost/private addresses (SSRF guard), and empty
-// URLs so the webhook delivery system only reaches intentionally-configured public endpoints.
+// validateWebhookURL rejects non-HTTPS/HTTP schemes and resolves the hostname to block
+// loopback, private, link-local, unspecified, and multicast addresses (SSRF guard).
 func validateWebhookURL(raw string) error {
 	u, err := url.Parse(raw)
 	if err != nil {
@@ -19,13 +22,21 @@ func validateWebhookURL(raw string) error {
 	if !strings.EqualFold(u.Scheme, "https") && !strings.EqualFold(u.Scheme, "http") {
 		return fmt.Errorf("URL scheme must be http or https")
 	}
-	host := strings.ToLower(u.Hostname())
-	// Block obvious internal addresses to reduce SSRF risk when the daemon runs on a server.
-	// A loopback-server install is inherently safe (localhost is the intended use), so we only
-	// warn rather than hard-block — the user has full control over their local machine.
-	for _, blocked := range []string{"169.254.", "fd00:", "::1"} {
-		if strings.HasPrefix(host, blocked) {
-			return fmt.Errorf("URL %q looks like a link-local/private address; not allowed", host)
+	host := u.Hostname()
+	if strings.EqualFold(host, "localhost") {
+		return fmt.Errorf("URL host %q is not allowed", host)
+	}
+	addrs, err := net.LookupHost(host)
+	if err != nil {
+		return fmt.Errorf("cannot resolve host %q: %w", host, err)
+	}
+	for _, addr := range addrs {
+		ip := net.ParseIP(addr)
+		if ip == nil {
+			continue
+		}
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsUnspecified() || ip.IsMulticast() {
+			return fmt.Errorf("URL host %q resolves to a private or reserved address; not allowed", host)
 		}
 	}
 	return nil
@@ -80,6 +91,7 @@ func (s *Server) handleCreateWebhook(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "webhooks unavailable", http.StatusServiceUnavailable)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4<<20)
 	var req struct {
 		Name   string   `json:"name"`
 		URL    string   `json:"url"`
@@ -94,12 +106,28 @@ func (s *Server) handleCreateWebhook(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	// Auto-generate a secret if the caller did not provide one. The plaintext is returned once
+	// in the response so the caller can record it; only the hash is stored thereafter.
+	generatedSecret := ""
+	if req.Secret == "" {
+		b := make([]byte, 32)
+		if _, err := rand.Read(b); err != nil {
+			http.Error(w, "failed to generate secret", http.StatusInternalServerError)
+			return
+		}
+		req.Secret = hex.EncodeToString(b)
+		generatedSecret = req.Secret
+	}
 	info, err := s.webhooks.Create(r.Context(), req.Name, req.URL, req.Events, req.Secret)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, info)
+	resp := map[string]any{"endpoint": info}
+	if generatedSecret != "" {
+		resp["secret"] = generatedSecret
+	}
+	writeJSON(w, resp)
 }
 
 func (s *Server) handleDeleteWebhook(w http.ResponseWriter, r *http.Request) {

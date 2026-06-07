@@ -32,6 +32,10 @@ type AuthConfigControl interface {
 func (s *Server) SetAuthConfig(c AuthConfigControl) { s.authConfig = c }
 
 func (s *Server) handleGetAuthConfig(w http.ResponseWriter, _ *http.Request) {
+	if s.hostedAuth != nil {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
 	if s.authConfig == nil {
 		http.Error(w, "auth config unavailable", http.StatusServiceUnavailable)
 		return
@@ -40,10 +44,15 @@ func (s *Server) handleGetAuthConfig(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (s *Server) handleSetAuthConfig(w http.ResponseWriter, r *http.Request) {
+	if s.hostedAuth != nil {
+		http.Error(w, "OAuth credentials are operator-only in hosted mode", http.StatusForbidden)
+		return
+	}
 	if s.authConfig == nil {
 		http.Error(w, "auth config unavailable", http.StatusServiceUnavailable)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4<<20)
 	var req struct {
 		Platform     string `json:"platform"`
 		ClientID     string `json:"client_id"`

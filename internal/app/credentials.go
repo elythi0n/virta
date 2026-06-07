@@ -67,11 +67,15 @@ func (c *credentials) SetTwitch(ctx context.Context, id string) error {
 }
 
 // SetKick persists and applies the Kick client id and optional secret.
+// If secret is empty, only the client id is updated so an existing stored secret is not erased.
 func (c *credentials) SetKick(ctx context.Context, id, secret string) error {
 	c.kickID.Store(ptr(id))
-	c.kickSecret.Store(ptr(secret))
 	if err := c.vault.Set(ctx, credKickID, id); err != nil {
 		return err
 	}
+	if secret == "" {
+		return nil
+	}
+	c.kickSecret.Store(ptr(secret))
 	return c.vault.Set(ctx, credKickSecret, secret)
 }

@@ -199,6 +199,13 @@ func (c *intelControl) SetConfig(ctx context.Context, cfg api.IntelConfig) error
 			}
 		}
 	}
+	// Validate Ollama (and custom) base URLs to prevent SSRF via a crafted endpoint.
+	// The default empty value (use localhost) is always accepted; only explicit values are checked.
+	if base, ok := cfg.ProviderKeys["ollama"]; ok && base != "" && !strings.HasSuffix(base, "••••") {
+		if err := openaicompat.ValidateProviderURL(base); err != nil {
+			return fmt.Errorf("ollama URL rejected: %w", err)
+		}
+	}
 	c.cfg = cfg
 	c.applyProviders(cfg)
 	c.registry.SetModel(cfg.SelectedModel)

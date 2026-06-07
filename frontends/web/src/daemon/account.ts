@@ -14,14 +14,14 @@ export async function getHostedStatus(): Promise<HostedStatus> {
   return request<HostedStatus>('/auth/status');
 }
 
-export async function register(email: string, displayName: string, password: string): Promise<{ user: VirtaUser; token: string }> {
+export async function register(email: string, displayName: string, password: string): Promise<{ user: VirtaUser }> {
   return request('/auth/register', {
     method: 'POST',
     body: JSON.stringify({ email, display_name: displayName, password }),
   });
 }
 
-export async function login(email: string, password: string): Promise<{ user: VirtaUser; token: string }> {
+export async function login(email: string, password: string): Promise<{ user: VirtaUser }> {
   return request('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),

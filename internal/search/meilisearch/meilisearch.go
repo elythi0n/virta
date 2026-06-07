@@ -4,12 +4,33 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 
 	meili "github.com/meilisearch/meilisearch-go"
 
 	"github.com/elythi0n/virta/internal/search"
 )
+
+// channelPattern matches valid "platform:slug" channel keys (word chars and hyphens only).
+var channelPattern = regexp.MustCompile(`^\w[\w-]*:\w[\w-]*$`)
+
+// sanitizeFilterValue validates a filter value used in Meilisearch filter expressions.
+// channel must match the "platform:slug" pattern; author must not contain quotes.
+// Returns an error if the value looks like an injection attempt.
+func sanitizeFilterValue(field, value string) error {
+	switch field {
+	case "channel":
+		if !channelPattern.MatchString(value) {
+			return fmt.Errorf("meili: invalid channel key %q (must be platform:slug)", value)
+		}
+	case "author":
+		if strings.ContainsAny(value, `"'`) {
+			return fmt.Errorf("meili: author value contains disallowed characters")
+		}
+	}
+	return nil
+}
 
 const meiliIndexName = "virta_messages"
 
@@ -58,9 +79,15 @@ func (m *Meili) Search(_ context.Context, q search.Query) ([]search.Result, erro
 	}
 	var filters []string
 	if q.Channel != "" {
+		if err := sanitizeFilterValue("channel", q.Channel); err != nil {
+			return nil, err
+		}
 		filters = append(filters, fmt.Sprintf(`channel = %q`, q.Channel))
 	}
 	if q.Author != "" {
+		if err := sanitizeFilterValue("author", q.Author); err != nil {
+			return nil, err
+		}
 		filters = append(filters, fmt.Sprintf(`author = %q`, q.Author))
 	}
 	params := &meili.SearchRequest{Limit: limit}
@@ -90,6 +117,9 @@ func (m *Meili) Delete(_ context.Context, id string) error {
 }
 
 func (m *Meili) DeleteChannel(_ context.Context, channel string) error {
+	if err := sanitizeFilterValue("channel", channel); err != nil {
+		return err
+	}
 	filter := fmt.Sprintf(`channel = %q`, channel)
 	_, err := m.idx().DeleteDocumentsByFilter(filter, nil)
 	return err

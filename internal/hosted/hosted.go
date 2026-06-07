@@ -41,6 +41,10 @@ const (
 // ErrNotFound is returned when a user or session is not found.
 var ErrNotFound = errors.New("hosted: not found")
 
+// dummyHash is a pre-computed bcrypt hash used to consume time when a login email is not
+// found, so the response time is indistinguishable from a real credential mismatch.
+var dummyHash = []byte("$2a$12$dummy.hash.to.prevent.timing.attacks.injectedXXXXXXXXXXX")
+
 // ErrUnauthorized is returned when credentials are invalid.
 var ErrUnauthorized = errors.New("hosted: invalid credentials")
 
@@ -114,6 +118,9 @@ func (m *Manager) Login(ctx context.Context, ip, email, password string) (User, 
 	email = strings.ToLower(strings.TrimSpace(email))
 	user, err := m.store.UserByEmail(ctx, email)
 	if err != nil {
+		// Run a dummy bcrypt compare so the response time matches a real credential check,
+		// preventing email enumeration via timing.
+		_ = bcrypt.CompareHashAndPassword(dummyHash, []byte(password))
 		m.recordAttempt(ip)
 		return User{}, "", ErrUnauthorized
 	}
@@ -160,7 +167,7 @@ func SetSessionCookie(w http.ResponseWriter, token string, secure bool) {
 		MaxAge:   int(SessionTTL.Seconds()),
 		HttpOnly: true,
 		Secure:   secure,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteStrictMode,
 	}
 	http.SetCookie(w, c)
 }

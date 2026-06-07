@@ -42,6 +42,7 @@ func (s *Server) handleImportTheme(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "themes unavailable", http.StatusServiceUnavailable)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4<<20)
 	data, err := readBody(r)
 	if err != nil || len(data) == 0 {
 		http.Error(w, "expected .vtheme JSON body", http.StatusBadRequest)

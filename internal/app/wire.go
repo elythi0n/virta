@@ -107,6 +107,7 @@ type Daemon struct {
 	toolBelt      *intel.ToolBelt
 	pluginHost    *pluginhost.Registry
 	marketsDS     *markets.DataSource
+	hostedStore   hostedpkg.Store // non-nil only when cfg.Hosted
 }
 
 // authControl adapts the auth managers to the API's auth controller.
@@ -336,8 +337,9 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	srv.SetThemes(newThemeControl(st.Settings()))
 	srv.SetWebhooks(newWebhookControl(webhookMgr, st.Settings()))
 	// Hosted multi-user mode: register the user account / session controller.
+	var hostedStore hostedpkg.Store
 	if cfg.Hosted {
-		hostedStore := hostedpkg.NewSQLStore(st.Conn(), gen, st.Rebind)
+		hostedStore = hostedpkg.NewSQLStore(st.Conn(), gen, st.Rebind)
 		srv.SetHostedAuth(newHostedAuthControl(hostedStore, gen))
 	}
 	// MCP server: bind the intel tool belt to /mcp so any MCP client (Claude Desktop,
@@ -436,7 +438,7 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	return &Daemon{cfg: cfg, log: log, store: st, vault: vault, runner: runner, engine: eng,
 		stats: statsAgg, logSink: logSink, sweeper: sweeper, profiles: mgr,
 		twitchAuth: twitchAuth, kickAuth: kickAuth, api: srv, toolBelt: toolBelt,
-		pluginHost: pluginReg, marketsDS: marketsDS}, nil
+		pluginHost: pluginReg, marketsDS: marketsDS, hostedStore: hostedStore}, nil
 }
 
 // loadMarketsConfig reads the persisted Markets config from settings, falling back to defaults.
@@ -1249,6 +1251,23 @@ func (d *Daemon) Start() error {
 		if err := d.joinAllHostedChannels(ctx); err != nil {
 			d.log.Warn("could not pre-join hosted channels on startup", "err", err)
 		}
+		// Periodically remove expired sessions from the database.
+		go func() {
+			t := time.NewTicker(1 * time.Hour)
+			defer t.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-t.C:
+					if n, err := d.hostedStore.SweepSessions(context.Background()); err != nil {
+						d.log.Warn("session sweep failed", "err", err)
+					} else if n > 0 {
+						d.log.Info("swept expired sessions", "removed", n)
+					}
+				}
+			}
+		}()
 	} else {
 		// Single-user mode: activate the default profile so its channels connect and its
 		// filters apply immediately.

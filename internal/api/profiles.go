@@ -46,6 +46,7 @@ func (s *Server) handleCreateProfile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "profiles unavailable", http.StatusServiceUnavailable)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4<<20)
 	var req struct {
 		Name string `json:"name"`
 	}

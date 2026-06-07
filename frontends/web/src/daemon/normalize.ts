@@ -13,7 +13,10 @@ const EMOTE_SIZE: Record<string, string> = {
 
 function emoteUrl(emote: EmoteRef): string {
   const size = EMOTE_SIZE[emote.provider] ?? '2x';
-  return emote.url_template.replace('{size}', size);
+  const resolved = emote.url_template.replace('{size}', size);
+  // Only allow https: URLs to prevent protocol-based injection.
+  if (!resolved.startsWith('https:')) return '';
+  return resolved;
 }
 
 // Map one daemon segment to a feed-core render segment. Cheer and masked carry plain display text,
@@ -61,7 +64,9 @@ export function toFeedMessage(m: UnifiedMessage): FeedMessage {
     sampled: !!m.annotations?.sampled,
     replyTo: m.reply_to ? { author: m.reply_to.author_login, snippet: m.reply_to.text_snippet } : undefined,
     source: { slug: m.channel.slug, label: m.channel.display_name || m.channel.slug },
-    badges: m.author.badges?.map((b) => ({ set: b.set, title: b.title, url: b.url })),
+    badges: m.author.badges
+      ?.filter((b) => !b.url || b.url.startsWith('https:'))
+      .map((b) => ({ set: b.set, title: b.title, url: b.url })),
     body: m.segments.map((s) => s.text).join(''),
     segments: m.segments.map(toFeedSegment),
   };

@@ -44,6 +44,7 @@ func (s *Server) handleSetMethod(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "connections unavailable", http.StatusServiceUnavailable)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4<<20)
 	var req struct {
 		Platform string `json:"platform"`
 		Method   string `json:"method"`
