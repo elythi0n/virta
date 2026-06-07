@@ -34,9 +34,9 @@ type ModelInfo struct {
 	DisplayName   string
 	Family        string // drives UI grouping, e.g. "Opus", "GPT-4"
 	ContextWindow int
-	SupportsTools bool       // models without tool use are shown disabled in the model picker
-	Pricing       *Pricing   // nil when the provider doesn't expose it
-	Deprecated    bool       // shown but sorted last, marked in the UI
+	SupportsTools bool     // models without tool use are shown disabled in the model picker
+	Pricing       *Pricing // nil when the provider doesn't expose it
+	Deprecated    bool     // shown but sorted last, marked in the UI
 }
 
 // Pricing is per-million-token pricing (input and output).
@@ -59,15 +59,15 @@ const (
 type Message struct {
 	Role       Role
 	Content    string
-	ToolCallID string // set when Role=tool, the id of the tool call being answered
+	ToolCallID string     // set when Role=tool, the id of the tool call being answered
 	ToolCalls  []ToolCall // set when Role=assistant + a tool-use response
 }
 
 // ToolCall is one tool invocation from the model.
 type ToolCall struct {
-	ID       string
-	Name     string
-	ArgJSON  string // raw JSON arguments
+	ID      string
+	Name    string
+	ArgJSON string // raw JSON arguments
 }
 
 // ToolDef defines a callable tool for the model.
@@ -99,17 +99,17 @@ type Stream interface {
 type EventKind string
 
 const (
-	EventText      EventKind = "text"    // a text delta
-	EventToolCall  EventKind = "tool_call" // a tool call (complete, not streamed)
-	EventDone      EventKind = "done"    // stream finished; Usage is set
+	EventText     EventKind = "text"      // a text delta
+	EventToolCall EventKind = "tool_call" // a tool call (complete, not streamed)
+	EventDone     EventKind = "done"      // stream finished; Usage is set
 )
 
 // Event is one item from a Stream.
 type Event struct {
-	Kind      EventKind
-	Text      string    // EventText: the delta
-	ToolCall  *ToolCall // EventToolCall: the complete call
-	Usage     *Usage    // EventDone: token counts
+	Kind     EventKind
+	Text     string    // EventText: the delta
+	ToolCall *ToolCall // EventToolCall: the complete call
+	Usage    *Usage    // EventDone: token counts
 }
 
 // Usage is the token usage for a completed request.

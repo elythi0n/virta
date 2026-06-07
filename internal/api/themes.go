@@ -17,8 +17,8 @@ type ThemeInfo struct {
 // Themes is the theme management surface. Implemented by the wiring layer; injected via SetThemes.
 type Themes interface {
 	List() []ThemeInfo
-	Import(data []byte) (ThemeInfo, error)      // parse, lint, persist
-	Export(id string) ([]byte, error)           // retrieve .vtheme JSON
+	Import(data []byte) (ThemeInfo, error) // parse, lint, persist
+	Export(id string) ([]byte, error)      // retrieve .vtheme JSON
 	Delete(id string) error
 }
 

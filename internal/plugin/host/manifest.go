@@ -29,16 +29,16 @@ const (
 
 // PanelContrib describes a panel the plugin contributes to the dock.
 type PanelContrib struct {
-	Kind  string `json:"kind"`  // must be globally unique; namespaced under plugin id at registration
+	Kind  string `json:"kind"` // must be globally unique; namespaced under plugin id at registration
 	Title string `json:"title"`
 	Icon  string `json:"icon,omitempty"` // icon name from the host icon set
 }
 
 // CommandContrib describes a slash-command the plugin contributes.
 type CommandContrib struct {
-	Name  string `json:"name"`        // e.g. "markets" → triggers /markets
-	Title string `json:"title"`       // palette label
-	Scope string `json:"scope"`       // "chat" | "palette" | "both"
+	Name  string `json:"name"`  // e.g. "markets" → triggers /markets
+	Title string `json:"title"` // palette label
+	Scope string `json:"scope"` // "chat" | "palette" | "both"
 }
 
 // DataSourceContrib describes a daemon-side DataSource the plugin contributes.

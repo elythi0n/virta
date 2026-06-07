@@ -73,10 +73,10 @@ type PluginStore interface {
 
 // PluginRecord is what is persisted in the store.
 type PluginRecord struct {
-	ID         string          `json:"id"`
+	ID          string          `json:"id"`
 	ManifestRaw json.RawMessage `json:"manifest"`
-	State      PluginState     `json:"state"`
-	InstallDir string          `json:"install_dir,omitempty"`
+	State       PluginState     `json:"state"`
+	InstallDir  string          `json:"install_dir,omitempty"`
 }
 
 // New creates a Registry.

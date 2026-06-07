@@ -36,13 +36,13 @@ var initialBackoff = 1 * time.Second
 
 // Endpoint is a single outbound destination.
 type Endpoint struct {
-	ID      string   `json:"id"`
-	Name    string   `json:"name"`
-	URL     string   `json:"url"`
-	Events  []string `json:"events"` // event type prefixes, e.g. "event.raid" or "message.highlighted"
-	Active  bool     `json:"active"`
-	Paused  bool     `json:"paused"` // auto-paused after sustained failure
-	Secret  string   `json:"secret,omitempty"` // HMAC key (stored per-endpoint in keychain, not here)
+	ID     string   `json:"id"`
+	Name   string   `json:"name"`
+	URL    string   `json:"url"`
+	Events []string `json:"events"` // event type prefixes, e.g. "event.raid" or "message.highlighted"
+	Active bool     `json:"active"`
+	Paused bool     `json:"paused"`           // auto-paused after sustained failure
+	Secret string   `json:"secret,omitempty"` // HMAC key (stored per-endpoint in keychain, not here)
 }
 
 // Delivery is one outgoing payload.
@@ -86,21 +86,21 @@ func (l *DeliveryLog) Snapshot() []AttemptRecord {
 
 // Manager holds all endpoints and their worker goroutines, running for the daemon's lifetime.
 type Manager struct {
-	mu        sync.RWMutex
-	endpoints map[string]*endpointWorker
-	log       *slog.Logger
+	mu         sync.RWMutex
+	endpoints  map[string]*endpointWorker
+	log        *slog.Logger
 	httpClient *http.Client
 }
 
 type endpointWorker struct {
-	ep      Endpoint
-	secret  string
-	queue   chan Delivery
-	log     *DeliveryLog
-	paused  bool
-	mu      sync.Mutex
-	quit    chan struct{}
-	wg      sync.WaitGroup
+	ep     Endpoint
+	secret string
+	queue  chan Delivery
+	log    *DeliveryLog
+	paused bool
+	mu     sync.Mutex
+	quit   chan struct{}
+	wg     sync.WaitGroup
 }
 
 // NewManager builds a Manager with the given http.Client (nil = default with 10s timeout).
@@ -296,7 +296,7 @@ func (m *Manager) post(url, secret, deliveryID string, body []byte) (int, error)
 	if err != nil {
 		return 0, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	return resp.StatusCode, nil
 }
 

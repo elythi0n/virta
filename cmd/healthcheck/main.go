@@ -19,7 +19,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		fmt.Fprintf(os.Stderr, "status %d\n", resp.StatusCode)
 		os.Exit(1)

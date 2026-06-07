@@ -1,8 +1,8 @@
 package app
 
 import (
-	"encoding/json"
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/elythi0n/virta/internal/api"
@@ -131,9 +131,7 @@ func (c *pluginControl) GetDetail(id string) (api.PluginDetail, error) {
 	}
 	var schema interface{}
 	if len(e.Manifest.Config) > 0 {
-		if err := json.Unmarshal(e.Manifest.Config, &schema); err == nil {
-			// Only set if valid JSON
-		}
+		_ = json.Unmarshal(e.Manifest.Config, &schema) // ignore parse errors; nil schema is acceptable
 	}
 	return api.PluginDetail{PluginInfo: info, ConfigSchema: schema}, nil
 }

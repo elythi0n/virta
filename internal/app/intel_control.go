@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/elythi0n/virta/internal/api"
+	"github.com/elythi0n/virta/internal/clock"
 	"github.com/elythi0n/virta/internal/intel"
 	"github.com/elythi0n/virta/internal/llm"
 	anthropic "github.com/elythi0n/virta/internal/llm/anthropic"
@@ -30,15 +31,16 @@ type intelControl struct {
 	settings      store.SettingsRepo
 	conversations store.ConversationRepo
 	channelLister func(context.Context) []api.ChannelInfo // returns live joined channels
-	loggingActive func() bool       // injected from the logbook sink
-	mcpRelayURL   string            // public relay URL for external AI clients
+	loggingActive func() bool                             // injected from the logbook sink
+	mcpRelayURL   string                                  // public relay URL for external AI clients
+	clk           clock.Clock
 	mu            sync.RWMutex
 	cfg           api.IntelConfig
 }
 
 // newIntelControl constructs the intelligence controller and reloads any previously-persisted
 // configuration (so provider keys and model selection survive daemon restarts).
-func newIntelControl(tb *intel.ToolBelt, settings store.SettingsRepo, conversations store.ConversationRepo, channelLister func(context.Context) []api.ChannelInfo, loggingActive func() bool, mcpRelayURL string) *intelControl {
+func newIntelControl(tb *intel.ToolBelt, settings store.SettingsRepo, conversations store.ConversationRepo, channelLister func(context.Context) []api.ChannelInfo, loggingActive func() bool, mcpRelayURL string, clk clock.Clock) *intelControl {
 	reg := llm.NewRegistry()
 	cfg := api.IntelConfig{
 		Enabled:        false,
@@ -49,7 +51,7 @@ func newIntelControl(tb *intel.ToolBelt, settings store.SettingsRepo, conversati
 		_ = json.Unmarshal(raw.Data, &cfg)
 	}
 	meter := llm.NewMeter(reg, apiCfgToMeterCfg(cfg))
-	c := &intelControl{tb: tb, registry: reg, meter: meter, settings: settings, conversations: conversations, channelLister: channelLister, loggingActive: loggingActive, mcpRelayURL: mcpRelayURL, cfg: cfg}
+	c := &intelControl{tb: tb, registry: reg, meter: meter, settings: settings, conversations: conversations, channelLister: channelLister, loggingActive: loggingActive, mcpRelayURL: mcpRelayURL, clk: clk, cfg: cfg}
 	tb.SetLogging(loggingActive)
 	// Wire up the live channel source so ListChannels returns current data, not stale DB cache.
 	tb.SetChannelLister(func() []intel.ChannelInfo {
@@ -115,7 +117,7 @@ func (c *intelControl) Ask(ctx context.Context, model, question string) (<-chan 
 	ac := intel.AskContext{
 		LoggingEnabled: c.loggingActive != nil && c.loggingActive(),
 		MCPRelayURL:    c.mcpRelayURL,
-		Now:            time.Now().UTC(),
+		Now:            c.clk.Now().UTC(),
 	}
 	if c.channelLister != nil {
 		for _, ch := range c.channelLister(ctx) {
@@ -289,7 +291,7 @@ func (c *intelControl) GenerateTitle(ctx context.Context, model, firstMessage st
 			ch <- api.AskEvent{Kind: "error", ErrorMsg: err.Error()}
 			return
 		}
-		defer stream.Close()
+		defer func() { _ = stream.Close() }()
 		for {
 			ev, err := stream.Next()
 			if err != nil {

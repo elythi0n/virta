@@ -9,6 +9,7 @@ import (
 	anthropicsdk "github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
 	"github.com/anthropics/anthropic-sdk-go/packages/ssestream"
+
 	"github.com/elythi0n/virta/internal/llm"
 )
 

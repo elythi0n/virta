@@ -71,12 +71,12 @@ func (m *Memory) Close() error                  { return nil }
 func (m *Memory) Conn() *sql.DB                 { return nil }
 func (m *Memory) Rebind(q string) string        { return q }
 
-func (m *Memory) Settings() SettingsRepo { return memSettings{m} }
-func (m *Memory) Profiles() ProfileRepo  { return memProfiles{m} }
-func (m *Memory) Accounts() AccountRepo       { return memAccounts{m} }
-func (m *Memory) Channels() ChannelRepo       { return memChannels{m} }
-func (m *Memory) Messages() MessageRepo       { return memMessages{m} }
-func (m *Memory) Emotes() EmoteRepo           { return memEmotes{m} }
+func (m *Memory) Settings() SettingsRepo          { return memSettings{m} }
+func (m *Memory) Profiles() ProfileRepo           { return memProfiles{m} }
+func (m *Memory) Accounts() AccountRepo           { return memAccounts{m} }
+func (m *Memory) Channels() ChannelRepo           { return memChannels{m} }
+func (m *Memory) Messages() MessageRepo           { return memMessages{m} }
+func (m *Memory) Emotes() EmoteRepo               { return memEmotes{m} }
 func (m *Memory) Conversations() ConversationRepo { return memConversations{m} }
 
 // ---- settings ----

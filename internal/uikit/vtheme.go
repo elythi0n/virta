@@ -17,11 +17,11 @@ import (
 //
 // The format version is 1; incompatible changes increment it and older loaders reject.
 type VTheme struct {
-	Version     int               `json:"version"`      // must be 1
+	Version     int               `json:"version"` // must be 1
 	Name        string            `json:"name"`
-	Base        string            `json:"base"`         // "graphite-dark" | "light"
-	Appearance  string            `json:"appearance"`   // inherits from base if empty
-	Color       map[string]string `json:"color"`        // partial override — merges over base
+	Base        string            `json:"base"`       // "graphite-dark" | "light"
+	Appearance  string            `json:"appearance"` // inherits from base if empty
+	Color       map[string]string `json:"color"`      // partial override — merges over base
 	Author      string            `json:"author,omitempty"`
 	Description string            `json:"description,omitempty"`
 }
@@ -74,7 +74,10 @@ func (t *Tokens) LoadVTheme(data []byte) (theme Theme, warnings []VThemeWarning,
 
 	// Contrast lint: check the core text/background pairs and warn when they fall below AA.
 	// Gradients can't be contrast-checked (we skip them); solid hex values get the full check.
-	type pair struct{ fg, bg, label string; min float64 }
+	type pair struct {
+		fg, bg, label string
+		min           float64
+	}
 	pairs := []pair{
 		{"text-0", "bg-0", "primary text on base", 4.5},
 		{"text-1", "bg-0", "secondary text on base", 4.5},
@@ -191,12 +194,20 @@ func encodeBase64ish(data []byte) string {
 		remaining := len(data) - i
 		b0 := data[i]
 		var b1, b2 byte
-		if remaining > 1 { b1 = data[i+1] }
-		if remaining > 2 { b2 = data[i+2] }
+		if remaining > 1 {
+			b1 = data[i+1]
+		}
+		if remaining > 2 {
+			b2 = data[i+2]
+		}
 		sb.WriteByte(chars[(b0>>2)&0x3f])
 		sb.WriteByte(chars[((b0&0x3)<<4)|((b1>>4)&0xf)])
-		if remaining > 1 { sb.WriteByte(chars[((b1&0xf)<<2)|((b2>>6)&0x3)]) }
-		if remaining > 2 { sb.WriteByte(chars[b2&0x3f]) }
+		if remaining > 1 {
+			sb.WriteByte(chars[((b1&0xf)<<2)|((b2>>6)&0x3)])
+		}
+		if remaining > 2 {
+			sb.WriteByte(chars[b2&0x3f])
+		}
 	}
 	return sb.String()
 }
@@ -204,28 +215,46 @@ func encodeBase64ish(data []byte) string {
 func decodeBase64ish(s string) ([]byte, error) {
 	const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 	lookup := [256]int{}
-	for i := range lookup { lookup[i] = -1 }
-	for i, c := range chars { lookup[c] = i }
+	for i := range lookup {
+		lookup[i] = -1
+	}
+	for i, c := range chars {
+		lookup[c] = i
+	}
 	var out []byte
 	for i := 0; i < len(s); i += 4 {
 		chunk := s[i:]
 		get := func(j int) int {
-			if j >= len(chunk) { return 0 }
+			if j >= len(chunk) {
+				return 0
+			}
 			v := lookup[chunk[j]]
-			if v < 0 { return 0 }
+			if v < 0 {
+				return 0
+			}
 			return v
 		}
 		a, b, c, d := get(0), get(1), get(2), get(3)
 		out = append(out, byte((a<<2)|(b>>4)))
-		if i+2 < len(s) { out = append(out, byte(((b&0xf)<<4)|(c>>2))) }
-		if i+3 < len(s) { out = append(out, byte(((c&0x3)<<6)|d)) }
+		if i+2 < len(s) {
+			out = append(out, byte(((b&0xf)<<4)|(c>>2)))
+		}
+		if i+3 < len(s) {
+			out = append(out, byte(((c&0x3)<<6)|d))
+		}
 	}
 	return out, nil
 }
 
 // TokenGroup returns tokens grouped for the in-app editor UI.
-func TokenGroup(color map[string]string) []struct{ Group string; Keys []string } {
-	groups := []struct{ Group string; Keys []string }{
+func TokenGroup(color map[string]string) []struct {
+	Group string
+	Keys  []string
+} {
+	groups := []struct {
+		Group string
+		Keys  []string
+	}{
 		{"Background", filterKeys(color, "bg-")},
 		{"Text", filterKeys(color, "text-")},
 		{"Semantic", []string{"accent", "ok", "warn", "danger"}},

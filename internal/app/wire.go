@@ -16,9 +16,7 @@ import (
 
 	"github.com/elythi0n/virta/internal/api"
 	kickauth "github.com/elythi0n/virta/internal/auth/kick"
-	"github.com/elythi0n/virta/internal/userctx"
 	twitchauth "github.com/elythi0n/virta/internal/auth/twitch"
-	"github.com/elythi0n/virta/internal/obsws"
 	"github.com/elythi0n/virta/internal/badges"
 	"github.com/elythi0n/virta/internal/clock"
 	"github.com/elythi0n/virta/internal/config"
@@ -27,12 +25,18 @@ import (
 	"github.com/elythi0n/virta/internal/engine"
 	"github.com/elythi0n/virta/internal/filter"
 	"github.com/elythi0n/virta/internal/held"
+	hostedpkg "github.com/elythi0n/virta/internal/hosted"
 	"github.com/elythi0n/virta/internal/id"
+	"github.com/elythi0n/virta/internal/intel"
 	"github.com/elythi0n/virta/internal/logbook"
+	"github.com/elythi0n/virta/internal/obsws"
 	"github.com/elythi0n/virta/internal/pipeline"
 	"github.com/elythi0n/virta/internal/platform"
 	"github.com/elythi0n/virta/internal/platform/kick"
 	"github.com/elythi0n/virta/internal/platform/twitch"
+	pluginhost "github.com/elythi0n/virta/internal/plugin/host"
+	markets "github.com/elythi0n/virta/internal/plugin/markets"
+	pluginsource "github.com/elythi0n/virta/internal/plugin/source"
 	"github.com/elythi0n/virta/internal/profiles"
 	"github.com/elythi0n/virta/internal/ratelimit"
 	"github.com/elythi0n/virta/internal/scrollback"
@@ -43,15 +47,11 @@ import (
 	"github.com/elythi0n/virta/internal/store"
 	"github.com/elythi0n/virta/internal/store/postgres"
 	"github.com/elythi0n/virta/internal/store/sqlite"
-	hostedpkg "github.com/elythi0n/virta/internal/hosted"
-	"github.com/elythi0n/virta/internal/intel"
-	markets "github.com/elythi0n/virta/internal/plugin/markets"
-	pluginhost "github.com/elythi0n/virta/internal/plugin/host"
-	pluginsource "github.com/elythi0n/virta/internal/plugin/source"
 	"github.com/elythi0n/virta/internal/streams"
+	"github.com/elythi0n/virta/internal/userctx"
 	"github.com/elythi0n/virta/internal/velocity"
-	"github.com/elythi0n/virta/internal/webui"
 	"github.com/elythi0n/virta/internal/webhook"
+	"github.com/elythi0n/virta/internal/webui"
 )
 
 // SelectVault chooses where credentials are stored: the OS credential store when one is
@@ -92,24 +92,24 @@ func SelectStore(cfg config.Config, clk clock.Clock, gen id.Generator) (store.St
 // Daemon is the assembled engine: storage, the secret vault, the message pipeline, and the
 // local API, wired together and ready to run. It owns the lifecycle of everything it builds.
 type Daemon struct {
-	cfg        config.Config
-	log        *slog.Logger
-	store      store.Store
-	vault      secrets.Vault
-	runner     *pipeline.Runner
-	engine     *engine.Engine
-	stats      *stats.Aggregator
-	logSink    *logbook.Sink
-	sweeper    *logbook.Sweeper
-	profiles   *profiles.Manager
-	twitchAuth *twitchauth.Manager
-	kickAuth   *kickauth.Manager
-	api        *api.Server
-	toolBelt      *intel.ToolBelt
-	pluginHost    *pluginhost.Registry
-	marketsDS     *markets.DataSource
-	hostedStore   hostedpkg.Store // non-nil only when cfg.Hosted
-	obswsSink     *obsws.Manager
+	cfg         config.Config
+	log         *slog.Logger
+	store       store.Store
+	vault       secrets.Vault
+	runner      *pipeline.Runner
+	engine      *engine.Engine
+	stats       *stats.Aggregator
+	logSink     *logbook.Sink
+	sweeper     *logbook.Sweeper
+	profiles    *profiles.Manager
+	twitchAuth  *twitchauth.Manager
+	kickAuth    *kickauth.Manager
+	api         *api.Server
+	toolBelt    *intel.ToolBelt
+	pluginHost  *pluginhost.Registry
+	marketsDS   *markets.DataSource
+	hostedStore hostedpkg.Store // non-nil only when cfg.Hosted
+	obswsSink   *obsws.Manager
 }
 
 // authControl adapts the auth managers to the API's auth controller.
@@ -272,7 +272,13 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	// when persistent logging is off (session-scoped); it's unused for reads when logging is on.
 	scrollbackRing := scrollback.New()
 	webhookMgr := webhook.NewManager(log, nil)
-	idGen := func() string { s, _ := api.NewTokenSecret(); if len(s) > 8 { return s[:8] }; return s }
+	idGen := func() string {
+		s, _ := api.NewTokenSecret()
+		if len(s) > 8 {
+			return s[:8]
+		}
+		return s
+	}
 	webhookSink := webhook.NewSink(webhookMgr, idGen)
 	obswsSink := obsws.New(vault, st.Settings(), log)
 	runner := pipeline.NewRunner(pipeline.Options{
@@ -353,7 +359,7 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	// Pass channelControl.List as the live channel source so Ask AI always sees current channels.
 	intelCtl := newIntelControl(toolBelt, st.Settings(), st.Conversations(),
 		func(ctx context.Context) []api.ChannelInfo { return srv.ChannelList(ctx) },
-		logSink.Enabled, cfg.MCPRelayURL)
+		logSink.Enabled, cfg.MCPRelayURL, clk)
 	srv.SetIntel(intelCtl)
 
 	// OAuth app credentials are read through providers so they can be set at runtime via the UI
@@ -803,7 +809,7 @@ func (c channelControl) List(ctx context.Context) []api.ChannelInfo {
 // ensureUserProfile creates a default profile for the current hosted user if they don't have one
 // yet, seeding its channel list from whatever the engine has currently joined. This handles two
 // scenarios: a brand-new user who has never joined a channel, and an existing single-user
-// installation that has been switched to hosted mode (where the old profiles carry user_id='').
+// installation that has been switched to hosted mode (where the old profiles carry user_id=”).
 func (c channelControl) ensureUserProfile(ctx context.Context) error {
 	_, err := c.profRepo.Default(ctx)
 	if !errors.Is(err, store.ErrNotFound) {
@@ -1091,7 +1097,7 @@ type tokenStoreWrapper struct {
 	settings store.SettingsRepo
 }
 
-func (t tokenStoreWrapper) List() []api.TokenInfo { return t.store.List() }
+func (t tokenStoreWrapper) List() []api.TokenInfo                 { return t.store.List() }
 func (t tokenStoreWrapper) Verify(tok string) ([]api.Scope, bool) { return t.store.Verify(tok) }
 func (t tokenStoreWrapper) Mint(name string, scopes []api.Scope) (api.MintedToken, error) {
 	minted, err := t.store.Mint(name, scopes)

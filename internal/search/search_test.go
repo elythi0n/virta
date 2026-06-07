@@ -78,16 +78,16 @@ func TestIndexer_IndexesMessages(t *testing.T) {
 	idx := noop.NewInMemory()
 	indexer := search.NewIndexer(idx, nil, 100)
 	indexer.Start()
-	defer indexer.Close()
+	defer func() { _ = indexer.Close() }()
 
 	_ = indexer.Consume(context.Background(), platform.MessageEvent{Message: platform.UnifiedMessage{
-		ID:       "m1",
-		Platform: platform.Twitch,
-		Channel:  platform.ChannelRef{Slug: "forsen"},
-		Type:     platform.TypeChat,
-		Author:   platform.Author{DisplayName: "Alice"},
-		Segments: []platform.Segment{{Kind: platform.SegText, Text: "hello from Alice"}},
-		SentAt:   time.Now(),
+		ID:        "m1",
+		Platform:  platform.Twitch,
+		Channel:   platform.ChannelRef{Slug: "forsen"},
+		Type:      platform.TypeChat,
+		Author:    platform.Author{DisplayName: "Alice"},
+		Segments:  []platform.Segment{{Kind: platform.SegText, Text: "hello from Alice"}},
+		SentAt:    time.Now(),
 		Ephemeral: false,
 	}})
 	// Give the async loop time to flush.
@@ -102,12 +102,12 @@ func TestIndexer_SkipsEphemeral(t *testing.T) {
 	idx := noop.NewInMemory()
 	indexer := search.NewIndexer(idx, nil, 100)
 	indexer.Start()
-	defer indexer.Close()
+	defer func() { _ = indexer.Close() }()
 
 	_ = indexer.Consume(context.Background(), platform.MessageEvent{Message: platform.UnifiedMessage{
 		ID: "m1", Platform: platform.Twitch, Channel: platform.ChannelRef{Slug: "ch"},
 		Type: platform.TypeChat, Author: platform.Author{DisplayName: "u"},
-		Segments: []platform.Segment{{Kind: platform.SegText, Text: "ephemeral"}},
+		Segments:  []platform.Segment{{Kind: platform.SegText, Text: "ephemeral"}},
 		Ephemeral: true,
 	}})
 	time.Sleep(700 * time.Millisecond)

@@ -25,9 +25,9 @@ type noopProvider struct {
 	name string
 }
 
-func (p *noopProvider) ID() string                                       { return p.id }
-func (p *noopProvider) DisplayName() string                              { return p.name }
-func (p *noopProvider) Verify(_ context.Context) error                   { return nil }
+func (p *noopProvider) ID() string                     { return p.id }
+func (p *noopProvider) DisplayName() string            { return p.name }
+func (p *noopProvider) Verify(_ context.Context) error { return nil }
 func (p *noopProvider) ListModels(_ context.Context) ([]ModelInfo, error) {
 	return []ModelInfo{{ID: "test-model", SupportsTools: true}}, nil
 }
@@ -61,7 +61,7 @@ func TestMeter_FeatureToggle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error for enabled feature: %v", err)
 	}
-	s.Close()
+	_ = s.Close()
 }
 
 func TestMeter_BudgetEnforcement(t *testing.T) {

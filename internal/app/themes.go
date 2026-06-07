@@ -16,9 +16,9 @@ import (
 // themeControl manages built-in and custom themes, satisfying api.Themes. Custom themes are
 // persisted in the settings repo (scope "themes.<id>") as raw .vtheme JSON, loaded at construction.
 type themeControl struct {
-	mu      sync.RWMutex
-	tokens  *uikit.Tokens
-	custom  map[string][]byte // id → .vtheme JSON
+	mu       sync.RWMutex
+	tokens   *uikit.Tokens
+	custom   map[string][]byte // id → .vtheme JSON
 	settings store.SettingsRepo
 }
 
@@ -57,9 +57,9 @@ func (c *themeControl) List() []api.ThemeInfo {
 	}
 	for id, data := range c.custom {
 		var vt struct {
-			Name        string `json:"name"`
-			Base        string `json:"base"`
-			Appearance  string `json:"appearance"`
+			Name       string `json:"name"`
+			Base       string `json:"base"`
+			Appearance string `json:"appearance"`
 		}
 		if err := json.Unmarshal(data, &vt); err == nil {
 			list = append(list, api.ThemeInfo{ID: id, Name: vt.Name, Base: vt.Base, Appearance: vt.Appearance})

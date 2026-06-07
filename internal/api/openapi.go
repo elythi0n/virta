@@ -40,10 +40,10 @@ func (s *Server) openAPISpec() map[string]any {
 			paths[rt.path] = item
 		}
 		op := map[string]any{
-			"summary":     rt.summary,
-			"operationId": operationID(rt.method, rt.path),
-			"tags":        []string{string(rt.scope)},
-			"security":    []any{map[string]any{"bearerAuth": []string{}}},
+			"summary":          rt.summary,
+			"operationId":      operationID(rt.method, rt.path),
+			"tags":             []string{string(rt.scope)},
+			"security":         []any{map[string]any{"bearerAuth": []string{}}},
 			"x-required-scope": string(rt.scope),
 			"responses": map[string]any{
 				"200": map[string]any{"description": "OK", "content": map[string]any{"application/json": map[string]any{}}},
@@ -109,9 +109,9 @@ func asyncAPISpec() map[string]any {
 	oneOf := make([]any, 0, len(events))
 	for _, e := range events {
 		msgs[e.name] = map[string]any{
-			"name":        e.name,
-			"summary":     e.desc,
-			"payload":     map[string]any{"type": "object", "properties": map[string]any{"type": map[string]any{"const": e.name}, "seq": map[string]any{"type": "integer"}}},
+			"name":    e.name,
+			"summary": e.desc,
+			"payload": map[string]any{"type": "object", "properties": map[string]any{"type": map[string]any{"const": e.name}, "seq": map[string]any{"type": "integer"}}},
 		}
 		oneOf = append(oneOf, map[string]any{"$ref": "#/components/messages/" + e.name})
 	}

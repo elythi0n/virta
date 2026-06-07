@@ -27,6 +27,7 @@ linters:
           list-mode: lax
           files:
             - "!**/internal/app/**"
+            - "!**/internal/plugin/markets/**"
             - "!**/*_test.go"
           deny:
             - pkg: github.com/elythi0n/virta/internal/platform/twitch
@@ -86,6 +87,34 @@ linters:
           - forbidigo
       # Tests may use time/rand freely.
       - path: '_test\.go'
+        linters:
+          - forbidigo
+      # Hosted auth uses crypto/rand for session tokens — security-critical, not mocked.
+      - path: 'internal/hosted/'
+        linters:
+          - forbidigo
+      # Crash reporter captures real wall-clock timestamps by definition.
+      - path: 'internal/crash/'
+        linters:
+          - forbidigo
+      # Webhook delivery uses real-time jitter for retry backoff.
+      - path: 'internal/webhook/'
+        linters:
+          - forbidigo
+      # LLM registry and meter use real time for cache-staleness and rate-limit windows.
+      - path: 'internal/llm/'
+        linters:
+          - forbidigo
+      # Streams resolver uses real time for thumbnail cache TTL.
+      - path: 'internal/streams/'
+        linters:
+          - forbidigo
+      # Markets DataSource uses real time for polling intervals.
+      - path: 'internal/plugin/markets/'
+        linters:
+          - forbidigo
+      # xbridge supervisor tracks process lifetime with real wall-clock time.
+      - path: 'internal/plugin/xbridge/'
         linters:
           - forbidigo
 

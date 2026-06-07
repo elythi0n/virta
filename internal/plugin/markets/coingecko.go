@@ -87,7 +87,7 @@ func (g *CoinGeckoProvider) fetchAndPublish(ctx context.Context, ids []string,
 		statusFn(Status{State: "degraded", Message: err.Error()})
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode == 429 {
 		statusFn(Status{State: "degraded", Message: "CoinGecko rate limit — retrying later"})
 		return
@@ -99,14 +99,14 @@ func (g *CoinGeckoProvider) fetchAndPublish(ctx context.Context, ids []string,
 
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 256<<10))
 	var coins []struct {
-		ID                           string  `json:"id"`
-		Symbol                       string  `json:"symbol"`
-		CurrentPrice                 float64 `json:"current_price"`
-		PriceChangePercentage24h     float64 `json:"price_change_percentage_24h"`
+		ID                                string  `json:"id"`
+		Symbol                            string  `json:"symbol"`
+		CurrentPrice                      float64 `json:"current_price"`
+		PriceChangePercentage24h          float64 `json:"price_change_percentage_24h"`
 		PriceChangePercentage1hInCurrency float64 `json:"price_change_percentage_1h_in_currency"`
-		High24h                      float64 `json:"high_24h"`
-		Low24h                       float64 `json:"low_24h"`
-		TotalVolume                  float64 `json:"total_volume"`
+		High24h                           float64 `json:"high_24h"`
+		Low24h                            float64 `json:"low_24h"`
+		TotalVolume                       float64 `json:"total_volume"`
 	}
 	if err := json.Unmarshal(body, &coins); err != nil {
 		statusFn(Status{State: "degraded", Message: "CoinGecko parse error"})

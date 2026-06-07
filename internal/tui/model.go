@@ -39,9 +39,9 @@ type Config struct {
 // Palette maps design-system color roles to truecolor values. The web and desktop apps use CSS
 // tokens from the same source; the TUI maps the dark-theme tokens to lipgloss colors.
 type Palette struct {
-	BG0, BG1, BG2 lipgloss.Color
-	Text0, Text1, Text2 lipgloss.Color
-	Accent, OK, Warn, Danger lipgloss.Color
+	BG0, BG1, BG2               lipgloss.Color
+	Text0, Text1, Text2         lipgloss.Color
+	Accent, OK, Warn, Danger    lipgloss.Color
 	PlatTwitch, PlatKick, PlatX lipgloss.Color
 }
 
@@ -162,7 +162,7 @@ func (m *Model) connect() tea.Cmd {
 		sub, _ := json.Marshal(map[string]any{"action": "subscribe", "channels": m.cfg.Channels})
 		_ = conn.Write(context.Background(), 1, sub)
 		go func() {
-			defer conn.Close(1000, "bye")
+			defer func() { _ = conn.Close(1000, "bye") }()
 			for {
 				select {
 				case <-m.quit:
@@ -182,11 +182,15 @@ func (m *Model) connect() tea.Cmd {
 					raw, _ := json.Marshal(ev["message"])
 					var msg struct {
 						Platform string `json:"platform"`
-						Channel  struct{ Slug string `json:"slug"` } `json:"channel"`
+						Channel  struct {
+							Slug string `json:"slug"`
+						} `json:"channel"`
 						Author   struct{ DisplayName, Login string } `json:"author"`
-						Segments []struct{ Text string `json:"text"` } `json:"segments"`
-						Type     string `json:"type"`
-						SentAt   string `json:"sent_at"`
+						Segments []struct {
+							Text string `json:"text"`
+						} `json:"segments"`
+						Type   string `json:"type"`
+						SentAt string `json:"sent_at"`
 					}
 					_ = json.Unmarshal(raw, &msg)
 					var body strings.Builder
@@ -311,5 +315,5 @@ func (m *Model) send(text string) {
 		m.incoming <- Message{Type: "status", Body: fmt.Sprintf("send error: %v", err)}
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 }

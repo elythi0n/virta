@@ -23,7 +23,7 @@ func (w *websocketConn) Close(code websocket.StatusCode, reason string) error {
 
 // websocketConnect dials a WebSocket URL and returns a conn.
 func websocketConnect(wsURL string) (*websocketConn, *websocket.Conn, error) {
-	c, _, err := websocket.Dial(context.Background(), wsURL, nil)
+	c, _, err := websocket.Dial(context.Background(), wsURL, nil) //nolint:bodyclose
 	if err != nil {
 		return nil, nil, err
 	}

@@ -46,10 +46,10 @@ var (
 )
 
 const (
-	wsExLayered    = 0x00080000
-	wsExTopmost    = 0x00000008
-	wsExToolWindow = 0x00000080
-	wsExNoActivate = 0x08000000
+	wsExLayered     = 0x00080000
+	wsExTopmost     = 0x00000008
+	wsExToolWindow  = 0x00000080
+	wsExNoActivate  = 0x08000000
 	wsExTransparent = 0x00000020
 
 	wsPopup   = 0x80000000
@@ -57,7 +57,7 @@ const (
 
 	swShow = 5
 
-	lwaTrans   = 0x00000002 // use transparency value
+	lwaTrans    = 0x00000002 // use transparency value
 	lwaColorKey = 0x00000001
 
 	wmDestroy = 0x0002

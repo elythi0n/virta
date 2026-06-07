@@ -19,16 +19,16 @@ const startupTimeout = 15 * time.Second
 
 // App is the shell's lifecycle owner and the Wails service (bound methods callable from JS).
 type App struct {
-	app        *application.App
-	mainWindow *application.WebviewWindow
-	discovery  api.Discovery
+	app         *application.App
+	mainWindow  *application.WebviewWindow
+	discovery   api.Discovery
 	integration IntegrationReport
-	daemon     *daemonProcess
+	daemon      *daemonProcess
 }
 
 func newApp() *App { return &App{} }
 
-func (a *App) setApp(app *application.App)               { a.app = app }
+func (a *App) setApp(app *application.App)                { a.app = app }
 func (a *App) setMainWindow(w *application.WebviewWindow) { a.mainWindow = w }
 
 // ServiceStartup is called by Wails when the app launches.

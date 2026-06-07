@@ -14,9 +14,9 @@ import (
 // It is intentionally minimal and depends only on database/sql so it works with both
 // the sqlite and postgres backends without importing either.
 type SQLStore struct {
-	db      *sql.DB
-	gen     id.Generator
-	rebind  func(string) string  // ? → $N for postgres; identity for sqlite
+	db     *sql.DB
+	gen    id.Generator
+	rebind func(string) string // ? → $N for postgres; identity for sqlite
 }
 
 // NewSQLStore wraps an open *sql.DB. rebind is the placeholder adapter from sqlcommon.Dialect.

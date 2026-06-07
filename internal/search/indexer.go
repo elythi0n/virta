@@ -13,10 +13,10 @@ import (
 // keeping the hot path latency-free. It honours the same logging-opt-in rule as the logbook:
 // only non-ephemeral messages reach the index.
 type Indexer struct {
-	idx    Index
-	buf    chan platform.UnifiedMessage
-	log    *slog.Logger
-	quit   chan struct{}
+	idx  Index
+	buf  chan platform.UnifiedMessage
+	log  *slog.Logger
+	quit chan struct{}
 }
 
 // NewIndexer wraps an Index as a pipeline sink with a buffer of depth.

@@ -50,29 +50,29 @@ func (f *FlexInt) UnmarshalJSON(b []byte) error {
 
 // SearchArgs is the input to search_messages.
 type SearchArgs struct {
-	Query    string `json:"query"    jsonschema:"required,description=Full-text search query"`
-	Channel  string `json:"channel"  jsonschema:"description=Channel key (platform:slug) to narrow search; omit for all channels"`
-	Author   string `json:"author"   jsonschema:"description=Author name or uid to filter by"`
-	FromTime string `json:"from_time" jsonschema:"description=ISO-8601 start time; omit for no lower bound"`
-	ToTime   string `json:"to_time"   jsonschema:"description=ISO-8601 end time; omit for no upper bound"`
+	Query    string  `json:"query"    jsonschema:"required,description=Full-text search query"`
+	Channel  string  `json:"channel"  jsonschema:"description=Channel key (platform:slug) to narrow search; omit for all channels"`
+	Author   string  `json:"author"   jsonschema:"description=Author name or uid to filter by"`
+	FromTime string  `json:"from_time" jsonschema:"description=ISO-8601 start time; omit for no lower bound"`
+	ToTime   string  `json:"to_time"   jsonschema:"description=ISO-8601 end time; omit for no upper bound"`
 	Limit    FlexInt `json:"limit"    jsonschema:"description=Max results (capped at 200)"`
 }
 
 // UserHistoryArgs is the input to get_user_history.
 type UserHistoryArgs struct {
-	Author   string `json:"author"   jsonschema:"required,description=Author name or uid"`
-	Channel  string `json:"channel"  jsonschema:"description=Optional channel key"`
-	FromTime string `json:"from_time" jsonschema:"description=ISO-8601 start"`
-	ToTime   string `json:"to_time"   jsonschema:"description=ISO-8601 end"`
+	Author   string  `json:"author"   jsonschema:"required,description=Author name or uid"`
+	Channel  string  `json:"channel"  jsonschema:"description=Optional channel key"`
+	FromTime string  `json:"from_time" jsonschema:"description=ISO-8601 start"`
+	ToTime   string  `json:"to_time"   jsonschema:"description=ISO-8601 end"`
 	Limit    FlexInt `json:"limit"    jsonschema:"description=Max results (capped at 200)"`
 }
 
 // TopChattersArgs is the input to top_chatters.
 type TopChattersArgs struct {
-	Channel  string `json:"channel"   jsonschema:"description=Channel key; omit for all channels"`
-	FromTime string `json:"from_time" jsonschema:"description=ISO-8601 start"`
-	ToTime   string `json:"to_time"   jsonschema:"description=ISO-8601 end"`
-	Metric   string `json:"metric"    jsonschema:"description=messages|subs|gifts — defaults to messages"`
+	Channel  string  `json:"channel"   jsonschema:"description=Channel key; omit for all channels"`
+	FromTime string  `json:"from_time" jsonschema:"description=ISO-8601 start"`
+	ToTime   string  `json:"to_time"   jsonschema:"description=ISO-8601 end"`
+	Metric   string  `json:"metric"    jsonschema:"description=messages|subs|gifts — defaults to messages"`
 	Limit    FlexInt `json:"limit"     jsonschema:"description=Top-N count (capped at 50)"`
 }
 
@@ -85,28 +85,28 @@ type ChannelStatsArgs struct {
 
 // MessagesRangeArgs is the input to get_messages_range.
 type MessagesRangeArgs struct {
-	Channel  string `json:"channel"  jsonschema:"required,description=Channel key"`
-	FromTime string `json:"from_time" jsonschema:"description=ISO-8601 start"`
-	ToTime   string `json:"to_time"   jsonschema:"description=ISO-8601 end"`
+	Channel  string  `json:"channel"  jsonschema:"required,description=Channel key"`
+	FromTime string  `json:"from_time" jsonschema:"description=ISO-8601 start"`
+	ToTime   string  `json:"to_time"   jsonschema:"description=ISO-8601 end"`
 	Limit    FlexInt `json:"limit"    jsonschema:"description=Max results (capped at 200)"`
 }
 
 // MessageRow is a tool result row.
 type MessageRow struct {
-	ID       string `json:"id"`
-	Channel  string `json:"channel"`
-	Author   string `json:"author"`
-	Body     string `json:"body"`
-	Type     string `json:"type,omitempty"`
-	SentAt   string `json:"sent_at"`
-	Deleted  bool   `json:"deleted,omitempty"`
+	ID      string `json:"id"`
+	Channel string `json:"channel"`
+	Author  string `json:"author"`
+	Body    string `json:"body"`
+	Type    string `json:"type,omitempty"`
+	SentAt  string `json:"sent_at"`
+	Deleted bool   `json:"deleted,omitempty"`
 }
 
 // ChatterCount is a row in top_chatters results.
 type ChatterCount struct {
-	Author   string `json:"author"`
-	Channel  string `json:"channel,omitempty"`
-	Count    int    `json:"count"`
+	Author  string `json:"author"`
+	Channel string `json:"channel,omitempty"`
+	Count   int    `json:"count"`
 }
 
 // ChannelInfo is a row in list_channels results.
@@ -118,9 +118,9 @@ type ChannelInfo struct {
 
 // ToolBelt holds all tool implementations bound to a store.
 type ToolBelt struct {
-	store          store.Store
-	loggingActive  func() bool                     // nil means unknown/off
-	channelLister  func() []ChannelInfo             // returns the live joined-channel list
+	store         store.Store
+	loggingActive func() bool          // nil means unknown/off
+	channelLister func() []ChannelInfo // returns the live joined-channel list
 }
 
 // New builds a ToolBelt over the given store.
@@ -142,8 +142,8 @@ func (tb *ToolBelt) loggingOn() bool {
 
 // errLoggingOff is returned by history tools when logging is disabled.
 var errLoggingOff = fmt.Errorf(
-	"message logging is disabled — no chat history is available to query. " +
-		"To use this tool, enable logging in Settings → Chat (or Settings → Storage) and give it time to accumulate messages.")
+	"message logging is disabled — no chat history is available to query; " +
+		"enable logging in Settings → Chat (or Settings → Storage) and give it time to accumulate messages")
 
 // --- Tool implementations ---
 

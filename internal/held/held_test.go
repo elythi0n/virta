@@ -13,7 +13,7 @@ func ch(slug string) platform.ChannelRef {
 }
 
 func hold(q *Queue, id, slug, author, text string) {
-	q.Consume(context.Background(), platform.MessageHeldEvent{Held: platform.HeldMessage{
+	_ = q.Consume(context.Background(), platform.MessageHeldEvent{Held: platform.HeldMessage{
 		ID:      id,
 		Channel: ch(slug),
 		Author:  platform.Author{Login: author},
@@ -45,7 +45,7 @@ func TestQueue_ResolveRemoves(t *testing.T) {
 	hold(q, "a", "forsen", "bob", "hi")
 	hold(q, "b", "forsen", "eve", "yo")
 
-	q.Consume(context.Background(), platform.HeldResolvedEvent{Channel: ch("forsen"), ID: "a", Approved: true})
+	_ = q.Consume(context.Background(), platform.HeldResolvedEvent{Channel: ch("forsen"), ID: "a", Approved: true})
 
 	got := q.List()
 	if len(got) != 1 || got[0].ID != "b" {
@@ -105,8 +105,8 @@ func TestQueue_PerChannelCap(t *testing.T) {
 
 func TestQueue_OtherEventsIgnored(t *testing.T) {
 	q := New()
-	q.Consume(context.Background(), platform.StatsEvent{Channel: ch("forsen")})
-	q.Consume(context.Background(), platform.ChannelClearEvent{Channel: ch("forsen")})
+	_ = q.Consume(context.Background(), platform.StatsEvent{Channel: ch("forsen")})
+	_ = q.Consume(context.Background(), platform.ChannelClearEvent{Channel: ch("forsen")})
 	if len(q.List()) != 0 {
 		t.Error("non-held events should not populate the queue")
 	}

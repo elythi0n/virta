@@ -19,11 +19,11 @@ import (
 
 // BridgeState is the supervisor's view of the bridge, surfaced as reason codes.
 const (
-	StateConnecting  = "x_bridge_connecting"
-	StateConnected   = "x_bridge_connected"
-	StateDegraded    = "x_bridge_degraded"
-	StateDisabled    = "x_bridge_disabled"
-	StateNotFound    = "x_bridge_not_found"     // bridge binary not on PATH
+	StateConnecting   = "x_bridge_connecting"
+	StateConnected    = "x_bridge_connected"
+	StateDegraded     = "x_bridge_degraded"
+	StateDisabled     = "x_bridge_disabled"
+	StateNotFound     = "x_bridge_not_found"     // bridge binary not on PATH
 	StateAuthRequired = "x_bridge_auth_required" // X requires a sign-in for this broadcast
 )
 
@@ -39,12 +39,12 @@ type Options struct {
 // Supervisor spawns and manages the x-bridge process, reconnects on crash with circuit-breaker
 // backoff, and surfaces platform events for every message and health transition it receives.
 type Supervisor struct {
-	opts    Options
-	log     *slog.Logger
-	events  chan platform.Event
-	state   atomic.Value // string reason code
-	quit    chan struct{}
-	wg      sync.WaitGroup
+	opts   Options
+	log    *slog.Logger
+	events chan platform.Event
+	state  atomic.Value // string reason code
+	quit   chan struct{}
+	wg     sync.WaitGroup
 }
 
 // New builds a Supervisor. Call Start to begin.
@@ -140,7 +140,7 @@ func (s *Supervisor) run(ctx context.Context, bin string) error {
 	if err := cmd.Start(); err != nil {
 		return err
 	}
-	defer cmd.Wait()
+	defer func() { _ = cmd.Wait() }()
 
 	s.setState(StateConnecting)
 	s.emit(platform.HealthEvent{Status: platform.HealthStatus{State: platform.HealthOK, Reason: platform.ReasonCode(StateConnecting)}})
@@ -151,7 +151,7 @@ func (s *Supervisor) run(ctx context.Context, bin string) error {
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	s.setState(StateConnected)
 	s.emit(platform.HealthEvent{Status: platform.HealthStatus{State: platform.HealthOK, Reason: platform.ReasonCode(StateConnected)}})

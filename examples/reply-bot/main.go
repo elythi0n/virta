@@ -30,7 +30,9 @@ type Message struct {
 	Segments []Seg   `json:"segments"`
 }
 
-type Channel struct{ Slug string `json:"slug"` }
+type Channel struct {
+	Slug string `json:"slug"`
+}
 type Seg struct {
 	Type string `json:"type"`
 	Text string `json:"text"`
@@ -46,7 +48,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("connect: %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	sub, _ := json.Marshal(map[string]any{"action": "subscribe"})
 	if err := wsWriteText(conn, sub); err != nil {
 		log.Fatalf("subscribe: %v", err)
@@ -93,7 +95,7 @@ func reply(addr, token, channel, text string) {
 		fmt.Fprintf(os.Stderr, "send error: %v\n", err)
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	fmt.Fprintf(os.Stderr, "replied in %s -> %d\n", channel, resp.StatusCode)
 }
 

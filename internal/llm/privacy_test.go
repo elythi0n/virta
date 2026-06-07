@@ -43,8 +43,8 @@ func TestPrivacy_FeatureDisabled_NoCall(t *testing.T) {
 // any network request could occur when features are disabled.
 type panicOnCompleteProvider struct{}
 
-func (p *panicOnCompleteProvider) ID() string          { return "panic" }
-func (p *panicOnCompleteProvider) DisplayName() string { return "Panic" }
+func (p *panicOnCompleteProvider) ID() string                     { return "panic" }
+func (p *panicOnCompleteProvider) DisplayName() string            { return "Panic" }
 func (p *panicOnCompleteProvider) Verify(_ context.Context) error { return nil }
 func (p *panicOnCompleteProvider) ListModels(_ context.Context) ([]ModelInfo, error) {
 	return []ModelInfo{{ID: "any"}}, nil

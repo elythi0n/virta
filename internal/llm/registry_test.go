@@ -12,9 +12,9 @@ type fakeProvider struct {
 	models []ModelInfo
 }
 
-func (f *fakeProvider) ID() string          { return f.id }
-func (f *fakeProvider) DisplayName() string { return f.name }
-func (f *fakeProvider) Verify(_ context.Context) error { return nil }
+func (f *fakeProvider) ID() string                                        { return f.id }
+func (f *fakeProvider) DisplayName() string                               { return f.name }
+func (f *fakeProvider) Verify(_ context.Context) error                    { return nil }
 func (f *fakeProvider) ListModels(_ context.Context) ([]ModelInfo, error) { return f.models, nil }
 func (f *fakeProvider) Complete(_ context.Context, _ CompletionRequest) (Stream, error) {
 	return nil, ErrProviderUnavailable
@@ -71,4 +71,3 @@ func TestRegistry_Deregister(t *testing.T) {
 		t.Error("expected error after deregistration")
 	}
 }
-

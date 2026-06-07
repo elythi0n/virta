@@ -3,6 +3,7 @@ package noop
 import (
 	"context"
 	"strings"
+	"sync"
 
 	"github.com/elythi0n/virta/internal/search"
 )
@@ -12,11 +13,11 @@ import (
 // and never fails — it just doesn't add Tier-2 quality improvements.
 type Noop struct{}
 
-func (Noop) Name() string                                      { return "noop" }
-func (Noop) Available(_ context.Context) bool                  { return false }
+func (Noop) Name() string                                       { return "noop" }
+func (Noop) Available(_ context.Context) bool                   { return false }
 func (Noop) Index(_ context.Context, _ []search.Document) error { return nil }
-func (Noop) Delete(_ context.Context, _ string) error          { return nil }
-func (Noop) DeleteChannel(_ context.Context, _ string) error   { return nil }
+func (Noop) Delete(_ context.Context, _ string) error           { return nil }
+func (Noop) DeleteChannel(_ context.Context, _ string) error    { return nil }
 
 // Search on the noop implementation does a simple substring match so the tool belt still
 // returns results when Meilisearch is not configured (not as fast or typo-tolerant, but correct).
@@ -24,15 +25,17 @@ func (Noop) Search(_ context.Context, q search.Query) ([]search.Result, error) {
 
 // InMemory is a test-only in-memory index used by unit tests that don't want to run Meilisearch.
 type InMemory struct {
+	mu   sync.RWMutex
 	docs []search.Document
 }
 
-func NewInMemory() *InMemory { return &InMemory{} }
-func (*InMemory) Name() string                    { return "in-memory" }
+func NewInMemory() *InMemory                       { return &InMemory{} }
+func (*InMemory) Name() string                     { return "in-memory" }
 func (*InMemory) Available(_ context.Context) bool { return true }
 func (m *InMemory) Index(_ context.Context, docs []search.Document) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	for _, d := range docs {
-		// Replace existing by ID.
 		replaced := false
 		for i, ex := range m.docs {
 			if ex.ID == d.ID {
@@ -48,6 +51,8 @@ func (m *InMemory) Index(_ context.Context, docs []search.Document) error {
 	return nil
 }
 func (m *InMemory) Delete(_ context.Context, id string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	for i, d := range m.docs {
 		if d.ID == id {
 			m.docs = append(m.docs[:i], m.docs[i+1:]...)
@@ -57,6 +62,8 @@ func (m *InMemory) Delete(_ context.Context, id string) error {
 	return nil
 }
 func (m *InMemory) DeleteChannel(_ context.Context, channel string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	var keep []search.Document
 	for _, d := range m.docs {
 		if d.Channel != channel {
@@ -67,6 +74,8 @@ func (m *InMemory) DeleteChannel(_ context.Context, channel string) error {
 	return nil
 }
 func (m *InMemory) Search(_ context.Context, q search.Query) ([]search.Result, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	needle := strings.ToLower(strings.TrimSpace(q.Text))
 	if needle == "" {
 		return nil, nil

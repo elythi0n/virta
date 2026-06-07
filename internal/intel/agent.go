@@ -17,11 +17,11 @@ import (
 // AgentEvent is one streamed item from a Run call.
 type AgentEvent struct {
 	Kind    AgentEventKind
-	Text    string       // AEKText: one text delta
-	ToolUse *ToolUse     // AEKToolUse: the tool call about to be executed
-	Result  *ToolResult  // AEKToolResult: the tool's response
-	Usage   *llm.Usage   // AEKDone: final usage (may be nil if the provider doesn't report it)
-	Err     error        // AEKError: terminal error
+	Text    string      // AEKText: one text delta
+	ToolUse *ToolUse    // AEKToolUse: the tool call about to be executed
+	Result  *ToolResult // AEKToolResult: the tool's response
+	Usage   *llm.Usage  // AEKDone: final usage (may be nil if the provider doesn't report it)
+	Err     error       // AEKError: terminal error
 }
 
 // AgentEventKind classifies an AgentEvent.
@@ -77,11 +77,9 @@ language. Always suggest the specific fix (e.g. "enable logging in Settings → 
 Never silently ignore a tool error or pretend it succeeded.`)
 
 	// Always inject the current date so the AI can correctly interpret "today", "this week", etc.
+	// Callers must set AskContext.Now; a zero value renders no date hint.
 	now := ac.Now
-	if now.IsZero() {
-		now = time.Now().UTC()
-	}
-	b.WriteString(fmt.Sprintf("\n\nCurrent date/time: %s (UTC)\n", now.Format("2006-01-02 15:04 MST")))
+	fmt.Fprintf(&b, "\n\nCurrent date/time: %s (UTC)\n", now.Format("2006-01-02 15:04 MST"))
 	b.WriteString("When the user says 'today', use " + now.Format("2006-01-02") + " as the date.\n")
 	b.WriteString("When the user says 'this week', use " + now.AddDate(0, 0, -int(now.Weekday())).Format("2006-01-02") + " as the week start.\n\n")
 
@@ -97,21 +95,21 @@ Never silently ignore a tool error or pretend it succeeded.`)
 	if len(ac.Channels) == 0 {
 		b.WriteString("- Channels: none joined yet — add streams in the Streams panel first.\n")
 	} else {
-		b.WriteString(fmt.Sprintf("- Channels (%d joined):\n", len(ac.Channels)))
+		fmt.Fprintf(&b, "- Channels (%d joined):\n", len(ac.Channels))
 		for _, ch := range ac.Channels {
-			b.WriteString(fmt.Sprintf("  • %s  (platform: %s, slug: %s)\n", ch.Key, ch.Platform, ch.Slug))
+			fmt.Fprintf(&b, "  • %s  (platform: %s, slug: %s)\n", ch.Key, ch.Platform, ch.Slug)
 		}
 		b.WriteString("IMPORTANT: when a tool requires a channel, use ONLY these exact 'platform:slug' keys.\n")
 		b.WriteString("Never invent or guess channel names. If the user names a streamer, match it to the list above.\n")
 	}
 
 	if ac.MCPRelayURL != "" {
-		b.WriteString(fmt.Sprintf(
+		fmt.Fprintf(&b,
 			"\nExternal AI client integration (MCP):\n"+
 				"- MCP server endpoint: %s/mcp\n"+
 				"- External AI clients (Claude Desktop, Cursor, etc.) can connect to this URL.\n"+
 				"- They need the API bearer token, which the user can find in Settings → Integrations → API tokens.\n",
-			ac.MCPRelayURL))
+			ac.MCPRelayURL)
 	} else {
 		b.WriteString("\nExternal AI client integration (MCP):\n" +
 			"- No public relay URL is configured (VIRTA_MCP_RELAY_URL).\n" +

@@ -13,7 +13,7 @@ func ch(slug string) platform.ChannelRef {
 }
 
 func feed(r *Ring, id, slug, author, body string) {
-	r.Consume(context.Background(), platform.MessageEvent{Message: platform.UnifiedMessage{
+	_ = r.Consume(context.Background(), platform.MessageEvent{Message: platform.UnifiedMessage{
 		ID:       id,
 		Channel:  ch(slug),
 		Type:     platform.TypeChat,
@@ -90,7 +90,7 @@ func TestRing_SearchAcrossChannelsAndFilters(t *testing.T) {
 func TestRing_MarkDeleted(t *testing.T) {
 	r := New()
 	feed(r, "m1", "forsen", "a", "oops")
-	r.Consume(context.Background(), platform.MessageDeletedEvent{Channel: ch("forsen"), MessageID: "m1"})
+	_ = r.Consume(context.Background(), platform.MessageDeletedEvent{Channel: ch("forsen"), MessageID: "m1"})
 	got := r.History(ch("forsen").Key(), "", 10)
 	if len(got) != 1 || !got[0].Deleted {
 		t.Errorf("message not marked deleted: %+v", got)
@@ -99,7 +99,7 @@ func TestRing_MarkDeleted(t *testing.T) {
 
 func TestRing_IgnoresOtherEvents(t *testing.T) {
 	r := New()
-	r.Consume(context.Background(), platform.StatsEvent{Channel: ch("forsen")})
+	_ = r.Consume(context.Background(), platform.StatsEvent{Channel: ch("forsen")})
 	if got := r.History(ch("forsen").Key(), "", 10); len(got) != 0 {
 		t.Errorf("non-message events should not populate the ring: %v", ids(got))
 	}

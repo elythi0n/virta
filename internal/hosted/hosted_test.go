@@ -9,9 +9,9 @@ import (
 
 // stubStore is an in-memory implementation of Store for tests.
 type stubStore struct {
-	users    map[string]*User     // email → user
-	hashes   map[string]string    // userID → hash
-	sessions map[string]*session  // tokenHash → session
+	users    map[string]*User    // email → user
+	hashes   map[string]string   // userID → hash
+	sessions map[string]*session // tokenHash → session
 }
 
 type session struct {
@@ -27,7 +27,7 @@ func newStub() *stubStore {
 	}
 }
 
-func (s *stubStore) Conn() *sql.DB   { return nil }
+func (s *stubStore) Conn() *sql.DB          { return nil }
 func (s *stubStore) Rebind(q string) string { return q }
 
 func (s *stubStore) CreateUser(ctx context.Context, email, displayName, passwordHash string) (User, error) {
@@ -98,6 +98,7 @@ func (s *stubStore) SweepSessions(_ context.Context) (int, error) {
 
 // idGen is a simple counter-based id generator for tests.
 type idGen struct{ n int }
+
 func (g *idGen) New() string { g.n++; return "id" + string(rune('0'+g.n)) }
 
 func TestManager_RegisterAndLogin(t *testing.T) {
@@ -135,7 +136,7 @@ func TestManager_ShortPassword(t *testing.T) {
 func TestManager_RateLimit(t *testing.T) {
 	m := NewManager(newStub(), &idGen{})
 	// Register a user.
-	_ , _ = m.Register(context.Background(), "c@x.com", "C", "correctpass")
+	_, _ = m.Register(context.Background(), "c@x.com", "C", "correctpass")
 	// Flood login attempts.
 	for i := 0; i < 5; i++ {
 		_, _, _ = m.Login(context.Background(), "10.0.0.1", "c@x.com", "wrong")

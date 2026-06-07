@@ -11,7 +11,7 @@ import (
 // It is the bridge between the plugin registry and the daemon's command dispatch, panel registry,
 // and DataSource runner — exposed to plugins only within their declared scopes.
 type defaultHostAPI struct {
-	mu       sync.RWMutex
+	mu sync.RWMutex
 	// dataSources holds running DataSource goroutines by pluginID.
 	dataSources map[string]context.CancelFunc
 	// commands holds contributed slash-commands by "pluginID/commandName".
@@ -52,9 +52,7 @@ func (h *defaultHostAPI) RegisterDataSource(pluginID string, ds DataSourceRunner
 	h.dataSources[key] = cancel
 	go func() {
 		if err := h.dsRunner(ctx, ds); err != nil && ctx.Err() == nil {
-			// DataSource errored without being cancelled — the caller will see this if
-			// it monitors the pipeline's log. We cannot panic: the host must survive a
-			// misbehaving plugin DataSource.
+			_ = err // DataSource errored without being cancelled; the pipeline log captures it
 		}
 	}()
 	return nil

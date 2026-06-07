@@ -140,7 +140,7 @@ func (inst *Installer) resolveURL(ctx context.Context, rawURL string) (string, e
 		if err != nil {
 			return "", err
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		if resp.StatusCode != 200 {
 			return "", fmt.Errorf("GitHub API %d for %s", resp.StatusCode, apiURL)
 		}
@@ -168,7 +168,7 @@ func (inst *Installer) download(ctx context.Context, archiveURL string) ([]byte,
 	if err != nil {
 		return nil, "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != 200 {
 		return nil, "", fmt.Errorf("HTTP %d downloading %s", resp.StatusCode, archiveURL)
 	}
@@ -213,7 +213,7 @@ func (inst *Installer) extractZip(data []byte) (*Manifest, map[string][]byte, er
 			return nil, nil, err
 		}
 		b, err := io.ReadAll(io.LimitReader(rc, 4<<20))
-		rc.Close()
+		_ = rc.Close()
 		if err != nil {
 			return nil, nil, err
 		}
@@ -227,7 +227,7 @@ func (inst *Installer) extractTarGz(data []byte) (*Manifest, map[string][]byte, 
 	if err != nil {
 		return nil, nil, err
 	}
-	defer gz.Close()
+	defer func() { _ = gz.Close() }()
 	tr := tar.NewReader(gz)
 	files := map[string][]byte{}
 	for {

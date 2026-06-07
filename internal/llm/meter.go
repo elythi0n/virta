@@ -46,10 +46,10 @@ type UsageRecord struct {
 
 // MeterConfig holds limits and feature toggles. Persisted to the settings repo.
 type MeterConfig struct {
-	Enabled         bool                       // master kill switch — if false, all LLM calls return ErrLLMDisabled
-	FeatureEnabled  map[Feature]bool            // per-feature toggles
+	Enabled         bool             // master kill switch — if false, all LLM calls return ErrLLMDisabled
+	FeatureEnabled  map[Feature]bool // per-feature toggles
 	Limits          []BudgetLimit
-	PricingOverride map[string]Pricing          // user-entered prices for providers that don't expose them
+	PricingOverride map[string]Pricing // user-entered prices for providers that don't expose them
 }
 
 // ErrLLMDisabled is returned when the master kill switch is off.
@@ -57,7 +57,7 @@ var ErrLLMDisabled = errors.New("llm: all AI features are disabled")
 
 // ErrBudgetExceeded is returned when a spending limit is about to be crossed.
 type ErrBudgetExceeded struct {
-	Period  BudgetPeriod
+	Period   BudgetPeriod
 	LimitUSD float64
 	SpentUSD float64
 }

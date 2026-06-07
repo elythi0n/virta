@@ -10,10 +10,10 @@ import (
 // (platform + uid only, no tokens — tokens live in the OS keychain and are never exported), so an
 // exported profile can be imported on another machine and re-authenticated independently.
 type ProfileExport struct {
-	SchemaVersion int              `json:"schema_version"` // bump on incompatible format changes
-	Name          string           `json:"name"`
-	Doc           json.RawMessage  `json:"doc"` // the raw profile document (channels, filters, layouts, …)
-	AccountRefs   []AccountRef     `json:"account_refs,omitempty"`
+	SchemaVersion int             `json:"schema_version"` // bump on incompatible format changes
+	Name          string          `json:"name"`
+	Doc           json.RawMessage `json:"doc"` // the raw profile document (channels, filters, layouts, …)
+	AccountRefs   []AccountRef    `json:"account_refs,omitempty"`
 }
 
 // AccountRef is the non-secret part of a connected account: enough to know "this profile expects a

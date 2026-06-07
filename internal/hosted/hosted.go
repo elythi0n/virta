@@ -53,10 +53,10 @@ var ErrEmailTaken = errors.New("hosted: email already registered")
 
 // User is a registered account.
 type User struct {
-	ID           string
-	Email        string
-	DisplayName  string
-	CreatedAt    time.Time
+	ID          string
+	Email       string
+	DisplayName string
+	CreatedAt   time.Time
 }
 
 // Store is the persistence port for the hosted user/session layer. Implemented by the SQL
@@ -82,8 +82,8 @@ type Store interface {
 
 // Manager handles registration, login, logout, and session resolution.
 type Manager struct {
-	store  Store
-	gen    id.Generator
+	store Store
+	gen   id.Generator
 	// in-memory login rate limiter: IP → [attempt_count, window_start].
 	mu      sync.Mutex
 	limiter map[string][2]int64 // ip → {count, window_unix_sec}

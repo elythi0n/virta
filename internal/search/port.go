@@ -16,42 +16,42 @@ import (
 type SearchMode string
 
 const (
-	ModeKeyword SearchMode = "keyword"
+	ModeKeyword  SearchMode = "keyword"
 	ModeSemantic SearchMode = "semantic"
-	ModeHybrid  SearchMode = "hybrid"
+	ModeHybrid   SearchMode = "hybrid"
 )
 
 // Query is the unified search request.
 type Query struct {
-	Text      string
-	Channel   string // "platform:slug"; "" = all
-	Author    string
-	Platform  string
-	TimeFrom  time.Time
-	TimeTo    time.Time
-	Mode      SearchMode // defaults to keyword
-	Limit     int
+	Text     string
+	Channel  string // "platform:slug"; "" = all
+	Author   string
+	Platform string
+	TimeFrom time.Time
+	TimeTo   time.Time
+	Mode     SearchMode // defaults to keyword
+	Limit    int
 }
 
 // Result is one search hit.
 type Result struct {
-	ID       string    `json:"id"`
-	Channel  string    `json:"channel"`
-	Author   string    `json:"author"`
-	Body     string    `json:"body"`
-	Type     string    `json:"type"`
-	SentAt   time.Time `json:"sent_at"`
-	Score    float64   `json:"score,omitempty"` // relevance, 0 if unavailable
+	ID      string    `json:"id"`
+	Channel string    `json:"channel"`
+	Author  string    `json:"author"`
+	Body    string    `json:"body"`
+	Type    string    `json:"type"`
+	SentAt  time.Time `json:"sent_at"`
+	Score   float64   `json:"score,omitempty"` // relevance, 0 if unavailable
 }
 
 // Document is the indexable form of a message.
 type Document struct {
-	ID       string    `json:"id"`
-	Channel  string    `json:"channel"`
-	Author   string    `json:"author"`
-	Body     string    `json:"body"`
-	Type     string    `json:"type"`
-	SentAt   time.Time `json:"sent_at"`
+	ID      string    `json:"id"`
+	Channel string    `json:"channel"`
+	Author  string    `json:"author"`
+	Body    string    `json:"body"`
+	Type    string    `json:"type"`
+	SentAt  time.Time `json:"sent_at"`
 }
 
 // Index is the search backend port. Implementations: Noop (zero-config FTS5 fallback) and

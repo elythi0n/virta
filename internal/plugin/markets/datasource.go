@@ -44,9 +44,9 @@ func (c *Config) withDefaults() Config {
 // DataSource is the Markets DataSource implementing the plugins.DataSource contract.
 // It selects the primary provider from Config, with CoinGecko as the automatic fallback.
 type DataSource struct {
-	cfg      Config
-	mu       sync.RWMutex
-	latest   map[string]Tick // symbol → last tick (for status/reconnect replay)
+	cfg    Config
+	mu     sync.RWMutex
+	latest map[string]Tick // symbol → last tick (for status/reconnect replay)
 }
 
 // New creates a DataSource with the given configuration.

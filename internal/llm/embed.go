@@ -53,7 +53,7 @@ func (o *OllamaEmbedder) EmbedBatch(ctx context.Context, texts []string) ([][]fl
 	if err != nil {
 		return nil, fmt.Errorf("ollama embed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 10<<20))
 	var out struct {
 		Embeddings [][]float32 `json:"embeddings"`
@@ -94,7 +94,7 @@ func (v *VoyageEmbedder) EmbedBatch(ctx context.Context, texts []string) ([][]fl
 	if err != nil {
 		return nil, fmt.Errorf("voyage embed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 10<<20))
 	var out struct {
 		Data []struct {

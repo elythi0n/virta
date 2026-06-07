@@ -115,7 +115,9 @@ func (p *OpenAICompatProvider) ListModels(ctx context.Context) ([]llm.ModelInfo,
 	// silently succeed with an empty Data slice (JSON ignores unknown fields).
 	if p.id == "ollama" {
 		var ollamaR struct {
-			Models []struct{ Name string `json:"name"` } `json:"models"`
+			Models []struct {
+				Name string `json:"name"`
+			} `json:"models"`
 		}
 		if err := json.Unmarshal(raw, &ollamaR); err != nil {
 			return nil, fmt.Errorf("ollama: parse models: %w", err)
@@ -208,12 +210,12 @@ func (p *OpenAICompatProvider) Complete(ctx context.Context, req llm.CompletionR
 // openaiStream reads OpenAI-style `data: {...}` SSE lines, accumulating tool-call
 // fragments until finish_reason arrives, then emitting them as EventToolCall events.
 type openaiStream struct {
-	body    io.ReadCloser
-	sc      *bufio.Scanner
+	body io.ReadCloser
+	sc   *bufio.Scanner
 	// in-progress tool calls, keyed by their stream index
 	pending map[int]*partialToolCall
 	// fully-assembled events ready to emit before reading more lines
-	ready   []llm.Event
+	ready []llm.Event
 }
 
 type partialToolCall struct {
@@ -365,7 +367,7 @@ func (p *OpenAICompatProvider) listModelsRaw(ctx context.Context) ([]byte, error
 	if err != nil {
 		return nil, fmt.Errorf("%s: list models: %w", p.id, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode >= 400 {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<16))
 		return nil, fmt.Errorf("%s: %d: %s", p.id, resp.StatusCode, string(body))

@@ -42,7 +42,7 @@ type Tokens struct {
 	Radius   map[string]int      `json:"radius"`
 	Motion   map[string]int      `json:"motion"`
 	Platform map[string]string   `json:"platform"`
-	Brand    map[string]string   `json:"brand"`   // third-party brand accent colors (AI providers etc.)
+	Brand    map[string]string   `json:"brand"` // third-party brand accent colors (AI providers etc.)
 	Themes   map[string]Theme    `json:"themes"`
 }
 

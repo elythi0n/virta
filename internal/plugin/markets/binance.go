@@ -75,7 +75,7 @@ func (b *BinanceProvider) streamOnce(ctx context.Context, rawURL, quoteCurrency 
 	dialCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	conn, _, err := websocket.Dial(dialCtx, rawURL, &websocket.DialOptions{
+	conn, _, err := websocket.Dial(dialCtx, rawURL, &websocket.DialOptions{ //nolint:bodyclose
 		HTTPClient: &http.Client{
 			Transport: &http.Transport{
 				// Disable HTTP/2: WebSocket upgrade only works over HTTP/1.1.
@@ -92,7 +92,7 @@ func (b *BinanceProvider) streamOnce(ctx context.Context, rawURL, quoteCurrency 
 	if err != nil {
 		return fmt.Errorf("dial: %w", err)
 	}
-	defer conn.CloseNow()
+	defer func() { _ = conn.CloseNow() }()
 	// Lift the read limit — Binance combined streams can have large payloads.
 	conn.SetReadLimit(256 * 1024)
 	statusFn(Status{State: "connected"})

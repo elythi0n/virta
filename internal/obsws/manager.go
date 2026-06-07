@@ -30,7 +30,7 @@ const (
 type StatKind string
 
 const (
-	StatMsgsPerMin    StatKind = "msgs_per_min"
+	StatMsgsPerMin     StatKind = "msgs_per_min"
 	StatUniqueChatters StatKind = "unique_chatters"
 )
 

@@ -55,10 +55,10 @@ type jsonRPCReq struct {
 }
 
 type jsonRPCResp struct {
-	JSONRPC string       `json:"jsonrpc"`
-	ID      any          `json:"id"`
-	Result  any          `json:"result,omitempty"`
-	Error   *mcpError    `json:"error,omitempty"`
+	JSONRPC string    `json:"jsonrpc"`
+	ID      any       `json:"id"`
+	Result  any       `json:"result,omitempty"`
+	Error   *mcpError `json:"error,omitempty"`
 }
 
 type mcpError struct {

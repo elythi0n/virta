@@ -5,8 +5,8 @@
 package api
 
 import (
-	"context"
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/hex"
@@ -37,41 +37,41 @@ type Discovery struct {
 
 // Config configures the server. Token may be empty, in which case a random one is generated.
 type Config struct {
-	Addr       string // listen address, e.g. "127.0.0.1:0" for an ephemeral loopback port
-	Token      string
-	RuntimeDir string   // where the discovery file is written
+	Addr        string // listen address, e.g. "127.0.0.1:0" for an ephemeral loopback port
+	Token       string
+	RuntimeDir  string   // where the discovery file is written
 	CORSOrigins []string // opt-in CORS allowlist for local web tools (empty = CORS off)
-	Logger     *slog.Logger
+	Logger      *slog.Logger
 }
 
 // Server is the local HTTP/WebSocket API.
 type Server struct {
-	log         *slog.Logger
-	ring        *logRing
-	hub         *hub
-	channels    Channels          // join/leave controller, installed via SetChannels
-	profiles    Profiles          // profile controller, installed via SetProfiles
-	filters     Filters           // filter-ruleset controller, installed via SetFilters
-	connections Connections       // per-platform connection-method controller, installed via SetConnections
-	accounts    Accounts          // connected-accounts controller, installed via SetAccounts
-	authConfig  AuthConfigControl // OAuth-credentials controller, installed via SetAuthConfig
-	authCtl     Auth              // account-auth controller, installed via SetAuth
-	send              Send              // cross-posting controller, installed via SetSend
-	held              Held              // AutoMod hold-queue controller, installed via SetHeld
-	history           History           // message-log search/scrollback controller, installed via SetHistory
-	tokens            Tokens            // scoped API-token controller, installed via SetTokens
-	portability       Portability       // profile import/export controller, installed via SetPortability
-	themes            Themes            // custom theme management, installed via SetThemes
-	webhooks          Webhooks          // outbound webhook management, installed via SetWebhooks
-	mcpHandler        http.Handler      // MCP server, installed via SetMCPHandler (nil = not available)
-	intel             Intel             // intelligence controller, installed via SetIntel
-	plugins           Plugins           // plugin host controller, installed via SetPlugins (nil = not available)
-	obsws             OBSWSController   // OBS WebSocket integration, installed via SetOBSWS (nil = not available)
-	hostedAuth        HostedAuth        // multi-user account surface (nil in local/desktop mode)
-	webui             http.Handler      // embedded web UI, installed via SetWebUI (nil = not served)
+	log               *slog.Logger
+	ring              *logRing
+	hub               *hub
+	channels          Channels               // join/leave controller, installed via SetChannels
+	profiles          Profiles               // profile controller, installed via SetProfiles
+	filters           Filters                // filter-ruleset controller, installed via SetFilters
+	connections       Connections            // per-platform connection-method controller, installed via SetConnections
+	accounts          Accounts               // connected-accounts controller, installed via SetAccounts
+	authConfig        AuthConfigControl      // OAuth-credentials controller, installed via SetAuthConfig
+	authCtl           Auth                   // account-auth controller, installed via SetAuth
+	send              Send                   // cross-posting controller, installed via SetSend
+	held              Held                   // AutoMod hold-queue controller, installed via SetHeld
+	history           History                // message-log search/scrollback controller, installed via SetHistory
+	tokens            Tokens                 // scoped API-token controller, installed via SetTokens
+	portability       Portability            // profile import/export controller, installed via SetPortability
+	themes            Themes                 // custom theme management, installed via SetThemes
+	webhooks          Webhooks               // outbound webhook management, installed via SetWebhooks
+	mcpHandler        http.Handler           // MCP server, installed via SetMCPHandler (nil = not available)
+	intel             Intel                  // intelligence controller, installed via SetIntel
+	plugins           Plugins                // plugin host controller, installed via SetPlugins (nil = not available)
+	obsws             OBSWSController        // OBS WebSocket integration, installed via SetOBSWS (nil = not available)
+	hostedAuth        HostedAuth             // multi-user account surface (nil in local/desktop mode)
+	webui             http.Handler           // embedded web UI, installed via SetWebUI (nil = not served)
 	webuiIndexHTML    func() ([]byte, error) // reads index.html directly, bypassing the file server
-	corsOrigins       []string          // opt-in CORS allowlist for local web tools (empty = CORS off)
-	integrationReport any               // native-integration report forwarded from the desktop shell
+	corsOrigins       []string               // opt-in CORS allowlist for local web tools (empty = CORS off)
+	integrationReport any                    // native-integration report forwarded from the desktop shell
 
 	token         string
 	runtimeDir    string

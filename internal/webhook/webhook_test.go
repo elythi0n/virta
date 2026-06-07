@@ -16,7 +16,7 @@ func TestDelivery_HMACAndHeaders(t *testing.T) {
 	const secret = "s3cr3t"
 	type capture struct {
 		method, sig, ts, id string
-		body                 []byte
+		body                []byte
 	}
 	received := make(chan capture, 1)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -53,36 +53,36 @@ type ModelGroup struct {
 
 // ModelItem is one model in the picker.
 type ModelItem struct {
-	ID            string   `json:"id"`
-	DisplayName   string   `json:"display_name"`
-	Family        string   `json:"family"`
-	ContextWindow int      `json:"context_window"`
-	SupportsTools bool     `json:"supports_tools"`
-	Deprecated    bool     `json:"deprecated,omitempty"`
-	PriceIn       float64  `json:"price_in_per_mtok,omitempty"`
-	PriceOut      float64  `json:"price_out_per_mtok,omitempty"`
+	ID            string  `json:"id"`
+	DisplayName   string  `json:"display_name"`
+	Family        string  `json:"family"`
+	ContextWindow int     `json:"context_window"`
+	SupportsTools bool    `json:"supports_tools"`
+	Deprecated    bool    `json:"deprecated,omitempty"`
+	PriceIn       float64 `json:"price_in_per_mtok,omitempty"`
+	PriceOut      float64 `json:"price_out_per_mtok,omitempty"`
 }
 
 // AskEvent is one item streamed from an Ask run.
 type AskEvent struct {
-	Kind        string `json:"kind"` // text|tool_use|tool_result|done|error
-	Text        string `json:"text,omitempty"`
-	ToolName    string `json:"tool_name,omitempty"`
-	ToolArgs    string `json:"tool_args,omitempty"`
-	ToolResult  string `json:"tool_result,omitempty"`
-	ErrorMsg    string `json:"error,omitempty"`
-	InputTokens int    `json:"input_tokens,omitempty"`
-	OutputTokens int   `json:"output_tokens,omitempty"`
+	Kind         string `json:"kind"` // text|tool_use|tool_result|done|error
+	Text         string `json:"text,omitempty"`
+	ToolName     string `json:"tool_name,omitempty"`
+	ToolArgs     string `json:"tool_args,omitempty"`
+	ToolResult   string `json:"tool_result,omitempty"`
+	ErrorMsg     string `json:"error,omitempty"`
+	InputTokens  int    `json:"input_tokens,omitempty"`
+	OutputTokens int    `json:"output_tokens,omitempty"`
 }
 
 // IntelConfig is the persisted LLM configuration.
 type IntelConfig struct {
-	Enabled        bool              `json:"enabled"`
-	SelectedModel  string            `json:"selected_model"`
-	ProviderKeys   map[string]string `json:"provider_keys,omitempty"` // provider id → key (masked in GET)
-	FeatureEnabled map[string]bool   `json:"feature_enabled"`
-	DailyLimitUSD  float64           `json:"daily_limit_usd,omitempty"`
-	MonthlyLimitUSD float64          `json:"monthly_limit_usd,omitempty"`
+	Enabled         bool              `json:"enabled"`
+	SelectedModel   string            `json:"selected_model"`
+	ProviderKeys    map[string]string `json:"provider_keys,omitempty"` // provider id → key (masked in GET)
+	FeatureEnabled  map[string]bool   `json:"feature_enabled"`
+	DailyLimitUSD   float64           `json:"daily_limit_usd,omitempty"`
+	MonthlyLimitUSD float64           `json:"monthly_limit_usd,omitempty"`
 }
 
 // SetIntel installs the intelligence controller.

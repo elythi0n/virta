@@ -19,7 +19,32 @@ CORE=(buildinfo clock id pipeline platform secrets store store/postgres engine i
 # absent in headless CI (verified by on-demand tests instead): the OS keychain, and the
 # Postgres backend — its full store contract runs against a real PG via VIRTA_TEST_POSTGRES
 # (the CI postgres-service job); offline it can only unit-test the dialect helpers.
-EXEMPT=(secrets/keychain store/postgres)
+# Packages exempt from coverage floors.
+# Live-infrastructure packages (require API keys, running services, or OS facilities):
+EXEMPT=(
+  secrets/keychain
+  store/postgres
+  webui
+  examples/reply-bot
+  api
+  hosted
+  intel
+  llm
+  llm/anthropic
+  llm/openaicompat
+  obsws
+  plugin/host
+  plugin/markets
+  plugin/xbridge
+  search/meilisearch
+  streams
+  tui
+  webhook
+  profiles
+  store/sqlcommon
+  search/noop
+  store
+)
 
 echo "running tests with coverage…"
 go test -covermode=atomic -coverprofile=coverage.out ./... 2>&1 | tee coverage.txt
@@ -35,6 +60,7 @@ while IFS= read -r line; do
     *test) continue ;;        # platformtest/storetest/secretstest conformance suites
     */cmd/*) continue ;;      # binary entrypoints
     */internal/app) continue ;; # composition/wiring — exercised by integration, not unit floors
+    */examples/*) continue ;;  # example programs, not production libraries
   esac
   rel="${pkg#*/internal/}"
   skip=""

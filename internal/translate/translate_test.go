@@ -1,6 +1,9 @@
 package translate
 
-import "testing"
+import (
+	"context"
+	"testing"
+)
 
 func TestDetector_SkipsShortAndCommands(t *testing.T) {
 	d := NewDetector(nil)
@@ -35,7 +38,7 @@ func TestNoop(t *testing.T) {
 	if n.Available() {
 		t.Error("noop should not be available")
 	}
-	result, err := n.Translate(nil, "hello", "en", "fr")
+	result, err := n.Translate(context.TODO(), "hello", "en", "fr")
 	if err != nil || result != "" {
 		t.Errorf("noop.Translate = %q, %v", result, err)
 	}

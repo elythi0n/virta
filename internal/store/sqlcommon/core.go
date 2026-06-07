@@ -61,13 +61,13 @@ func (c *Core) Rebind(q string) string { return c.dia.Rebind(q) }
 func (c *Core) Ping(ctx context.Context) error { return c.db.PingContext(ctx) }
 func (c *Core) Close() error                   { return c.db.Close() }
 
-func (c *Core) Settings() store.SettingsRepo           { return settingsRepo{c} }
-func (c *Core) Profiles() store.ProfileRepo             { return profileRepo{c} }
-func (c *Core) Accounts() store.AccountRepo             { return accountRepo{c} }
-func (c *Core) Channels() store.ChannelRepo             { return channelRepo{c} }
-func (c *Core) Messages() store.MessageRepo             { return messageRepo{c} }
-func (c *Core) Emotes() store.EmoteRepo                 { return emoteRepo{c} }
-func (c *Core) Conversations() store.ConversationRepo   { return conversationRepo{c} }
+func (c *Core) Settings() store.SettingsRepo          { return settingsRepo{c} }
+func (c *Core) Profiles() store.ProfileRepo           { return profileRepo{c} }
+func (c *Core) Accounts() store.AccountRepo           { return accountRepo{c} }
+func (c *Core) Channels() store.ChannelRepo           { return channelRepo{c} }
+func (c *Core) Messages() store.MessageRepo           { return messageRepo{c} }
+func (c *Core) Emotes() store.EmoteRepo               { return emoteRepo{c} }
+func (c *Core) Conversations() store.ConversationRepo { return conversationRepo{c} }
 
 // rebinding query helpers — every query flows through Rebind so placeholders are adapted once.
 func (c *Core) exec(ctx context.Context, q string, args ...any) (sql.Result, error) {

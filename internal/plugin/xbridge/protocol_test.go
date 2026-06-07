@@ -53,10 +53,7 @@ func TestXMessageToEvent(t *testing.T) {
 	if ok {
 		_ = me
 	}
-	// Check it's a platform.MessageEvent with the right fields.
-	type msgEv interface {
-		GetMessage() interface{}
-	}
+	// Check it is a platform.MessageEvent with the right fields.
 	// Just verify the event is non-nil and carries the content hash as ID.
 	if ev == nil {
 		t.Fatal("nil event")

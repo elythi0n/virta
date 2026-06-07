@@ -19,9 +19,9 @@ const Unknown Tag = ""
 
 // Detector detects the language of a message body. It is offline and free (lingua-go).
 type Detector struct {
-	d        lingua.LanguageDetector
-	once     sync.Once
-	skip     func(body string) bool // heuristic: emote-only, very short, commands
+	d    lingua.LanguageDetector
+	once sync.Once
+	skip func(body string) bool // heuristic: emote-only, very short, commands
 }
 
 // NewDetector builds a Detector for the given preferred languages. Detection is only run on
@@ -86,8 +86,8 @@ type Engine interface {
 // Noop is a no-op translation engine; returned when no engine is configured.
 type Noop struct{}
 
-func (Noop) ID() string                                       { return "noop" }
-func (Noop) Available() bool                                  { return false }
+func (Noop) ID() string      { return "noop" }
+func (Noop) Available() bool { return false }
 func (Noop) Translate(_ context.Context, _, _, _ string) (string, error) {
 	return "", nil
 }

@@ -1,4 +1,8 @@
+<center><a href="https://virta.lol"><img height=128px src="./assets/logo.png" alt="Virta" /></a></center>
+
 # Virta
+
+<a href="https://wails.io"><img src="https://img.shields.io/badge/desktop-Wails_v3-red?logo=go" alt="Built with Wails v3" /></a>
 
 ### Every stream. One current.
 

@@ -22,8 +22,8 @@ type message struct {
 
 // helloData is the payload of the Hello frame (op=0).
 type helloData struct {
-	OBSWebSocketVersion string        `json:"obsWebSocketVersion"`
-	RPCVersion          int           `json:"rpcVersion"`
+	OBSWebSocketVersion string         `json:"obsWebSocketVersion"`
+	RPCVersion          int            `json:"rpcVersion"`
 	Authentication      *authChallenge `json:"authentication,omitempty"`
 }
 
