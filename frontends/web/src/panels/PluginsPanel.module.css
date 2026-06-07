@@ -1,57 +1,196 @@
 .panel {
+  display: flex;
+  flex-direction: column;
   height: 100%;
-  overflow-y: auto;
-  padding: var(--virta-space-16);
   background: var(--virta-bg-0);
+  overflow: hidden;
 }
 
+/* ---- Header ---- */
 .head {
+  flex: none;
   display: flex;
   align-items: flex-start;
   gap: var(--virta-space-12);
   color: var(--virta-text-1);
-  padding-bottom: var(--virta-space-16);
+  padding: var(--virta-space-16);
   border-bottom: 1px solid var(--virta-line);
 }
 .title {
   margin: 0;
-  font-weight: 600;
 }
 .lead {
-  margin: var(--virta-space-2) 0 0;
-  max-width: 52ch;
-}
-
-.section {
-  padding: var(--virta-space-16) 0;
-  border-bottom: 1px solid var(--virta-line);
-}
-.section:last-child {
-  border-bottom: 0;
-}
-.sectionTitle {
-  margin: 0 0 var(--virta-space-8);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-.note {
-  margin: 0 0 var(--virta-space-12);
+  margin: var(--virta-space-4) 0 0;
   max-width: 56ch;
 }
 
-.empty {
+/* ---- Filter tabs ---- */
+.filterBar {
+  flex: none;
   display: flex;
-  flex-direction: column;
-  gap: var(--virta-space-2);
-  padding: var(--virta-space-16);
-  border: 1px dashed var(--virta-line);
+  gap: var(--virta-space-4);
+  padding: var(--virta-space-12) var(--virta-space-16);
+  border-bottom: 1px solid var(--virta-line);
+  background: var(--virta-bg-1);
+}
+.filterTab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  padding: var(--virta-space-4) var(--virta-space-12);
+  border: 1px solid var(--virta-line);
   border-radius: var(--virta-radius-md);
-  text-align: center;
+  background: var(--virta-bg-0);
+  color: var(--virta-text-1);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color var(--virta-motion-fast) ease,
+    background var(--virta-motion-fast) ease,
+    color var(--virta-motion-fast) ease;
+}
+.filterTab:hover {
+  border-color: var(--virta-text-2);
+  color: var(--virta-text-0);
+}
+.filterTabOn {
+  border-color: var(--virta-accent);
+  background: color-mix(in srgb, var(--virta-accent) 10%, var(--virta-bg-0));
+  color: var(--virta-accent);
+}
+.filterCount {
+  font-family: var(--virta-font-mono);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 700;
+  color: var(--virta-text-2);
+  font-variant-numeric: tabular-nums;
+}
+.filterTabOn .filterCount {
+  color: var(--virta-accent);
 }
 
-.previewCard {
-  padding: var(--virta-space-16);
+/* ---- Plugin list ---- */
+.list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--virta-space-12) var(--virta-space-16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-8);
+  list-style: none;
+  margin: 0;
+}
+
+/* ---- Plugin card ---- */
+.card {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--virta-space-12);
+  padding: var(--virta-space-12) var(--virta-space-16) var(--virta-space-12) var(--virta-space-12);
   border: 1px solid var(--virta-line);
   border-radius: var(--virta-radius-md);
   background: var(--virta-bg-1);
+  transition:
+    border-color var(--virta-motion-fast) ease,
+    background var(--virta-motion-fast) ease;
+}
+.card:hover {
+  border-color: color-mix(in srgb, var(--virta-text-2) 60%, var(--virta-line));
+  background: var(--virta-bg-2);
+}
+
+/* Installed cards get an accent border + top-right checkmark badge. */
+.cardInstalled {
+  border-color: color-mix(in srgb, var(--virta-ok) 45%, var(--virta-line));
+  background: color-mix(in srgb, var(--virta-ok) 4%, var(--virta-bg-1));
+}
+.cardInstalled:hover {
+  border-color: color-mix(in srgb, var(--virta-ok) 70%, var(--virta-line));
+}
+
+/* Checkmark badge, top-right corner. */
+.checkmark {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 0 var(--virta-radius-md) 0 var(--virta-radius-md);
+  background: var(--virta-ok);
+  color: var(--virta-bg-0);
+}
+
+/* Icon column */
+.cardIcon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--virta-radius-md);
+  background: var(--virta-bg-0);
+  border: 1px solid var(--virta-line);
+  color: var(--virta-text-1);
+}
+.cardInstalled .cardIcon {
+  border-color: color-mix(in srgb, var(--virta-ok) 30%, var(--virta-line));
+  color: var(--virta-text-0);
+}
+
+/* Body column */
+.cardBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-4);
+}
+.cardHead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--virta-space-8);
+}
+.cardName {
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  font-weight: 700;
+  color: var(--virta-text-0);
+  letter-spacing: -0.01em;
+}
+.cardAuthor {
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  color: var(--virta-text-2);
+}
+.cardDesc {
+  margin: 0;
+  color: var(--virta-text-1);
+  max-width: 60ch;
+}
+
+/* Tag pills */
+.cardTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--virta-space-4);
+  margin-top: var(--virta-space-2);
+}
+.tag {
+  font-family: var(--virta-font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--virta-text-2);
+  padding: 1px var(--virta-space-8);
+  border-radius: var(--virta-radius-sm);
+  background: var(--virta-bg-0);
+  border: 1px solid var(--virta-line);
 }

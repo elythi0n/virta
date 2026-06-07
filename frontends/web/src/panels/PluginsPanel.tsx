@@ -1,34 +1,53 @@
 import { useState } from 'react';
-import { Text } from '@virta/ui-kit';
-import Icon from '../Icon';
-import SchemaForm from './SchemaForm';
-import { defaultsFor, type JsonSchema } from './schemaForm';
+import { Badge, Text } from '@virta/ui-kit';
+import Icon, { type IconName } from '../Icon';
 import styles from './PluginsPanel.module.css';
 
-// The Markets plugin's config schema (docs/15 §3.4) — shown here as a live preview of how any
-// plugin's settings render from its schema. It's illustrative, not an installed plugin: there's no
-// plugin host yet (remote install is a later release), only the seams.
-const MARKETS_SCHEMA: JsonSchema = {
-  properties: {
-    assetClass: {
-      type: 'string',
-      title: 'Asset class',
-      enum: ['crypto', 'stocks', 'fx'],
-      default: 'crypto',
-      description: 'Crypto has free real-time feeds; stocks and FX are delayed on free tiers.',
-    },
-    watchlist: { type: 'array', title: 'Watchlist', items: { type: 'string' }, description: 'Symbols to track, one per line.' },
-    quoteCurrency: { type: 'string', title: 'Quote currency', default: 'usd' },
-    refreshSeconds: { type: 'integer', title: 'Refresh interval (seconds)', default: 10 },
-    sparkline: { type: 'boolean', title: 'Show sparklines', default: true },
-  },
-};
+type PluginStatus = 'installed' | 'available' | 'coming-soon';
 
-// The Plugins surface. There's no plugin host yet (the seams are: a contribution registry for
-// panels, the plugin.* WS namespace + DataSource, and schema-driven config) — so this explains the
-// model and previews the schema-driven settings, rather than listing installed plugins.
+interface PluginDef {
+  id: string;
+  name: string;
+  description: string;
+  author: string;
+  icon: IconName;
+  status: PluginStatus;
+  tags: string[];
+}
+
+const PLUGINS: PluginDef[] = [
+  { id: 'virta.chat', name: 'Chat', description: 'Unified live chat feed across Twitch, Kick, and X in one stream.', author: 'Virta', icon: 'chat', status: 'installed', tags: ['chat', 'feed'] },
+  { id: 'virta.mentions', name: 'Mentions', description: 'Collects messages that name you across every channel so you never miss a shoutout.', author: 'Virta', icon: 'mentions', status: 'installed', tags: ['chat', 'alerts'] },
+  { id: 'virta.celebrations', name: 'Celebrations', description: 'A calm shoutout wall for subs, raids, gifts, and announcements with subtle animations.', author: 'Virta', icon: 'gift', status: 'installed', tags: ['events', 'overlay'] },
+  { id: 'virta.filters', name: 'Filters', description: 'Rule-based message filtering: highlight, hide, or mask by keyword, author, regex, or platform.', author: 'Virta', icon: 'filter', status: 'installed', tags: ['moderation', 'feed'] },
+  { id: 'virta.mods', name: 'Mod queue', description: 'AutoMod held-message queue — approve or deny held messages directly from the dock.', author: 'Virta', icon: 'mods', status: 'installed', tags: ['moderation'] },
+  { id: 'virta.search', name: 'Search', description: 'Full-text search over your logged chat history with channel and author filters.', author: 'Virta', icon: 'search', status: 'installed', tags: ['history', 'search'] },
+  { id: 'virta.ask-ai', name: 'Ask AI', description: 'Ask questions about your chat history using an AI agent: top fans, user history, channel stats.', author: 'Virta', icon: 'chat', status: 'installed', tags: ['ai', 'history'] },
+  { id: 'virta.stream', name: 'Stream viewer', description: 'Embedded stream player for Twitch and Kick channels, dockable alongside the chat.', author: 'Virta', icon: 'stream', status: 'installed', tags: ['stream'] },
+  { id: 'virta.x-chat', name: 'X chat', description: 'Best-effort read of X (Twitter) broadcast chat via the x-bridge scraper. Labeled experimental.', author: 'Virta', icon: 'x', status: 'available', tags: ['chat', 'x'] },
+  { id: 'virta.stats', name: 'Stats', description: 'Live channel stats: messages per second, unique chatters, top emotes, and activity timelines.', author: 'Virta', icon: 'stats', status: 'coming-soon', tags: ['analytics'] },
+  { id: 'virta.markets', name: 'Markets', description: 'Real-time market ticker for crypto, stocks, and FX — live data via exchange WebSockets, no API key needed for crypto.', author: 'Virta', icon: 'stats', status: 'coming-soon', tags: ['data', 'ticker'] },
+];
+
+type FilterTab = 'all' | 'installed' | 'available';
+
+const STATUS_LABEL: Record<PluginStatus, string> = { installed: 'Installed', available: 'Available', 'coming-soon': 'Coming soon' };
+const STATUS_TONE: Record<PluginStatus, 'ok' | 'neutral' | 'warn'> = { installed: 'ok', available: 'neutral', 'coming-soon': 'warn' };
+
 export default function PluginsPanel() {
-  const [preview, setPreview] = useState<Record<string, unknown>>(() => defaultsFor(MARKETS_SCHEMA));
+  const [filter, setFilter] = useState<FilterTab>('all');
+
+  const visible = PLUGINS.filter(p => {
+    if (filter === 'installed') return p.status === 'installed';
+    if (filter === 'available') return p.status !== 'installed';
+    return true;
+  });
+
+  const counts = {
+    all: PLUGINS.length,
+    installed: PLUGINS.filter(p => p.status === 'installed').length,
+    available: PLUGINS.filter(p => p.status !== 'installed').length,
+  };
 
   return (
     <div className={styles.panel}>
@@ -39,40 +58,59 @@ export default function PluginsPanel() {
             Plugins
           </Text>
           <Text variant="body" tone="subtle" as="p" className={styles.lead}>
-            Plugins extend Virta with new panels, chat commands, and live data — through the same
-            contribution registry the built-in panels already use.
+            Plugins extend Virta with new panels, chat commands, and live data.
+            Third-party install from a URL is planned for a future release.
           </Text>
         </div>
       </header>
 
-      <section className={styles.section}>
-        <Text variant="heading" tone="subtle" as="h3" className={styles.sectionTitle}>
-          Installed
-        </Text>
-        <div className={styles.empty}>
-          <Text variant="body" tone="subtle">
-            No plugins installed yet.
-          </Text>
-          <Text variant="ui" tone="subtle">
-            Installing plugins from a URL is planned for a future release. The plugin infrastructure
-            (contribution registry, event bus, schema-driven settings) ships in this version.
-          </Text>
-        </div>
-      </section>
+      <div className={styles.filterBar} role="tablist" aria-label="Filter plugins">
+        {(['all', 'installed', 'available'] as FilterTab[]).map(tab => (
+          <button
+            key={tab}
+            type="button"
+            role="tab"
+            aria-selected={filter === tab}
+            className={`${styles.filterTab} ${filter === tab ? styles.filterTabOn : ''}`}
+            onClick={() => setFilter(tab)}
+          >
+            {tab === 'all' ? 'All' : tab === 'installed' ? 'Installed' : 'Available'}
+            <span className={styles.filterCount}>{counts[tab]}</span>
+          </button>
+        ))}
+      </div>
 
-      <section className={styles.section}>
-        <Text variant="heading" tone="subtle" as="h3" className={styles.sectionTitle}>
-          Settings preview <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>— demo only</span>
-        </Text>
-        <Text variant="body" tone="subtle" as="p" className={styles.note}>
-          A plugin declares a JSON Schema; Virta renders the settings form automatically — no plugin
-          writes its own UI. The example below shows how the upcoming Markets plugin&rsquo;s config
-          would render. This is a demo — the Markets plugin is not yet installed.
-        </Text>
-        <div className={styles.previewCard}>
-          <SchemaForm schema={MARKETS_SCHEMA} value={preview} onChange={setPreview} />
-        </div>
-      </section>
+      <ul className={styles.list} role="list">
+        {visible.map(p => (
+          <li key={p.id}>
+            <div className={`${styles.card} ${p.status === 'installed' ? styles.cardInstalled : ''}`}>
+              {p.status === 'installed' && (
+                <span className={styles.checkmark} aria-hidden="true">
+                  <Icon name="check" size={11} />
+                </span>
+              )}
+              <span className={styles.cardIcon}>
+                <Icon name={p.icon} size={20} />
+              </span>
+              <div className={styles.cardBody}>
+                <div className={styles.cardHead}>
+                  <span className={styles.cardName}>{p.name}</span>
+                  <span className={styles.cardAuthor}>{p.author}</span>
+                  <Badge tone={STATUS_TONE[p.status]}>{STATUS_LABEL[p.status]}</Badge>
+                </div>
+                <Text variant="body" tone="subtle" as="p" className={styles.cardDesc}>
+                  {p.description}
+                </Text>
+                <div className={styles.cardTags}>
+                  {p.tags.map(t => (
+                    <span key={t} className={styles.tag}>{t}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
