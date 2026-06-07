@@ -62,6 +62,7 @@ type Server struct {
 	webhooks          Webhooks          // outbound webhook management, installed via SetWebhooks
 	mcpHandler        http.Handler      // MCP server, installed via SetMCPHandler (nil = not available)
 	intel             Intel             // intelligence controller, installed via SetIntel
+	hostedAuth        HostedAuth        // multi-user account surface (nil in local/desktop mode)
 	webui             http.Handler      // embedded web UI, installed via SetWebUI (nil = not served)
 	corsOrigins       []string          // opt-in CORS allowlist for local web tools (empty = CORS off)
 	integrationReport any               // native-integration report forwarded from the desktop shell
@@ -112,6 +113,12 @@ func New(cfg Config) (*Server, error) {
 	mux.HandleFunc("GET /v1/openapi.json", s.handleOpenAPI)
 	mux.HandleFunc("GET /v1/asyncapi.json", s.handleAsyncAPI)
 	mux.HandleFunc("GET /docs", s.handleDocs)
+	// Hosted multi-user auth — public (no bearer token required; users log in here).
+	mux.HandleFunc("GET /auth/status", s.handleHostedStatus)
+	mux.HandleFunc("POST /auth/register", s.handleHostedRegister)
+	mux.HandleFunc("POST /auth/login", s.handleHostedLogin)
+	mux.HandleFunc("POST /auth/logout", s.handleHostedLogout)
+	mux.HandleFunc("GET /auth/me", s.handleHostedMe)
 	// MCP server (Model Context Protocol): bearer-token gated, served at /mcp.
 	// Mounted outside the declarative route table so it can accept any HTTP method.
 	mux.Handle("/mcp", s.scoped(ScopeRead, http.HandlerFunc(s.handleMCP)))

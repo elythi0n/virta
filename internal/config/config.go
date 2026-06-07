@@ -41,6 +41,9 @@ type Config struct {
 	// set it for a server deployment, where remote clients can't read the discovery file and
 	// need a known token.
 	Token string
+	// Hosted enables multi-user mode (VIRTA_HOSTED=1): user registration/login, per-user
+	// workspaces, and Postgres as the expected backend. False in local/desktop mode.
+	Hosted bool
 }
 
 const appName = "virta"
@@ -78,6 +81,7 @@ func Load() (Config, error) {
 		KickClientID:     os.Getenv("VIRTA_KICK_CLIENT_ID"),
 		KickClientSecret: os.Getenv("VIRTA_KICK_CLIENT_SECRET"),
 		Token:            os.Getenv("VIRTA_TOKEN"),
+		Hosted:           os.Getenv("VIRTA_HOSTED") == "1" || os.Getenv("VIRTA_HOSTED") == "true",
 	}
 	return c, nil
 }

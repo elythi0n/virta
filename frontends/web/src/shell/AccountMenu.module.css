@@ -1,0 +1,128 @@
+.account {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.avatarBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  padding: var(--virta-space-4) var(--virta-space-8);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-md);
+  background: none;
+  color: var(--virta-text-1);
+  cursor: pointer;
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  transition: border-color var(--virta-motion-fast) ease, color var(--virta-motion-fast) ease;
+}
+.avatarBtn:hover { border-color: var(--virta-text-2); color: var(--virta-text-0); }
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--virta-accent);
+  color: var(--virta-bg-0);
+  font-size: 11px;
+  font-weight: 700;
+  flex: none;
+}
+
+.displayName {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 200px;
+  background: var(--virta-bg-1);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-md);
+  box-shadow: 0 8px 24px -8px rgba(0,0,0,0.5);
+  z-index: 200;
+}
+.dropdownUser {
+  padding: var(--virta-space-12);
+}
+.dropName {
+  font-weight: 600;
+  color: var(--virta-text-0);
+}
+.dropDivider {
+  height: 1px;
+  background: var(--virta-line);
+  margin: 0;
+}
+.dropItem {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  width: 100%;
+  padding: var(--virta-space-8) var(--virta-space-12);
+  border: 0;
+  background: none;
+  color: var(--virta-text-1);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  cursor: pointer;
+  border-radius: 0 0 var(--virta-radius-md) var(--virta-radius-md);
+}
+.dropItem:hover { background: var(--virta-bg-2); color: var(--virta-text-0); }
+
+.signInBtn {
+  padding: var(--virta-space-4) var(--virta-space-12);
+  border: 1px solid var(--virta-accent);
+  border-radius: var(--virta-radius-md);
+  background: color-mix(in srgb, var(--virta-accent) 12%, transparent);
+  color: var(--virta-accent);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--virta-motion-fast) ease;
+}
+.signInBtn:hover { background: color-mix(in srgb, var(--virta-accent) 22%, transparent); }
+
+.authForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-12);
+}
+.fieldLabel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-4);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 600;
+  color: var(--virta-text-1);
+}
+.hint {
+  font-weight: 400;
+  color: var(--virta-text-2);
+}
+.authError {
+  color: var(--virta-danger);
+  margin: 0;
+}
+.switchLink {
+  align-self: flex-start;
+  background: none;
+  border: 0;
+  color: var(--virta-accent);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  cursor: pointer;
+  padding: 0;
+}
+.switchLink:hover { text-decoration: underline; }

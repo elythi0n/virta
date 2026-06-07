@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -66,6 +67,8 @@ func cloneJSON(b json.RawMessage) json.RawMessage {
 func (m *Memory) Migrate(context.Context) error { return nil }
 func (m *Memory) Ping(context.Context) error    { return nil }
 func (m *Memory) Close() error                  { return nil }
+func (m *Memory) Conn() *sql.DB                 { return nil }
+func (m *Memory) Rebind(q string) string        { return q }
 
 func (m *Memory) Settings() SettingsRepo { return memSettings{m} }
 func (m *Memory) Profiles() ProfileRepo  { return memProfiles{m} }

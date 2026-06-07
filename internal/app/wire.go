@@ -41,6 +41,7 @@ import (
 	"github.com/elythi0n/virta/internal/store"
 	"github.com/elythi0n/virta/internal/store/postgres"
 	"github.com/elythi0n/virta/internal/store/sqlite"
+	hostedpkg "github.com/elythi0n/virta/internal/hosted"
 	"github.com/elythi0n/virta/internal/intel"
 	"github.com/elythi0n/virta/internal/streams"
 	"github.com/elythi0n/virta/internal/velocity"
@@ -328,6 +329,11 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	srv.SetPortability(portabilityControl{profiles: st.Profiles(), accounts: st.Accounts()})
 	srv.SetThemes(newThemeControl(st.Settings()))
 	srv.SetWebhooks(newWebhookControl(webhookMgr, st.Settings()))
+	// Hosted multi-user mode: register the user account / session controller.
+	if cfg.Hosted {
+		hostedStore := hostedpkg.NewSQLStore(st.Conn(), gen, st.Rebind)
+		srv.SetHostedAuth(newHostedAuthControl(hostedStore, gen))
+	}
 	// MCP server: bind the intel tool belt to /mcp so any MCP client (Claude Desktop,
 	// Continue.dev, etc.) can query logged chat data. Read-only; never sends platform messages.
 	toolBelt := intel.New(st)

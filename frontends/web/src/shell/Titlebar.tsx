@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button, Popover, Text } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { useProfiles } from '../daemon';
+import AccountMenu from './AccountMenu';
 import styles from './Titlebar.module.css';
 
 type Props = {
@@ -69,9 +70,10 @@ export default function Titlebar({ onOpenPalette }: Props) {
         </button>
       </div>
 
-      {/* Right column intentionally empty: connection state shows as a banner only on trouble,
-          not as a steady "Live" readout. Kept for the centered search's three-column balance. */}
-      <div className={styles.right} />
+      {/* Right: account menu (shown only in hosted mode; invisible in local/desktop mode). */}
+      <div className={styles.right}>
+        <AccountMenu />
+      </div>
     </header>
   );
 }

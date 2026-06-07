@@ -1,49 +1,84 @@
-# Run Virta on a server. The desktop app is the primary way to use Virta; this is for people
-# who'd rather host the engine and connect to it from a browser or other clients.
+# Virta production stack — self-hosted deployment.
 #
-# Set VIRTA_TOKEN to a long random secret before starting; clients authenticate with it.
-# By default the engine uses its built-in SQLite storage and the encrypted file vault, so no
-# other services are required. The commented postgres and meilisearch services show how the
-# optional backends slot in once they're supported.
+# Quickstart:
+#   cp .env.example .env       # fill in VIRTA_TOKEN
+#   docker compose up -d
+#   open http://localhost:8344
+#
+# Single-user mode (default, VIRTA_HOSTED=0): one person's install with SQLite or Postgres.
+# Hosted/multi-user mode (VIRTA_HOSTED=1): multiple users register accounts, each gets their
+# own workspace. Requires Postgres.
 
 services:
   virtad:
     build: .
-    # image: ghcr.io/elythi0n/virta:latest   # use a published image instead of building
+    # image: ghcr.io/elythi0n/virta:latest
     restart: unless-stopped
     ports:
       - "8344:8344"
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
-      VIRTA_ADDR: "0.0.0.0:8344"
-      VIRTA_TOKEN: "${VIRTA_TOKEN:?set VIRTA_TOKEN to a long random secret}"
-      VIRTA_STORAGE: "sqlite"
-      # To use Postgres instead (once supported), point at the db service below:
-      # VIRTA_STORAGE: "postgres"
-      # VIRTA_POSTGRES_DSN: "postgres://virta:virta@db:5432/virta?sslmode=disable"
+      VIRTA_ADDR:      "0.0.0.0:8344"
+      VIRTA_TOKEN:     "${VIRTA_TOKEN:?set VIRTA_TOKEN to a long random secret}"
+      VIRTA_STORAGE:   "postgres"
+      VIRTA_DB_DSN:    "postgres://virta:${POSTGRES_PASSWORD:-virta}@db:5432/virta?sslmode=disable"
+      # Set to 1 to enable multi-user account registration/login:
+      VIRTA_HOSTED:    "${VIRTA_HOSTED:-0}"
+      # Optional: OAuth app credentials (users can also set them in Settings).
+      VIRTA_TWITCH_CLIENT_ID:   "${VIRTA_TWITCH_CLIENT_ID:-}"
+      VIRTA_KICK_CLIENT_ID:     "${VIRTA_KICK_CLIENT_ID:-}"
+      VIRTA_KICK_CLIENT_SECRET: "${VIRTA_KICK_CLIENT_SECRET:-}"
     volumes:
       - virta-data:/data
+    healthcheck:
+      test:     ["CMD", "wget", "-qO-", "http://localhost:8344/v1/health"]
+      interval: 15s
+      timeout:  5s
+      retries:  3
 
-  # Optional: Postgres backend (uncomment and switch VIRTA_STORAGE to "postgres").
-  # db:
-  #   image: postgres:17
+  # Postgres — required backend for hosted mode; also the recommended backend for single-user
+  # server installs (more robust than SQLite for long-lived deployments).
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     virta
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-virta}"
+      POSTGRES_DB:       virta
+    volumes:
+      - virta-db:/var/lib/postgresql/data
+    healthcheck:
+      test:     ["CMD-SHELL", "pg_isready -U virta"]
+      interval: 5s
+      timeout:  3s
+      retries:  5
+
+  # Meilisearch — optional. Enables typo-tolerant, faceted chat search.
+  # Uncomment the block below, add "meilisearch" to virtad.depends_on, and set MEILI_MASTER_KEY.
+  # meilisearch:
+  #   image: getmeili/meilisearch:v1.8
   #   restart: unless-stopped
   #   environment:
-  #     POSTGRES_USER: virta
-  #     POSTGRES_PASSWORD: virta
-  #     POSTGRES_DB: virta
-  #   volumes:
-  #     - virta-db:/var/lib/postgresql/data
-
-  # Optional: Meilisearch for fast chat search (a later feature).
-  # search:
-  #   image: getmeili/meilisearch:v1
-  #   restart: unless-stopped
-  #   environment:
-  #     MEILI_MASTER_KEY: "${MEILI_MASTER_KEY:-}"
+  #     MEILI_MASTER_KEY:    "${MEILI_MASTER_KEY:?set a random key}"
+  #     MEILI_NO_ANALYTICS:  "true"
   #   volumes:
   #     - virta-search:/meili_data
+  #   healthcheck:
+  #     test:     ["CMD", "wget", "-qO-", "http://localhost:7700/health"]
+  #     interval: 10s
+  #     retries:  5
+
+  # Ollama — optional. Runs local AI (Ask pane) without an external API key.
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   restart: unless-stopped
+  #   volumes:
+  #     - virta-ollama:/root/.ollama
 
 volumes:
   virta-data:
-  # virta-db:
+  virta-db:
   # virta-search:
+  # virta-ollama:

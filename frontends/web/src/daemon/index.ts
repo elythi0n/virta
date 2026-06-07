@@ -31,3 +31,5 @@ export type { IntegrationReport, IntegrationFeature } from './integration';
 export { listTokens, mintToken, revokeToken } from './tokens';
 export { listThemes, importTheme, exportTheme, deleteTheme } from './themes';
 export { listModels, getIntelConfig, setIntelConfig, askStream } from './intel';
+export { getHostedStatus, register, login, logout, getMe } from './account';
+export type { VirtaUser, HostedStatus } from './account';

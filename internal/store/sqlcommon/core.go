@@ -49,6 +49,9 @@ func New(db *sql.DB, clk clock.Clock, gen id.Generator, dia Dialect) *Core {
 // Conn exposes the underlying handle so a backend can run its own migrations.
 func (c *Core) Conn() *sql.DB { return c.db }
 
+// Rebind adapts a query string for this backend's placeholder style.
+func (c *Core) Rebind(q string) string { return c.dia.Rebind(q) }
+
 func (c *Core) Ping(ctx context.Context) error { return c.db.PingContext(ctx) }
 func (c *Core) Close() error                   { return c.db.Close() }
 

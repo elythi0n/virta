@@ -14,6 +14,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"time"
@@ -51,6 +52,10 @@ type Store interface {
 	Ping(ctx context.Context) error
 	// Close releases the backend.
 	Close() error
+	// Conn exposes the underlying *sql.DB for packages that need raw SQL access (e.g. hosted auth).
+	Conn() *sql.DB
+	// Rebind adapts a ?-parameterised query to the backend's placeholder style.
+	Rebind(string) string
 }
 
 // ---- Settings ----
