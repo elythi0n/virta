@@ -75,22 +75,6 @@ services:
   #     interval: 10s
   #     retries:  5
 
-  # Cloudflare Tunnel — optional. Exposes Virta to the internet without opening firewall ports.
-  # Useful for: MCP relay (external AI clients), remote access, and testing webhooks.
-  #
-  # Setup:
-  #   1. dash.cloudflare.com → Zero Trust → Networks → Tunnels → Create a tunnel (Docker)
-  #   2. In the tunnel's Public Hostname tab: subdomain=local domain=virta.lol → http://virtad:8344
-  #   3. Add CLOUDFLARE_TUNNEL_TOKEN=<token> and VIRTA_MCP_RELAY_URL=https://local.virta.lol to .env
-  #   4. Uncomment this block and run: docker compose up -d
-  # cloudflared:
-  #   image: cloudflare/cloudflared:latest
-  #   restart: unless-stopped
-  #   command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN}
-  #   depends_on:
-  #     virtad:
-  #       condition: service_healthy
-
   # Ollama — optional. Runs local AI (Ask pane) without an external API key.
   # Set OLLAMA_URL=http://ollama:11434 in .env (or in Settings → Intelligence) to use it.
   # GPU passthrough: add `deploy: resources: reservations: devices:` (see Ollama Docker docs).
