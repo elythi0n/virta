@@ -487,7 +487,9 @@ func (c channelControl) Join(ctx context.Context, plat, slug, mode string) error
 		return err
 	}
 	if userctx.FromContext(ctx) != "" {
-		// Hosted mode: persist to this user's profile doc directly, not the global manager.
+		// Hosted mode: ensure the user has a profile (creates one seeded from engine if not),
+		// then persist the new channel to it.
+		_ = c.ensureUserProfile(ctx)
 		_ = c.profiles.AddChannelForUser(ctx, ref, m)
 	} else {
 		// Single-user mode: update the in-memory active profile and persist.
@@ -507,8 +509,8 @@ func (c channelControl) Leave(ctx context.Context, plat, slug string) error {
 	}
 	ref := platform.ChannelRef{Platform: p, Slug: slug}
 	if userctx.FromContext(ctx) != "" {
-		// Hosted mode: only remove from the user's profile; the engine keeps the channel joined
-		// as long as any other user still has it. Other users' feeds are unaffected.
+		// Hosted mode: ensure a profile exists (seeded from engine), then remove the channel.
+		_ = c.ensureUserProfile(ctx)
 		_ = c.profiles.RemoveChannelForUser(ctx, ref)
 	} else {
 		// Single-user mode: leave from the engine and the active profile.
@@ -723,29 +725,64 @@ func (c channelControl) Capabilities() map[string]api.Capabilities {
 	return out
 }
 
+// engineChannelInfos converts the engine's current join set to ChannelInfo wire objects.
+func (c channelControl) engineChannelInfos() []api.ChannelInfo {
+	statuses := c.eng.Channels()
+	out := make([]api.ChannelInfo, 0, len(statuses))
+	for _, s := range statuses {
+		out = append(out, api.ChannelInfo{
+			Platform: string(s.Channel.Platform),
+			Slug:     s.Channel.Slug,
+			State:    string(s.Health.State),
+			Reason:   string(s.Health.Reason),
+		})
+	}
+	return out
+}
+
 func (c channelControl) List(ctx context.Context) []api.ChannelInfo {
 	if userctx.FromContext(ctx) == "" {
-		// Single-user mode: the engine IS the channel list.
-		statuses := c.eng.Channels()
-		out := make([]api.ChannelInfo, 0, len(statuses))
-		for _, s := range statuses {
-			out = append(out, api.ChannelInfo{
-				Platform: string(s.Channel.Platform),
-				Slug:     s.Channel.Slug,
-				State:    string(s.Health.State),
-				Reason:   string(s.Health.Reason),
-			})
-		}
-		return out
+		return c.engineChannelInfos()
 	}
 	// Hosted mode: derive from the user's profile doc so each user only sees their own channels.
 	return c.userChannelInfos(ctx)
 }
 
+// ensureUserProfile creates a default profile for the current hosted user if they don't have one
+// yet, seeding its channel list from whatever the engine has currently joined. This handles two
+// scenarios: a brand-new user who has never joined a channel, and an existing single-user
+// installation that has been switched to hosted mode (where the old profiles carry user_id='').
+func (c channelControl) ensureUserProfile(ctx context.Context) error {
+	_, err := c.profRepo.Default(ctx)
+	if !errors.Is(err, store.ErrNotFound) {
+		return err // nil = already exists; any other error = real problem
+	}
+	// Seed from whatever the engine currently has joined so the user doesn't lose their setup.
+	doc := profiles.NewDoc()
+	for _, s := range c.eng.Channels() {
+		doc.Channels = append(doc.Channels, profiles.ChannelSpec{
+			Platform: s.Channel.Platform,
+			Slug:     s.Channel.Slug,
+		})
+	}
+	raw, err := doc.Marshal()
+	if err != nil {
+		return err
+	}
+	_, err = c.profRepo.Create(ctx, "Default", raw)
+	return err
+}
+
 // userChannelInfos reads the current user's channel list from their profile doc and cross-
 // references the engine's join state to populate the connection status.
+// If the user has no profile yet (new user or pre-hosted migration), falls back to the engine's
+// channel list so existing channels remain visible until the first explicit join/leave.
 func (c channelControl) userChannelInfos(ctx context.Context) []api.ChannelInfo {
 	prof, err := c.profRepo.Default(ctx) // scoped to user via context
+	if errors.Is(err, store.ErrNotFound) {
+		// No profile for this user yet — show what the engine has so the UI isn't empty.
+		return c.engineChannelInfos()
+	}
 	if err != nil {
 		return []api.ChannelInfo{}
 	}
