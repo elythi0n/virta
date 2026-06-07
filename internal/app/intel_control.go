@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"sync"
 
 	"github.com/elythi0n/virta/internal/api"
@@ -144,8 +145,11 @@ func (c *intelControl) SetConfig(ctx context.Context, cfg api.IntelConfig) error
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	// Merge provider keys: masked values in the incoming payload mean "keep existing".
+	// "•" is U+2022 (3 UTF-8 bytes), so the mask suffix "••••" is 12 bytes — byte-slice
+	// indexing with [len-4:] would extract 4 bytes, never matching 12-byte "••••".
+	// strings.HasSuffix compares correctly regardless of multi-byte encoding.
 	for k, v := range cfg.ProviderKeys {
-		if v == "" || len(v) > 4 && v[len(v)-4:] == "••••" {
+		if v == "" || strings.HasSuffix(v, "••••") {
 			// Keep existing key.
 			if old, ok := c.cfg.ProviderKeys[k]; ok {
 				cfg.ProviderKeys[k] = old

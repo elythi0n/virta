@@ -69,36 +69,43 @@ func (p *OpenAICompatProvider) Verify(ctx context.Context) error {
 }
 
 func (p *OpenAICompatProvider) ListModels(ctx context.Context) ([]ModelInfo, error) {
-	type model struct {
-		ID string `json:"id"`
-	}
-	type resp struct {
-		Data []model `json:"data"`
-	}
 	raw, err := p.listModelsRaw(ctx)
 	if err != nil {
 		return nil, err
 	}
-	var r resp
-	if err := json.Unmarshal(raw, &r); err != nil {
-		// Ollama returns a different shape: {"models":[{"name":"..."}]}
+
+	// Ollama native /api/tags → {"models":[{"name":"llama3.2:latest",...}]}
+	// Parse this shape directly; don't fall through to the OpenAI path which would
+	// silently succeed with an empty Data slice (JSON ignores unknown fields).
+	if p.id == "ollama" {
 		var ollamaR struct {
 			Models []struct{ Name string `json:"name"` } `json:"models"`
 		}
-		if err2 := json.Unmarshal(raw, &ollamaR); err2 == nil {
-			out := make([]ModelInfo, 0, len(ollamaR.Models))
-			for _, m := range ollamaR.Models {
-				out = append(out, ModelInfo{ID: m.Name, DisplayName: ollamaDisplayName(m.Name), SupportsTools: modelSupportsTools(m.Name)})
-			}
-			return out, nil
+		if err := json.Unmarshal(raw, &ollamaR); err != nil {
+			return nil, fmt.Errorf("ollama: parse models: %w", err)
 		}
+		out := make([]ModelInfo, 0, len(ollamaR.Models))
+		for _, m := range ollamaR.Models {
+			out = append(out, ModelInfo{ID: m.Name, DisplayName: ollamaDisplayName(m.Name), SupportsTools: modelSupportsTools(m.Name)})
+		}
+		return out, nil
+	}
+
+	// OpenAI-compat shape → {"data":[{"id":"..."},...]}
+	type model struct {
+		ID string `json:"id"`
+	}
+	var r struct {
+		Data []model `json:"data"`
+	}
+	if err := json.Unmarshal(raw, &r); err != nil {
 		return nil, fmt.Errorf("%s: parse models: %w", p.id, err)
 	}
 	out := make([]ModelInfo, 0, len(r.Data))
 	for _, m := range r.Data {
 		out = append(out, ModelInfo{
 			ID:            m.ID,
-			DisplayName:   ollamaDisplayName(m.ID), // strips :latest, cleans up IDs for all compat providers
+			DisplayName:   ollamaDisplayName(m.ID),
 			SupportsTools: modelSupportsTools(m.ID),
 		})
 	}
@@ -207,7 +214,13 @@ func (s *openaiStream) Next() (Event, error) {
 }
 
 func (p *OpenAICompatProvider) listModelsRaw(ctx context.Context) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.baseURL+"/models", nil)
+	// Ollama: use the native /api/tags endpoint (available in all versions; more reliable
+	// than the OpenAI-compat /v1/models which was added later and requires no auth).
+	url := p.baseURL + "/models"
+	if p.id == "ollama" {
+		url = strings.TrimSuffix(p.baseURL, "/v1") + "/api/tags"
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
