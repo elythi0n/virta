@@ -26,13 +26,14 @@ export default function SearchPanel() {
   const { channels } = useChannels();
   const openChannel = useOpenChannel();
   const [q, setQ] = useState('');
-  const [channel, setChannel] = useState('');
+  const ALL = '__all__'; // sentinel for "all channels" — Radix Select forbids empty-string values
+  const [channel, setChannel] = useState(ALL);
   const [author, setAuthor] = useState('');
   const [results, setResults] = useState<LoggedMessage[]>([]);
   const [status, setStatus] = useState<'idle' | 'searching' | 'done' | 'error'>('idle');
 
   const channelOptions = useMemo(
-    () => [{ value: '', label: 'All channels' }, ...channels.map((c) => ({ value: `${c.platform}:${c.slug}`, label: c.slug }))],
+    () => [{ value: ALL, label: 'All channels' }, ...channels.map((c) => ({ value: `${c.platform}:${c.slug}`, label: c.slug }))],
     [channels],
   );
 
@@ -48,7 +49,7 @@ export default function SearchPanel() {
     let cancelled = false;
     const timer = setTimeout(() => {
       setStatus('searching');
-      searchMessages({ q: text, channel: channel || undefined, author: author.trim() || undefined, limit: 200 })
+      searchMessages({ q: text, channel: channel === ALL ? undefined : channel, author: author.trim() || undefined, limit: 200 })
         .then((rows) => {
           if (cancelled) return;
           setResults(rows);
