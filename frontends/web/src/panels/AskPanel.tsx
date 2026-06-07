@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Popover, Text } from '@virta/ui-kit';
 import Icon from '../Icon';
+import ProviderIcon from '../ProviderIcon';
 import { askStream, getIntelConfig, listModels } from '../daemon';
 import type { AskEvent, IntelConfig, ModelGroup } from '../daemon/wire.gen';
 import styles from './AskPanel.module.css';
@@ -213,16 +214,23 @@ export default function AskPanel() {
               align="start"
               trigger={
                 <button type="button" className={styles.modelBtn} aria-label="Select model">
-                  <span className={styles.modelDot} data-provider={selectedModel?.providerId} aria-hidden />
+                  <span className={styles.modelProviderIcon} data-provider={selectedModel?.providerId} aria-hidden>
+                    <ProviderIcon provider={selectedModel?.providerId ?? ''} size={14} />
+                  </span>
                   <span className={styles.modelName}>{modelBtnLabel}</span>
-                  <Icon name="chevron-down" size={12} className={styles.modelChevron} />
+                  <Icon name="chevron-down" size={11} className={styles.modelChevron} />
                 </button>
               }
             >
               <div className={styles.modelMenu}>
                 {groups.map(g => (
                   <div key={g.provider_id}>
-                    <div className={styles.modelGroup}>{g.display_name}</div>
+                    <div className={styles.modelGroup}>
+                      <span className={styles.modelGroupIcon} data-provider={g.provider_id} aria-hidden>
+                        <ProviderIcon provider={g.provider_id} size={12} />
+                      </span>
+                      {g.display_name}
+                    </div>
                     {g.models.map(m => (
                       <button
                         key={m.id}

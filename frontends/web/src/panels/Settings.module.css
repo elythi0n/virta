@@ -427,8 +427,9 @@
 /* Provider brand colors — logo glyph only */
 .providerLogo[data-provider='anthropic'] { color: var(--virta-brand-anthropic); }
 .providerLogo[data-provider='openai']    { color: var(--virta-brand-openai); }
-.providerLogo[data-provider='xai']       { color: var(--virta-text-1); }
-.providerLogo[data-provider='ollama']    { color: var(--virta-accent); }
+.providerLogo[data-provider='xai']        { color: var(--virta-brand-xai); }
+.providerLogo[data-provider='ollama']     { color: var(--virta-brand-ollama); }
+.providerLogo[data-provider='openrouter'] { color: var(--virta-brand-openrouter); }
 
 /* ── About page ──────────────────────────────────────────────────── */
 .aboutBlock {

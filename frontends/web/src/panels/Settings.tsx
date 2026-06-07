@@ -10,6 +10,7 @@ import type { TokenInfo } from '../daemon/wire.gen';
 import { useTheme, type ThemeMode } from '../theme';
 import { useHostedAuth } from '../daemon/hostedAuth';
 import Icon from '../Icon';
+import ProviderIcon from '../ProviderIcon';
 import { DENSITIES } from './DensityControl';
 import Connections from './Connections';
 import ThemeEditor from './ThemeEditor';
@@ -435,54 +436,13 @@ function Integrations() {
 
 type IntelCfgState = { enabled?: boolean; selected_model?: string; daily_limit_usd?: number; provider_keys?: Record<string, string> };
 
-// Providers the user can connect. Ollama is always auto-detected (no key); the rest need an API key.
+// Providers the user can connect. Ollama needs only a base URL; the rest need an API key.
 const PROVIDERS = [
-  {
-    id: 'anthropic',
-    name: 'Anthropic',
-    placeholder: 'sk-ant-api03-…',
-    hint: 'Get your key at console.anthropic.com',
-    // Anthropic logo mark (simplified wordmark "A")
-    logo: (
-      <svg viewBox="0 0 24 24" fill="currentColor" width={18} height={18} aria-hidden>
-        <path d="M13.83 2h-3.66L3 22h3.57l1.43-4.1h8l1.43 4.1H21L13.83 2zm-4.72 12.9 2.89-8.29 2.89 8.29H9.11z"/>
-      </svg>
-    ),
-  },
-  {
-    id: 'openai',
-    name: 'OpenAI',
-    placeholder: 'sk-proj-…',
-    hint: 'Get your key at platform.openai.com',
-    logo: (
-      <svg viewBox="0 0 24 24" fill="currentColor" width={18} height={18} aria-hidden>
-        <path d="M22.28 9.93a5.8 5.8 0 0 0-.5-4.76 5.9 5.9 0 0 0-6.35-2.83 5.84 5.84 0 0 0-9.94 1.6 5.82 5.82 0 0 0-3.87 2.82 5.9 5.9 0 0 0 .73 6.9 5.8 5.8 0 0 0 .5 4.77 5.9 5.9 0 0 0 6.35 2.82 5.81 5.81 0 0 0 4.38 1.96 5.9 5.9 0 0 0 5.62-4.1 5.82 5.82 0 0 0 3.87-2.81 5.9 5.9 0 0 0-.79-6.37zm-8.8 12.34a4.37 4.37 0 0 1-2.81-1.02l.14-.08 4.66-2.7a.76.76 0 0 0 .39-.67v-6.58l1.97 1.14a.07.07 0 0 1 .04.05v5.46a4.4 4.4 0 0 1-4.39 4.4zm-9.44-4.04a4.37 4.37 0 0 1-.52-2.95l.14.08 4.67 2.7a.77.77 0 0 0 .77 0l5.7-3.3V16.4a.07.07 0 0 1-.03.06l-4.72 2.72a4.4 4.4 0 0 1-6.01-1.95zm-1.23-10.2a4.36 4.36 0 0 1 2.29-1.92v5.57a.77.77 0 0 0 .38.67l5.68 3.28-1.97 1.14a.07.07 0 0 1-.07 0L4.66 13.6a4.4 4.4 0 0 1-.85-5.57zm16.17 3.78-5.7-3.3 1.98-1.13a.07.07 0 0 1 .07 0l4.72 2.72a4.39 4.39 0 0 1-.68 7.93v-5.57a.76.76 0 0 0-.39-.65zm1.96-2.97-.14-.08-4.65-2.72a.77.77 0 0 0-.78 0L10.67 9.3V7.6a.07.07 0 0 1 .03-.06l4.72-2.72a4.4 4.4 0 0 1 6.52 4.55v.47zm-12.34 4.06-1.97-1.14a.07.07 0 0 1-.04-.05V5.25a4.4 4.4 0 0 1 7.21-3.38l-.14.08-4.66 2.7a.76.76 0 0 0-.38.66l-.02 6.59zm1.07-2.31 2.54-1.46 2.54 1.46v2.93l-2.54 1.46-2.54-1.46V10.6z"/>
-      </svg>
-    ),
-  },
-  {
-    id: 'xai',
-    name: 'xAI (Grok)',
-    placeholder: 'xai-…',
-    hint: 'Get your key at console.x.ai',
-    logo: (
-      <svg viewBox="0 0 24 24" fill="currentColor" width={18} height={18} aria-hidden>
-        <path d="M4 4l16 16M20 4L4 20"/>
-      </svg>
-    ),
-  },
-  {
-    id: 'ollama',
-    name: 'Ollama',
-    placeholder: 'http://localhost:11434',
-    hint: 'No key needed — /v1 is added automatically. Docker Compose: http://ollama:11434. Native: http://localhost:11434.',
-    isUrl: true,
-    logo: (
-      <svg viewBox="0 0 24 24" fill="currentColor" width={18} height={18} aria-hidden>
-        <circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>
-      </svg>
-    ),
-  },
+  { id: 'anthropic',   name: 'Anthropic',   placeholder: 'sk-ant-api03-…',          hint: 'Get your key at console.anthropic.com' },
+  { id: 'openai',      name: 'OpenAI',      placeholder: 'sk-proj-…',               hint: 'Get your key at platform.openai.com' },
+  { id: 'xai',         name: 'xAI / Grok',  placeholder: 'xai-…',                   hint: 'Get your key at console.x.ai' },
+  { id: 'openrouter',  name: 'OpenRouter',  placeholder: 'sk-or-…',                 hint: 'Route to any model at openrouter.ai. Get your key at openrouter.ai/keys' },
+  { id: 'ollama',      name: 'Ollama',      placeholder: 'http://localhost:11434',   hint: 'No key needed — /v1 is added automatically. Docker Compose: http://ollama:11434. Native: http://localhost:11434.', isUrl: true },
 ] as const;
 
 function ProviderKeys({ keys, onSave }: { keys: Record<string, string>; onSave: (k: Record<string, string>) => void }) {
@@ -516,7 +476,7 @@ function ProviderKeys({ keys, onSave }: { keys: Record<string, string>; onSave: 
             <div key={p.id} className={`${styles.providerCard} ${connected ? styles.providerOn : ''}`}>
               <div className={styles.providerHead}>
                 <span className={styles.providerLogo} data-provider={p.id}>
-                  {p.logo}
+                  <ProviderIcon provider={p.id} size={18} />
                 </span>
                 <span className={styles.providerName}>{p.name}</span>
                 {connected && (

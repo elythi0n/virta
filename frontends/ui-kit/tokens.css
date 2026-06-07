@@ -51,6 +51,9 @@
   --virta-plat-twitch: #9146FF;
   --virta-brand-anthropic: #D4620A;
   --virta-brand-openai: #10A37F;
+  --virta-brand-xai: #E8EAF0;
+  --virta-brand-ollama: #9AA1AE;
+  --virta-brand-openrouter: #9AA1AE;
   --virta-accent: #5B8CFF;
   --virta-bg-0: #0E0F12;
   --virta-bg-1: #15171C;
@@ -69,6 +72,9 @@
   --virta-warn: #D29922;
 }
 [data-theme="graphite-dark"] {
+  --virta-brand-xai: #E8EAF0;
+  --virta-brand-ollama: #B0B8C4;
+  --virta-brand-openrouter: #B0B8C4;
   --virta-accent: #5B8CFF;
   --virta-bg-0: #0E0F12;
   --virta-bg-1: #15171C;
@@ -87,6 +93,9 @@
   --virta-warn: #D29922;
 }
 [data-theme="light"] {
+  --virta-brand-xai: #1A1D23;
+  --virta-brand-ollama: #4A5568;
+  --virta-brand-openrouter: #4A5568;
   --virta-accent: #3B6FE0;
   --virta-bg-0: #FAFBFC;
   --virta-bg-1: #F1F3F5;

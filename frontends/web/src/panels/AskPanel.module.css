@@ -280,18 +280,20 @@
     color var(--virta-motion-fast) ease;
 }
 .modelBtn:hover { border-color: var(--virta-text-2); color: var(--virta-text-0); }
-.modelDot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--virta-text-2);
+/* Provider icon in the model picker button */
+.modelProviderIcon {
   flex: none;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  color: var(--virta-text-2);
 }
-/* Provider-specific dot colors */
-.modelDot[data-provider='anthropic'] { background: var(--virta-brand-anthropic); }
-.modelDot[data-provider='openai']    { background: var(--virta-brand-openai); }
-.modelDot[data-provider='ollama']    { background: var(--virta-accent); }
-.modelDot[data-provider='xai']       { background: var(--virta-text-1); }
+.modelProviderIcon[data-provider='anthropic']  { color: var(--virta-brand-anthropic); }
+.modelProviderIcon[data-provider='openai']     { color: var(--virta-brand-openai); }
+.modelProviderIcon[data-provider='ollama']     { color: var(--virta-brand-ollama); }
+.modelProviderIcon[data-provider='xai']        { color: var(--virta-brand-xai); }
+.modelProviderIcon[data-provider='openrouter'] { color: var(--virta-brand-openrouter); }
 .modelName {
   flex: 1;
   min-width: 0;
@@ -311,6 +313,9 @@
   overflow-y: auto;
 }
 .modelGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
   padding: var(--virta-space-8) var(--virta-space-12) var(--virta-space-4);
   font-family: var(--virta-font-ui);
   font-size: 10px;
@@ -318,6 +323,19 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--virta-text-2);
+}
+.modelGroupIcon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  opacity: 0.7;
+  color: var(--virta-text-2);
+}
+.modelGroupIcon[data-provider='anthropic']  { color: var(--virta-brand-anthropic); }
+.modelGroupIcon[data-provider='openai']     { color: var(--virta-brand-openai); }
+.modelGroupIcon[data-provider='ollama']     { color: var(--virta-brand-ollama); }
+.modelGroupIcon[data-provider='xai']        { color: var(--virta-brand-xai); }
+.modelGroupIcon[data-provider='openrouter'] { color: var(--virta-brand-openrouter); }
 }
 .modelItem {
   display: flex;
