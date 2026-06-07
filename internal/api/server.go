@@ -6,6 +6,7 @@ package api
 
 import (
 	"context"
+	"bytes"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/hex"
@@ -186,14 +187,90 @@ func (s *Server) handleDiscovery(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, Discovery{Addr: "", Token: s.token})
 }
 
-// handleWebUI serves the embedded SPA (with its own fallback), or a short notice if this binary
-// was built without a UI.
+// handleWebUI serves the embedded SPA. For index.html it injects the discovery data
+// (daemon address + token) as an inline script so the SPA authenticates immediately,
+// without a separate /__discovery round-trip. This makes the UI work in Docker and any
+// reverse-proxy setup where the request does not come from 127.0.0.1.
 func (s *Server) handleWebUI(w http.ResponseWriter, r *http.Request) {
 	if s.webui == nil {
 		http.Error(w, "web UI not built into this binary (run `make web`)", http.StatusNotFound)
 		return
 	}
+	// Inject the discovery bootstrap only into the main HTML entry point.
+	// Subresources (JS, CSS, images) are served verbatim.
+	if r.URL.Path == "/" || r.URL.Path == "/index.html" || r.URL.Path == "" {
+		s.serveInjectedHTML(w, r, "/index.html")
+		return
+	}
 	s.webui.ServeHTTP(w, r)
+}
+
+// serveInjectedHTML reads the embedded HTML, injects the discovery bootstrap as the first
+// script in <head>, and writes it. The token is only injected when the SPA itself is being
+// served — never for any other resource — so the exposure is equivalent to the current
+// loopback-only /__discovery: anyone who can load the page already has network access to the
+// daemon and the token in the response is no more secret than the page itself.
+func (s *Server) serveInjectedHTML(w http.ResponseWriter, r *http.Request, path string) {
+	// Re-route the request to the correct file.
+	r2 := r.Clone(r.Context())
+	r2.URL.Path = path
+
+	// Capture the response from the file server.
+	rec := &responseRecorder{header: w.Header().Clone(), code: 200}
+	s.webui.ServeHTTP(rec, r2)
+
+	if rec.code != 200 || len(rec.body) == 0 {
+		w.WriteHeader(rec.code)
+		_, _ = w.Write(rec.body)
+		return
+	}
+
+	// Inject the bootstrap script right before </head> (or at the start of <body>).
+	bootstrap := "<script>window.__VIRTA_DISCOVERY__={addr:\"\",token:" + jsonQuote(s.token) + "};</script>"
+	body := injectBeforeHead(rec.body, bootstrap)
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store") // token is in the page; don't cache
+	w.WriteHeader(200)
+	_, _ = w.Write(body)
+}
+
+// responseRecorder buffers an http.ResponseWriter's output.
+type responseRecorder struct {
+	header http.Header
+	code   int
+	body   []byte
+}
+
+func (rec *responseRecorder) Header() http.Header        { return rec.header }
+func (rec *responseRecorder) WriteHeader(code int)       { rec.code = code }
+func (rec *responseRecorder) Write(b []byte) (int, error) {
+	rec.body = append(rec.body, b...)
+	return len(b), nil
+}
+
+// injectBeforeHead inserts snippet just before </head> or, if absent, at the start of the body.
+func injectBeforeHead(html []byte, snippet string) []byte {
+	needle := []byte("</head>")
+	i := bytes.Index(html, needle)
+	if i < 0 {
+		needle = []byte("<body")
+		i = bytes.Index(html, needle)
+		if i < 0 {
+			return append([]byte(snippet), html...)
+		}
+	}
+	out := make([]byte, 0, len(html)+len(snippet))
+	out = append(out, html[:i]...)
+	out = append(out, []byte(snippet)...)
+	out = append(out, html[i:]...)
+	return out
+}
+
+// jsonQuote returns a JSON-safe double-quoted string (no external deps).
+func jsonQuote(s string) string {
+	b, _ := json.Marshal(s)
+	return string(b)
 }
 
 // handleOverlay rewrites to overlay.html so the token-gated transparent feed renders at /overlay.
