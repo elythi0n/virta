@@ -340,7 +340,10 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	toolBelt := intel.New(st)
 	srv.SetMCPHandler(toolBelt.MCPHandler())
 	// Intelligence controller: LLM registry, meter, Ask streaming, config persistence.
-	intelCtl := newIntelControl(toolBelt, st.Settings(), st.Conversations(), st.Channels(), logSink.Enabled, cfg.MCPRelayURL)
+	// Pass channelControl.List as the live channel source so Ask AI always sees current channels.
+	intelCtl := newIntelControl(toolBelt, st.Settings(), st.Conversations(),
+		func(ctx context.Context) []api.ChannelInfo { return srv.ChannelList(ctx) },
+		logSink.Enabled, cfg.MCPRelayURL)
 	srv.SetIntel(intelCtl)
 
 	// OAuth app credentials are read through providers so they can be set at runtime via the UI

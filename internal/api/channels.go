@@ -57,6 +57,15 @@ type channelRequest struct {
 // exists; until then the channel endpoints report the feature as unavailable.
 func (s *Server) SetChannels(c Channels) { s.channels = c }
 
+// ChannelList returns the current user's joined channels for non-HTTP callers (e.g. the intel
+// controller needs the live list to inject into the AI system prompt).
+func (s *Server) ChannelList(ctx context.Context) []ChannelInfo {
+	if s.channels == nil {
+		return nil
+	}
+	return s.channels.List(ctx)
+}
+
 func (s *Server) handleListChannels(w http.ResponseWriter, r *http.Request) {
 	if s.channels == nil {
 		http.Error(w, "channel control unavailable", http.StatusServiceUnavailable)

@@ -94,6 +94,9 @@ func TestToolBelt_TopChatters(t *testing.T) {
 func TestToolBelt_ListChannels(t *testing.T) {
 	tb := New(makeStore(t))
 	tb.SetLogging(func() bool { return true })
+	tb.SetChannelLister(func() []ChannelInfo {
+		return []ChannelInfo{{Key: "twitch:forsen", Platform: "twitch", Slug: "forsen"}}
+	})
 	channels, err := tb.ListChannels(context.Background())
 	if err != nil {
 		t.Fatalf("ListChannels: %v", err)

@@ -118,12 +118,17 @@ type ChannelInfo struct {
 
 // ToolBelt holds all tool implementations bound to a store.
 type ToolBelt struct {
-	store         store.Store
-	loggingActive func() bool // nil means unknown/off
+	store          store.Store
+	loggingActive  func() bool                     // nil means unknown/off
+	channelLister  func() []ChannelInfo             // returns the live joined-channel list
 }
 
 // New builds a ToolBelt over the given store.
 func New(s store.Store) *ToolBelt { return &ToolBelt{store: s} }
+
+// SetChannelLister injects a function that returns the live set of joined channels. ListChannels
+// will use this instead of the DB channel table (which may lag behind the actual join state).
+func (tb *ToolBelt) SetChannelLister(fn func() []ChannelInfo) { tb.channelLister = fn }
 
 // SetLogging injects a function the tools call to check whether message logging is enabled.
 // When logging is off, tools that query message history return a clear instructional error
@@ -306,16 +311,13 @@ func (tb *ToolBelt) GetMessagesRange(ctx context.Context, args MessagesRangeArgs
 }
 
 // ListChannels returns all known channels with their store IDs.
-func (tb *ToolBelt) ListChannels(ctx context.Context) ([]ChannelInfo, error) {
-	channels, err := tb.store.Channels().List(ctx)
-	if err != nil {
-		return nil, err
+func (tb *ToolBelt) ListChannels(_ context.Context) ([]ChannelInfo, error) {
+	// Prefer the live channel lister (engine + profile source) over the channels DB table,
+	// which only has metadata for channels that have been through the resolver and may lag.
+	if tb.channelLister != nil {
+		return tb.channelLister(), nil
 	}
-	out := make([]ChannelInfo, 0, len(channels))
-	for _, c := range channels {
-		out = append(out, ChannelInfo{Key: string(c.Platform) + ":" + c.Slug, Platform: string(c.Platform), Slug: c.Slug})
-	}
-	return out, nil
+	return []ChannelInfo{}, nil
 }
 
 // Dispatch routes a tool call by name with JSON-encoded arguments. This is the unified entry

@@ -27,7 +27,7 @@ type intelControl struct {
 	meter         *llm.Meter
 	settings      store.SettingsRepo
 	conversations store.ConversationRepo
-	channels      store.ChannelRepo // for context: how many channels are joined
+	channelLister func(context.Context) []api.ChannelInfo // returns live joined channels
 	loggingActive func() bool       // injected from the logbook sink
 	mcpRelayURL   string            // public relay URL for external AI clients
 	mu            sync.RWMutex
@@ -36,7 +36,7 @@ type intelControl struct {
 
 // newIntelControl constructs the intelligence controller and reloads any previously-persisted
 // configuration (so provider keys and model selection survive daemon restarts).
-func newIntelControl(tb *intel.ToolBelt, settings store.SettingsRepo, conversations store.ConversationRepo, channels store.ChannelRepo, loggingActive func() bool, mcpRelayURL string) *intelControl {
+func newIntelControl(tb *intel.ToolBelt, settings store.SettingsRepo, conversations store.ConversationRepo, channelLister func(context.Context) []api.ChannelInfo, loggingActive func() bool, mcpRelayURL string) *intelControl {
 	reg := llm.NewRegistry()
 	cfg := api.IntelConfig{
 		Enabled:        false,
@@ -47,9 +47,25 @@ func newIntelControl(tb *intel.ToolBelt, settings store.SettingsRepo, conversati
 		_ = json.Unmarshal(raw.Data, &cfg)
 	}
 	meter := llm.NewMeter(reg, apiCfgToMeterCfg(cfg))
-	c := &intelControl{tb: tb, registry: reg, meter: meter, settings: settings, conversations: conversations, channels: channels, loggingActive: loggingActive, mcpRelayURL: mcpRelayURL, cfg: cfg}
-	// Share logging state with the tool belt so it can return actionable errors when logging is off.
+	c := &intelControl{tb: tb, registry: reg, meter: meter, settings: settings, conversations: conversations, channelLister: channelLister, loggingActive: loggingActive, mcpRelayURL: mcpRelayURL, cfg: cfg}
 	tb.SetLogging(loggingActive)
+	// Wire up the live channel source so ListChannels returns current data, not stale DB cache.
+	tb.SetChannelLister(func() []intel.ChannelInfo {
+		if channelLister == nil {
+			return nil
+		}
+		ctx := context.Background()
+		apiChans := channelLister(ctx)
+		out := make([]intel.ChannelInfo, 0, len(apiChans))
+		for _, ch := range apiChans {
+			out = append(out, intel.ChannelInfo{
+				Key:      ch.Platform + ":" + ch.Slug,
+				Platform: ch.Platform,
+				Slug:     ch.Slug,
+			})
+		}
+		return out
+	})
 	// Re-register any previously-saved providers.
 	c.applyProviders(cfg)
 	return c
@@ -93,15 +109,19 @@ func (c *intelControl) Ask(ctx context.Context, model, question string) (<-chan 
 	if model == "" {
 		model = c.registry.SelectedModel()
 	}
-	// Build per-request context so the AI knows the current daemon state and date.
+	// Build per-request context so the AI knows the current state, date, and exact channel keys.
 	ac := intel.AskContext{
 		LoggingEnabled: c.loggingActive != nil && c.loggingActive(),
 		MCPRelayURL:    c.mcpRelayURL,
 		Now:            time.Now().UTC(),
 	}
-	if c.channels != nil {
-		if list, err := c.channels.List(ctx); err == nil {
-			ac.ChannelCount = len(list)
+	if c.channelLister != nil {
+		for _, ch := range c.channelLister(ctx) {
+			ac.Channels = append(ac.Channels, intel.ChannelInfo{
+				Key:      ch.Platform + ":" + ch.Slug,
+				Platform: ch.Platform,
+				Slug:     ch.Slug,
+			})
 		}
 	}
 	agentCh := c.tb.AskWithContext(ctx, c.meter, model, question, ac)
