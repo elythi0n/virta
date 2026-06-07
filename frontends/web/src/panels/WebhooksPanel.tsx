@@ -81,7 +81,7 @@ export default function WebhooksPanel() {
                 <div className={styles.endMeta}>
                   <span className={styles.endName}>{ep.name}</span>
                   <span className={styles.endURL} title={ep.url}>{ep.url}</span>
-                  <span className={styles.endEvents}>{ep.events.join(', ')}</span>
+                  <span className={styles.endEvents}>{(ep.events ?? []).join(', ')}</span>
                 </div>
                 <div className={styles.endStatus}>
                   {ep.paused && <Badge tone="warn">Paused</Badge>}

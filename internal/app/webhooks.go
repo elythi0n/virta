@@ -44,9 +44,13 @@ func (c *webhookControl) List() []api.WebhookEndpointInfo {
 	defer c.mu.Unlock()
 	list := make([]api.WebhookEndpointInfo, 0, len(c.configs))
 	for _, ep := range c.configs {
+		events := ep.Events
+		if events == nil {
+			events = []string{}
+		}
 		list = append(list, api.WebhookEndpointInfo{
 			ID: ep.ID, Name: ep.Name, URL: ep.URL,
-			Events: ep.Events, Active: ep.Active,
+			Events: events, Active: ep.Active,
 			Paused: c.mgr.IsPaused(ep.ID),
 		})
 	}
