@@ -54,9 +54,32 @@
 
 /* Interactive bits opt out of the window drag region. */
 .profileBtn,
-.search {
+.search,
+.winControls {
   -webkit-app-region: no-drag;
 }
+
+/* Window control buttons (desktop/Wails only) */
+.winControls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: var(--virta-space-4);
+}
+.winBtn {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: var(--virta-radius-sm);
+  background: none;
+  color: var(--virta-text-2);
+  cursor: pointer;
+  transition: background var(--virta-motion-fast) ease, color var(--virta-motion-fast) ease;
+}
+.winBtn:hover { background: var(--virta-bg-2); color: var(--virta-text-0); }
+.winClose:hover { background: color-mix(in srgb, var(--virta-danger) 20%, transparent); color: var(--virta-danger); }
 
 .profileBtn {
   gap: var(--virta-space-4);

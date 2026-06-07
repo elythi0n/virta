@@ -53,7 +53,11 @@ export function createDaemonClient(opts: DaemonClientOptions): DaemonClient {
     if (stopped) return;
     const d = await discover();
     if (!d) {
-      opts.onStatus('offline'); // no daemon to reach (e.g. running the SPA without one)
+      // No daemon reachable yet. In the desktop app the daemon is still starting up and
+      // /__discovery returns 503; scheduleReconnect retries until it becomes available.
+      // In a plain browser context with no daemon the status stays offline.
+      opts.onStatus('offline');
+      scheduleReconnect();
       return;
     }
     opts.onStatus(attempt === 0 ? 'connecting' : 'reconnecting');

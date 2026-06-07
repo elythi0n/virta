@@ -28,6 +28,7 @@ func main() {
 		Height:    832,
 		MinWidth:  960,
 		MinHeight: 600,
+		Frameless: false,
 		AssetServer: &assetserver.Options{
 			Assets:  assets,
 			Handler: app.assetHandler(),
@@ -35,6 +36,8 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 14, G: 15, B: 18, A: 255},
 		OnStartup:        app.startup,
 		OnShutdown:       app.shutdown,
+		// Expose App methods so the frontend can call window controls.
+		Bind: []interface{}{app},
 	})
 	if err != nil {
 		panic(err)

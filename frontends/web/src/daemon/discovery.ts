@@ -34,12 +34,24 @@ async function resolveDiscovery(): Promise<Discovery | null> {
 
   // 2. Fetch from /__discovery — works when running with a local Vite dev server (which
   //    proxies /v1 to the daemon) or in same-machine loopback access.
+  //    503 means the desktop shell is still starting the daemon; retry after a short delay.
   try {
     const res = await fetch('/__discovery');
+    if (res.status === 503) {
+      // Daemon not ready yet — clear cache so the next connect() attempt tries again.
+      cached = null;
+      return null;
+    }
     if (!res.ok) return null;
     const d = (await res.json()) as Discovery;
-    return d.addr || d.token ? d : null;
+    if (!d.addr && !d.token) {
+      // Empty response: desktop shell returned before daemon was ready; allow retry.
+      cached = null;
+      return null;
+    }
+    return d;
   } catch {
+    cached = null;
     return null;
   }
 }

@@ -1,9 +1,26 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, Popover, Text } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { useProfiles } from '../daemon';
 import AccountMenu from './AccountMenu';
 import styles from './Titlebar.module.css';
+
+// Wails injects window.go with bound Go methods when running inside the desktop shell.
+// We use optional chaining so the same code is a no-op in a browser context.
+declare global {
+  interface Window {
+    go?: { main?: { App?: { WindowMinimise?(): Promise<void>; WindowToggleMaximise?(): Promise<void>; WindowClose?(): Promise<void> } } };
+  }
+}
+
+function useIsDesktop(): boolean {
+  const [desktop, setDesktop] = useState(false);
+  useEffect(() => {
+    // window.go is injected by Wails at runtime; not present in a plain browser.
+    setDesktop(typeof window !== 'undefined' && !!window.go?.main?.App);
+  }, []);
+  return desktop;
+}
 
 type Props = {
   onOpenPalette: () => void;
@@ -12,6 +29,7 @@ type Props = {
 export default function Titlebar({ onOpenPalette }: Props) {
   const { profiles, active, status: profilesStatus, activate, create, remove } = useProfiles();
   const [menuOpen, setMenuOpen] = useState(false);
+  const isDesktop = useIsDesktop();
   const [newName, setNewName] = useState('');
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -149,6 +167,34 @@ export default function Titlebar({ onOpenPalette }: Props) {
 
       <div className={styles.right}>
         <AccountMenu />
+        {isDesktop && (
+          <div className={styles.winControls} aria-label="Window controls">
+            <button
+              type="button"
+              className={styles.winBtn}
+              aria-label="Minimise window"
+              onClick={() => void window.go?.main?.App?.WindowMinimise?.()}
+            >
+              <Icon name="win-minimise" size={12} />
+            </button>
+            <button
+              type="button"
+              className={styles.winBtn}
+              aria-label="Maximise / restore window"
+              onClick={() => void window.go?.main?.App?.WindowToggleMaximise?.()}
+            >
+              <Icon name="win-maximise" size={12} />
+            </button>
+            <button
+              type="button"
+              className={`${styles.winBtn} ${styles.winClose}`}
+              aria-label="Close window"
+              onClick={() => void window.go?.main?.App?.WindowClose?.()}
+            >
+              <Icon name="win-close" size={12} />
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );
