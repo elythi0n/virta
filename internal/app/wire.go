@@ -1236,9 +1236,12 @@ func (d *Daemon) Start() error {
 	}
 
 	// If VIRTA_LOGGING_ENABLED=1, force logging on regardless of the stored profile setting.
-	// This is the easiest way to enable logging for server deployments without touching the UI.
+	// Must set both the engine (marks messages non-ephemeral) AND the sink (writes to DB).
+	// Without eng.SetLogging(true), messages stay Ephemeral and the sink silently drops them.
 	if d.cfg.LoggingEnabled {
+		d.engine.SetLogging(true)
 		d.logSink.SetEnabled(true)
+		d.sweeper.SetRetention("90d") // generous default; user can override in Settings
 		d.log.Info("message logging force-enabled via VIRTA_LOGGING_ENABLED")
 	}
 

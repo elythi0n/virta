@@ -48,7 +48,7 @@ type ToolResult struct {
 	JSON      string // the serialised result
 }
 
-const maxToolRounds = 10 // prevent runaway loops
+const maxToolRounds = 4 // 4 back-and-forth cycles is enough for any reasonable query
 
 // AskContext carries per-request context injected into the system prompt so the AI knows
 // the current state of the daemon and can give actionable guidance when tools fail.
@@ -133,6 +133,12 @@ func (tb *ToolBelt) runAgent(ctx context.Context, meter *llm.Meter, model, quest
 		{Role: llm.RoleUser, Content: question},
 	}
 
+	// toolCache deduplicates identical (name, args) calls within one agent run.
+	// If the model calls the same tool with the same arguments twice, return the cached
+	// result instead of hitting the DB again (prevents runaway loops).
+	type cacheKey struct{ name, args string }
+	toolCache := map[cacheKey]string{}
+
 	for round := 0; round < maxToolRounds; round++ {
 		stream, err := meter.Complete(ctx, llm.FeatureAsk, llm.CompletionRequest{
 			Model:    model,
@@ -187,13 +193,22 @@ func (tb *ToolBelt) runAgent(ctx context.Context, meter *llm.Meter, model, quest
 		// Execute each tool call and append the results.
 		for _, tc := range toolCalls {
 			out <- AgentEvent{Kind: AEKToolUse, ToolUse: &ToolUse{ID: tc.ID, Name: tc.Name, Args: tc.ArgJSON}}
-			result, err := tb.Dispatch(ctx, tc.Name, json.RawMessage(tc.ArgJSON))
+			key := cacheKey{tc.Name, tc.ArgJSON}
 			var resultJSON string
+			if cached, hit := toolCache[key]; hit {
+				// Return cached result — model already has this data.
+				resultJSON = fmt.Sprintf(`{"cached":true,"note":"already called with these arguments","result":%s}`, cached)
+				out <- AgentEvent{Kind: AEKToolResult, Result: &ToolResult{ToolUseID: tc.ID, Name: tc.Name, JSON: resultJSON}}
+				messages = append(messages, llm.Message{Role: llm.RoleTool, Content: resultJSON, ToolCallID: tc.ID})
+				continue
+			}
+			result, err := tb.Dispatch(ctx, tc.Name, json.RawMessage(tc.ArgJSON))
 			if err != nil {
 				resultJSON = fmt.Sprintf(`{"error":%q}`, err.Error())
 			} else {
 				b, _ := json.Marshal(result)
 				resultJSON = string(b)
+				toolCache[key] = resultJSON // cache successful results only
 			}
 			out <- AgentEvent{Kind: AEKToolResult, Result: &ToolResult{ToolUseID: tc.ID, Name: tc.Name, JSON: resultJSON}}
 			messages = append(messages, llm.Message{
