@@ -38,11 +38,11 @@ var (
 	procSetWindowTextW        = modUser32.NewProc("SetWindowTextW")
 	procDestroyWindow         = modUser32.NewProc("DestroyWindow")
 	procPostQuitMessage       = modUser32.NewProc("PostQuitMessage")
-	procMessageBoxW           = modUser32.NewProc("MessageBoxW")
-	procGetModuleHandleW      = modKernel32.NewProc("GetModuleHandleW")
-	procShellExecuteW         = modShell32.NewProc("ShellExecuteW")
-	procLoadCursorW           = modUser32.NewProc("LoadCursorW")
-	procGetStockObject        = modGdi32.NewProc("GetStockObject")
+	// procMessageBoxW is reserved for future error dialogs.
+	procGetModuleHandleW = modKernel32.NewProc("GetModuleHandleW")
+	procShellExecuteW    = modShell32.NewProc("ShellExecuteW")
+	procLoadCursorW      = modUser32.NewProc("LoadCursorW")
+	procGetStockObject   = modGdi32.NewProc("GetStockObject")
 )
 
 const (
@@ -97,10 +97,10 @@ type msg struct {
 func wndProc(hwnd, msg, wParam, lParam uintptr) uintptr {
 	switch uint32(msg) {
 	case wmClose:
-		procDestroyWindow.Call(hwnd)
+		_, _, _ = procDestroyWindow.Call(hwnd)
 		return 0
 	case wmDestroy:
-		procPostQuitMessage.Call(0)
+		_, _, _ = procPostQuitMessage.Call(0)
 		return 0
 	}
 	r, _, _ := procDefWindowProcW.Call(hwnd, msg, wParam, lParam)
@@ -156,10 +156,10 @@ func runOverlay(urlStr, title string, x, y, width, height int) error {
 	// Make the window fully transparent and click-through.
 	// Alpha=0 with LWA_ALPHA causes the window to be invisible; combined with
 	// WS_EX_TRANSPARENT all mouse events are forwarded to the window below.
-	procSetLayeredWindowAttrs.Call(hwnd, 0, 0, lwaTrans)
+	_, _, _ = procSetLayeredWindowAttrs.Call(hwnd, 0, 0, lwaTrans)
 
-	procSetWindowTextW.Call(hwnd, uintptr(unsafe.Pointer(titleW)))
-	procShowWindow.Call(hwnd, swShow)
+	_, _, _ = procSetWindowTextW.Call(hwnd, uintptr(unsafe.Pointer(titleW)))
+	_, _, _ = procShowWindow.Call(hwnd, swShow)
 
 	// Message loop.
 	var m msg
@@ -168,8 +168,8 @@ func runOverlay(urlStr, title string, x, y, width, height int) error {
 		if r == 0 {
 			break
 		}
-		procTranslateMessage.Call(uintptr(unsafe.Pointer(&m)))
-		procDispatchMessageW.Call(uintptr(unsafe.Pointer(&m)))
+		_, _, _ = procTranslateMessage.Call(uintptr(unsafe.Pointer(&m)))
+		_, _, _ = procDispatchMessageW.Call(uintptr(unsafe.Pointer(&m)))
 	}
 	return nil
 }

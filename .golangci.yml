@@ -118,6 +118,16 @@ linters:
         linters:
           - forbidigo
 
+      # virta-overlay requires platform-specific CGO (GTK/WebKit on Linux,
+      # WebView2 on Windows) that is not available on all CI runners. It is
+      # a deployment binary and is not part of the importable library surface.
+      - path: 'cmd/virta-overlay/'
+        linters:
+          - typecheck
+          - errcheck
+          - unused
+          - staticcheck
+
 formatters:
   enable:
     - gofmt
