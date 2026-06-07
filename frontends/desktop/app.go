@@ -92,12 +92,20 @@ func (a *App) OpenStreamWindow(title, url string) {
 
 // ---- Asset handler ----
 
-// assetHandler serves requests the embedded UI doesn't satisfy:
+// assetHandler serves requests from the embedded UI:
 //   - /__discovery: returns daemon address + token; 503 until ready.
 //   - /__integration: host OS/session capabilities.
 //   - All other paths: served from the embedded assets FS.
-func (a *App) assetHandler(assets fs.FS) http.Handler {
-	fileServer := http.FileServer(http.FS(assets))
+//
+// The embed.FS root contains an "assets/" sub-directory (matching the //go:embed
+// directive). fs.Sub strips that prefix so "/" maps to assets/index.html, not to a
+// directory listing of the "assets/" folder.
+func (a *App) assetHandler(embeds fs.FS) http.Handler {
+	sub, err := fs.Sub(embeds, "assets")
+	if err != nil {
+		sub = embeds // should never happen; fallback to raw FS
+	}
+	fileServer := http.FileServer(http.FS(sub))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/__discovery":
