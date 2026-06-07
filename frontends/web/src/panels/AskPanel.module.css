@@ -212,14 +212,19 @@
     transparent 100%
   );
   padding-top: var(--virta-space-32);
+  /* The gradient/padding area above the card must not intercept clicks —
+     Popover content (model picker) opens upward into that space. */
+  pointer-events: none;
 }
 .tokenRow {
+  pointer-events: auto;
   text-align: center;
   margin-bottom: var(--virta-space-4);
 }
 
-/* The card itself */
+/* The card itself — re-enable pointer events for all interactive content */
 .inputCard {
+  pointer-events: auto;
   background: var(--virta-bg-2);
   border: 1px solid var(--virta-line);
   border-radius: var(--virta-radius-lg);

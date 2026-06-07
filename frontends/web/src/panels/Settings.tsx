@@ -588,10 +588,10 @@ function IntelligenceSettings() {
             {models.length > 0 ? (
               <Select
                 ariaLabel="Default model"
-                value={cfg?.selected_model || ''}
-                onValueChange={v => void save({ selected_model: v })}
+                value={cfg?.selected_model || '__auto__'}
+                onValueChange={v => void save({ selected_model: v === '__auto__' ? '' : v })}
                 options={[
-                  { value: '', label: 'Auto (first available)' },
+                  { value: '__auto__', label: 'Auto (first available)' },
                   ...models.flatMap(g => (g.models ?? []).map(m => ({
                     value: m.id,
                     label: `${g.display_name} — ${m.display_name}`,
