@@ -30,7 +30,7 @@ func TestStage_StampsResolvedArtwork(t *testing.T) {
 		Channel: ch,
 		Author:  platform.Author{Badges: []platform.Badge{{Set: "moderator", Version: "1"}, {Set: "subscriber", Version: "12"}}},
 	}
-	if err := NewStage(r).Annotate(context.Background(), msg); err != nil {
+	if err := NewStage(r, nil).Annotate(context.Background(), msg); err != nil {
 		t.Fatalf("annotate: %v", err)
 	}
 	if got := msg.Author.Badges[0].URL; got != "https://cdn/mod.png" {
@@ -42,7 +42,7 @@ func TestStage_StampsResolvedArtwork(t *testing.T) {
 }
 
 func TestStage_NoBadgesOrNoSnapshotIsNoop(t *testing.T) {
-	stage := NewStage(NewResolver())
+	stage := NewStage(NewResolver(), nil)
 	msg := &platform.UnifiedMessage{Channel: ch, Author: platform.Author{Badges: []platform.Badge{{Set: "vip", Version: "1"}}}}
 	if err := stage.Annotate(context.Background(), msg); err != nil {
 		t.Fatal(err)

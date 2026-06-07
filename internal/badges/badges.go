@@ -93,12 +93,25 @@ type SetSource interface {
 	Snapshot(channelKey string) *Set
 }
 
-// Stage stamps resolved artwork onto each message's badges using the channel's snapshot. Pure and
-// lock-free on the hot path; badges without resolved artwork keep an empty URL (frontend chip).
-type Stage struct{ src SetSource }
+// Refresher triggers an asynchronous badge fetch for a channel (the Resolver satisfies it).
+type Refresher interface {
+	Refresh(ctx context.Context, ch platform.ChannelRef) *Set
+}
 
-// NewStage builds the badge-resolution stage over a snapshot source.
-func NewStage(src SetSource) *Stage { return &Stage{src: src} }
+// Stage stamps resolved artwork onto each message's badges using the channel's snapshot.
+// When the snapshot is empty (channel not yet fetched), it fires a one-shot background refresh
+// so subsequent messages pick up the artwork. Lock-free on the hot path.
+type Stage struct {
+	src       SetSource
+	refresher Refresher
+	inflight  sync.Map // channelKey → struct{}; prevents concurrent fetches for the same channel
+}
+
+// NewStage builds the badge-resolution stage over a snapshot source. Pass a non-nil Refresher
+// to enable lazy fetching when a channel's badge set has not been loaded yet.
+func NewStage(src SetSource, refresher Refresher) *Stage {
+	return &Stage{src: src, refresher: refresher}
+}
 
 func (s *Stage) Name() string { return "badges" }
 
@@ -106,8 +119,19 @@ func (s *Stage) Annotate(_ context.Context, msg *platform.UnifiedMessage) error 
 	if len(msg.Author.Badges) == 0 {
 		return nil
 	}
-	set := s.src.Snapshot(Key(msg.Channel))
+	key := Key(msg.Channel)
+	set := s.src.Snapshot(key)
 	if set.Len() == 0 {
+		// Trigger a one-shot background fetch so future messages carry image URLs.
+		if s.refresher != nil {
+			if _, loaded := s.inflight.LoadOrStore(key, struct{}{}); !loaded {
+				ch := msg.Channel
+				go func() {
+					defer s.inflight.Delete(key)
+					s.refresher.Refresh(context.Background(), ch)
+				}()
+			}
+		}
 		return nil
 	}
 	for i := range msg.Author.Badges {

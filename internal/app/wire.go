@@ -274,7 +274,7 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	webhookSink := webhook.NewSink(webhookMgr, idGen)
 	runner := pipeline.NewRunner(pipeline.Options{
 		Clock:  clk,
-		Stages: []pipeline.Stage{filterStage, emotes.NewStage(emoteResolver), badges.NewStage(badgeResolver), velocityStage},
+		Stages: []pipeline.Stage{filterStage, emotes.NewStage(emoteResolver), badges.NewStage(badgeResolver, badgeResolver), velocityStage},
 		Sinks:  []pipeline.Sink{srv.Sink(), statsAgg, logSink, heldQueue, scrollbackRing, webhookSink},
 		Logger: log,
 	})

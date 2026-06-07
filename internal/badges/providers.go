@@ -110,3 +110,4 @@ func collect(out map[string]string, badges []gqlBadge) {
 		}
 	}
 }
+
