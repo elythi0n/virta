@@ -25,6 +25,7 @@ function flatModels(groups: ModelGroup[]) {
 export default function AskPanel() {
   const [config, setConfig] = useState<IntelConfig | null>(null);
   const [groups, setGroups] = useState<ModelGroup[]>([]);
+  const [modelsReady, setModelsReady] = useState(false);
   const [model, setModel] = useState('');
   const [modelOpen, setModelOpen] = useState(false);
   const [question, setQuestion] = useState('');
@@ -39,13 +40,12 @@ export default function AskPanel() {
     getIntelConfig().then(setConfig).catch(() => {});
     listModels().then(g => {
       setGroups(g);
-      setModel(prev => {
-        if (prev) return prev;
-        // Prefer the first tool-capable model; fall back to whatever is first.
-        const all = flatModels(g);
-        return all.find(m => m.supports_tools)?.id ?? all[0]?.id ?? '';
-      });
-    }).catch(() => {});
+      setModelsReady(true);
+      // Always auto-pick: prefer a tool-capable model, fall back to the first available.
+      const all = flatModels(g);
+      const pick = all.find(m => m.supports_tools)?.id ?? all[0]?.id ?? '';
+      if (pick) setModel(pick);
+    }).catch(() => setModelsReady(true));
   }, []);
 
   const scrollBottom = useCallback(() => {
@@ -96,7 +96,11 @@ export default function AskPanel() {
 
   const selectedModel = flatModels(groups).find(m => m.id === model);
   const canSend = question.trim().length > 0 && model !== '' && !running;
-  const modelsLoading = config !== null && groups.length === 0;
+  const modelBtnLabel = !modelsReady
+    ? 'Loading…'
+    : groups.length === 0
+      ? 'No models'
+      : (selectedModel?.display_name ?? 'Select model');
 
   if (config && !config.enabled) {
     return (
@@ -210,9 +214,7 @@ export default function AskPanel() {
               trigger={
                 <button type="button" className={styles.modelBtn} aria-label="Select model">
                   <span className={styles.modelDot} data-provider={selectedModel?.providerId} aria-hidden />
-                  <span className={styles.modelName}>
-                    {modelsLoading ? 'Loading…' : (selectedModel?.display_name ?? 'Choose model')}
-                  </span>
+                  <span className={styles.modelName}>{modelBtnLabel}</span>
                   <Icon name="chevron-down" size={12} className={styles.modelChevron} />
                 </button>
               }
@@ -227,11 +229,9 @@ export default function AskPanel() {
                         type="button"
                         className={`${styles.modelItem} ${m.id === model ? styles.modelItemOn : ''}`}
                         onClick={() => { setModel(m.id); setModelOpen(false); }}
-                        disabled={!m.supports_tools}
-                        title={!m.supports_tools ? 'This model does not support tool use' : undefined}
                       >
                         <span className={styles.modelItemName}>{m.display_name}</span>
-                        {!m.supports_tools && <span className={styles.noTools}>no tools</span>}
+                        {!m.supports_tools && <span className={styles.noTools} title="May not support tool use">⚠</span>}
                         {m.price_in_per_mtok != null && m.price_in_per_mtok > 0 && (
                           <span className={styles.modelPrice}>${m.price_in_per_mtok}/${m.price_out_per_mtok}</span>
                         )}
@@ -263,7 +263,6 @@ export default function AskPanel() {
             )}
           </div>
         </div>
-        <p className={styles.hint}>Enter to send · Shift+Enter for new line</p>
       </div>
     </div>
   );
