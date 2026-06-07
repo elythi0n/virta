@@ -16,6 +16,9 @@ declare global {
       Application?: {
         Quit?(): Promise<void>;
       };
+      Browser?: {
+        OpenURL?(url: string): Promise<void>;
+      };
       Call?(opts: { methodName: string; args: unknown[] }): Promise<unknown>;
     };
     // Wails v2 legacy (kept so old code compiles; window.go is absent in v3)

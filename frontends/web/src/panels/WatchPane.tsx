@@ -1,10 +1,9 @@
+import { useState } from 'react';
 import { Text } from '@virta/ui-kit';
+import Icon from '../Icon';
+import { useIsDesktop } from '../shell/useIsDesktop';
 import styles from './WatchPane.module.css';
 
-// In Wails v3 the asset server uses wails://localhost so location.hostname is
-// "localhost" and parent=localhost works for Twitch and Kick embed players.
-// For any non-http(s) scheme that doesn't match "localhost" (shouldn't happen in
-// practice), open the stream natively via App.OpenStreamWindow (v3 multi-window).
 function embedUrl(platform: string, slug: string): string | null {
   const parent = location.hostname || 'localhost';
   switch (platform) {
@@ -17,8 +16,18 @@ function embedUrl(platform: string, slug: string): string | null {
   }
 }
 
+function nativeUrl(platform: string, slug: string): string | null {
+  switch (platform) {
+    case 'twitch': return `https://twitch.tv/${encodeURIComponent(slug)}`;
+    case 'kick':   return `https://kick.com/${encodeURIComponent(slug)}`;
+    default:       return null;
+  }
+}
 
 export default function WatchPane({ channel }: { channel?: string }) {
+  const isDesktop = useIsDesktop();
+  const [embedFailed, setEmbedFailed] = useState(false);
+
   if (!channel) {
     return (
       <div className={styles.placeholder}>
@@ -28,12 +37,37 @@ export default function WatchPane({ channel }: { channel?: string }) {
   }
 
   const [platform, slug = ''] = channel.split(':');
-  const url = embedUrl(platform, slug);
+  const embed = embedUrl(platform, slug);
+  const native = nativeUrl(platform, slug);
+  const label = `${slug} on ${platform.charAt(0).toUpperCase() + platform.slice(1)}`;
 
-  if (!url) {
+  if (!embed) {
     return (
       <div className={styles.placeholder}>
-        <Text variant="ui" tone="subtle">No embeddable player for {platform}.</Text>
+        <Text variant="ui" tone="subtle">No player available for {platform}.</Text>
+      </div>
+    );
+  }
+
+  // In the desktop app (WebKitGTK), Twitch's IVS player requires WebGPU / WebCodecs
+  // which are not available. Show the embed anyway (works if the system ever gains
+  // support) but always offer a reliable "open in browser" button.
+  if (isDesktop && (embedFailed || !embed)) {
+    return (
+      <div className={styles.placeholder}>
+        <Text variant="ui" tone="subtle" as="p" className={styles.desktopNote}>
+          Video playback requires a browser with WebGPU support.
+        </Text>
+        {native && (
+          <button
+            type="button"
+            className={styles.openBtn}
+            onClick={() => void window.wails?.Browser?.OpenURL?.(native)}
+          >
+            <Icon name="popout" size={14} />
+            Watch {label}
+          </button>
+        )}
       </div>
     );
   }
@@ -42,11 +76,26 @@ export default function WatchPane({ channel }: { channel?: string }) {
     <div className={styles.pane}>
       <iframe
         className={styles.player}
-        src={url}
+        src={embed}
         title={`${slug} stream`}
         allow="autoplay; fullscreen; picture-in-picture"
         allowFullScreen
+        onError={() => setEmbedFailed(true)}
       />
+      {/* In the desktop app, always show an escape hatch since WebKitGTK
+          may not support the video codec the player needs. */}
+      {isDesktop && native && (
+        <div className={styles.desktopBar}>
+          <button
+            type="button"
+            className={styles.desktopBarBtn}
+            onClick={() => void window.wails?.Browser?.OpenURL?.(native)}
+          >
+            <Icon name="popout" size={12} />
+            Open in browser
+          </button>
+        </div>
+      )}
     </div>
   );
 }
