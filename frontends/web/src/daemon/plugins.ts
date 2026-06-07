@@ -11,6 +11,7 @@ export interface PluginInfo {
   error?: string;
   built_in: boolean;
   scopes?: string[];
+  has_config?: boolean;
 }
 
 export function listPlugins(): Promise<PluginInfo[]> {

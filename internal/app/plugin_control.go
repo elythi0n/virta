@@ -38,6 +38,7 @@ func (c *pluginControl) List() []api.PluginInfo {
 			Error:       e.Error,
 			BuiltIn:     e.Manifest.BuiltIn,
 			Scopes:      scopes,
+			HasConfig:   len(e.Manifest.Config) > 0,
 		})
 	}
 	return out

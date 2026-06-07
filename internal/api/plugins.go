@@ -17,6 +17,8 @@ type PluginInfo struct {
 	Error       string   `json:"error,omitempty"`
 	BuiltIn     bool     `json:"built_in"`
 	Scopes      []string `json:"scopes,omitempty"`
+	// HasConfig is true when the plugin declares a JSON Schema config.
+	HasConfig   bool     `json:"has_config"`
 }
 
 // Plugins is the plugin management surface, implemented by the plugin host controller.

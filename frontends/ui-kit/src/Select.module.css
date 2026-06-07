@@ -40,7 +40,8 @@
   border-radius: var(--virta-radius-md);
   box-shadow: 0 4px 16px rgb(0 0 0 / 0.4);
   overflow: hidden;
-  z-index: 50;
+  /* Must be above Dialog (z-index 101) so Select dropdowns inside dialogs render correctly. */
+  z-index: 200;
 }
 .viewport {
   padding: var(--virta-space-4);

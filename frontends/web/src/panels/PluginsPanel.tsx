@@ -19,7 +19,7 @@ const BUILT_IN_CATALOG: PluginInfo[] = [
   { id: 'virta.search',       name: 'Search',        description: 'Full-text search over your chat history with channel and author filters.',            built_in: true, state: 'enabled',  tags: ['history'],        version: '1.0.0', publisher: 'Virta' },
   { id: 'virta.ask-ai',       name: 'Ask AI',        description: 'Ask questions about chat history using an AI agent: top fans, user stats.',          built_in: true, state: 'enabled',  tags: ['ai'],             version: '1.0.0', publisher: 'Virta' },
   { id: 'virta.stream',       name: 'Streams',       description: 'Grid of all joined channels with live thumbnails, viewer counts, and quick launch.', built_in: true, state: 'enabled',  tags: ['stream'],         version: '1.0.0', publisher: 'Virta' },
-  { id: 'com.virta.markets',  name: 'Markets',       description: 'Real-time crypto price ticker and board via free exchange WebSockets.',               built_in: true, state: 'enabled',  tags: ['data', 'crypto'], version: '1.0.0', publisher: 'Virta' },
+  { id: 'com.virta.markets',  name: 'Markets',       description: 'Real-time crypto price ticker and board via free exchange WebSockets.',               built_in: true, state: 'enabled',  tags: ['data', 'crypto'], version: '1.0.0', publisher: 'Virta', has_config: true },
   { id: 'virta.stats',        name: 'Stats',         description: 'Live stats: messages per second, unique chatters, top emotes, activity timelines.',  built_in: true, state: 'disabled', tags: ['analytics'],      version: '0.0.0', publisher: 'Virta' },
 ];
 
@@ -169,11 +169,13 @@ export default function PluginsPanel() {
                         Uninstall
                       </button>
                     )}
-                    <button type="button" className={styles.settingsBtn}
-                      aria-label={`Settings for ${p.name}`} title="Plugin settings"
-                      onClick={() => void openSettings(p.id)}>
-                      <Icon name="settings" size={13} />
-                    </button>
+                    {p.has_config && (
+                      <button type="button" className={styles.settingsBtn}
+                        aria-label={`Settings for ${p.name}`} title="Settings"
+                        onClick={() => void openSettings(p.id)}>
+                        <Icon name="settings" size={13} />
+                      </button>
+                    )}
                     <button type="button"
                       className={`${styles.toggleBtn} ${isEnabled ? styles.toggleBtnOn : ''}`}
                       disabled={isBusy}

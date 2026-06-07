@@ -307,13 +307,16 @@
   flex: none;
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
-  border: 1px solid transparent;
+  width: 18px;
+  height: 18px;
+  border: 0;
   border-radius: var(--virta-radius-sm);
   background: none;
   color: var(--virta-text-2);
   cursor: pointer;
-  transition: color var(--virta-motion-fast) ease, border-color var(--virta-motion-fast) ease;
+  opacity: 0;
+  transition: opacity var(--virta-motion-fast) ease, color var(--virta-motion-fast) ease;
 }
-.settingsBtn:hover { color: var(--virta-text-0); border-color: var(--virta-line); }
+.card:hover .settingsBtn,
+.settingsBtn:focus-visible { opacity: 1; }
+.settingsBtn:hover { color: var(--virta-text-0); }
