@@ -25,7 +25,7 @@ func TestNormaliseSymbol(t *testing.T) {
 
 func TestNewDataSource_Defaults(t *testing.T) {
 	ds := markets.New(markets.Config{})
-	if ds.ID() != "markets" {
+	if ds.ID() != "com.virta.markets" {
 		t.Errorf("ID = %q, want 'markets'", ds.ID())
 	}
 	// Snapshot should be empty on a fresh instance.

@@ -62,7 +62,7 @@ func (d *DataSource) UpdateConfig(cfg Config) {
 	d.mu.Unlock()
 }
 
-func (d *DataSource) ID() string { return "markets" }
+func (d *DataSource) ID() string { return "com.virta.markets" }
 
 // Run implements plugins.DataSource. It streams tick events on "tick" and status updates
 // on "status". It tries the configured primary provider first, then falls back to CoinGecko.
