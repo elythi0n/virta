@@ -16,7 +16,7 @@
     "resolveJsonModule": true,
     "allowImportingTsExtensions": false,
     "noEmit": true,
-    "types": ["vite/client", "vitest/globals"]
+    "types": ["vite/client"]
   },
   "include": ["src"],
   "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/**/*.spec.ts"]

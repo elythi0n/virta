@@ -23,7 +23,8 @@ RUN npm ci --workspace ui-kit --workspace feed-core --workspace web
 # Copy source and build. `npm run build` inside web produces dist/ with index.html,
 # overlay.html, and all assets; the Go embed picks these up in the next stage.
 COPY frontends/ ./
-RUN cd web && npm run build
+# build:docker skips tsc --noEmit (type-checking runs in CI, not in the image build).
+RUN cd web && npm run build:docker
 
 # ── Stage 2: cache Go module downloads (layer reuse) ─────────────────────────
 FROM golang:1.26 AS go-deps
