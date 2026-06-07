@@ -266,17 +266,15 @@ function About() {
           <Text variant="meta" tone="subtle" as="p">
             Developer tools
           </Text>
+          <button
+            type="button"
+            className={styles.aboutDevBtn}
+            onClick={() => void window.go?.main?.App?.OpenInspector?.()}
+          >
+            Open WebKit Inspector
+          </button>
           <Text variant="meta" tone="subtle" as="p" className={styles.aboutDevHint}>
-            To open DevTools, run the app in dev mode. In a terminal:
-          </Text>
-          <div className={styles.aboutDevHint}>
-            <code>cd frontends/web &amp;&amp; npm run dev</code>
-          </div>
-          <div className={styles.aboutDevHint}>
-            <code>cd frontends/desktop &amp;&amp; ~/go/bin/wails dev</code>
-          </div>
-          <Text variant="meta" tone="subtle" as="p" className={styles.aboutDevHint}>
-            Then right-click → Inspect Element anywhere in the app.
+            Opens DevTools for the main window. Use <code>make app-debug</code> to build with DevToolsEnabled.
           </Text>
         </div>
       )}

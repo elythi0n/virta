@@ -1,18 +1,15 @@
 // Command virta-desktop is the Virta desktop shell: a native window hosting the web UI that
-// supervises or attaches to a local virtad daemon. It is a separate Go module so its WebKit/CGO
-// dependency (via Wails) stays out of the core module's build.
+// supervises or attaches to a local virtad daemon.
 //
-// Wails v2 is single-window, so the dock's pop-out-to-window degrades here to in-app floating
-// groups (true native multi-window waits on Wails v3). See docs/08 and ADR-032.
+// Wails v3 supports multiple windows, so stream panels open as native windows instead of
+// browser popups, and the WebKit inspector is available per-window via DevToolsEnabled.
 package main
 
 import (
 	"embed"
+	"log"
 
-	"github.com/wailsapp/wails/v2"
-	"github.com/wailsapp/wails/v2/pkg/options"
-	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	"github.com/wailsapp/wails/v2/pkg/options/linux"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 // assets holds the built web UI (frontends/web/dist), copied in by `make app` before the build.
@@ -22,32 +19,37 @@ import (
 var assets embed.FS
 
 func main() {
-	app := newApp()
-	err := wails.Run(&options.App{
-		Title:     "Virta",
-		Width:     1280,
-		Height:    832,
-		MinWidth:  960,
-		MinHeight: 600,
-		Frameless: true,
-		AssetServer: &assetserver.Options{
-			Assets:  assets,
-			Handler: app.assetHandler(),
+	svc := newApp()
+
+	app := application.New(application.Options{
+		Name:        "Virta",
+		Description: "Unified live chat for Twitch, Kick, and X",
+		Services: []application.Service{
+			application.NewService(svc),
 		},
-		BackgroundColour: &options.RGBA{R: 14, G: 15, B: 18, A: 255},
-		OnStartup:        app.startup,
-		OnShutdown:       app.shutdown,
-		// Expose App methods so the frontend can call window controls.
-		Bind: []interface{}{app},
-		// Keep GPU policy at Never (the Wails v2 safe default for Linux).
-		// OnDemand/Always causes webview crashes on many Linux GPU/driver configs
-		// (wailsapp/wails#2977). Twitch's IVS player needs WebGPU which won't work
-		// here anyway; the WatchPane opens streams in the system browser instead.
-		Linux: &linux.Options{
-			WebviewGpuPolicy: linux.WebviewGpuPolicyNever,
+		Assets: application.AssetOptions{
+			Handler: svc.assetHandler(assets),
 		},
+		OnShutdown: svc.shutdown,
 	})
-	if err != nil {
-		panic(err)
+
+	svc.setApp(app)
+
+	mainWindow := app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Title:            "Virta",
+		Width:            1280,
+		Height:           832,
+		MinWidth:         960,
+		MinHeight:        600,
+		Frameless:        true,
+		URL:              "/",
+		BackgroundColour: application.NewRGBA(14, 15, 18, 255),
+		DevToolsEnabled:  devToolsEnabled,
+	})
+
+	svc.setMainWindow(mainWindow)
+
+	if err := app.Run(); err != nil {
+		log.Fatal(err)
 	}
 }

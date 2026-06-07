@@ -106,14 +106,10 @@ daemon:
 serve: web daemon
 	./dist/virtad
 
-## app: the one-click desktop bundle (ADR-022): the web UI + an embedded virtad in one native
-## artifact. Requires the Wails CLI and the WebKit dev libraries for this OS (not part of make ci).
-## Builds the web UI, stages it and a host virtad for embedding, then runs the Wails build.
-## WAILS resolves the wails CLI: checks PATH first, then the standard Go bin dir.
-WAILS := $(shell command -v wails 2>/dev/null || echo "$$(go env GOPATH)/bin/wails")
-
+## app: one-click desktop bundle. No external CLI required — Wails v3 builds with plain go build.
+## Requires WebKit dev libraries: webkit2gtk-4.1 (GTK3) or webkitgtk-6.0 (GTK4).
 app:
-	@test -x "$(WAILS)" || { echo "wails CLI not found: run 'go install github.com/wailsapp/wails/v2/cmd/wails@latest' and install your OS's WebKit dev libraries"; exit 1; }
+	@command -v pkg-config >/dev/null 2>&1 || { echo "pkg-config not found — install pkg-config and webkit dev libraries"; exit 1; }
 	cd frontends/web && npm install && npm run build
 	@find frontends/desktop/assets -mindepth 1 ! -name .gitkeep -delete
 	cp -r frontends/web/dist/. frontends/desktop/assets/
@@ -121,18 +117,20 @@ app:
 	@cp -r frontends/web/dist/. internal/webui/dist/
 	@ext=""; [ "$$(go env GOOS)" = "windows" ] && ext=".exe"; \
 		CGO_ENABLED=0 go build -ldflags '$(LDFLAGS)' -o frontends/desktop/bin/virtad$$ext ./cmd/virtad
-	@mkdir -p frontends/desktop/build && cp frontends/ui-kit/src/assets/virta-logo-512.png frontends/desktop/build/appicon.png
+	@mkdir -p frontends/desktop/build/bin
 	@cd frontends/desktop && go mod tidy && { \
-		tags=""; \
-		if pkg-config --modversion webkit2gtk-4.1 >/dev/null 2>&1 && ! pkg-config --modversion webkit2gtk-4.0 >/dev/null 2>&1; then tags="-tags webkit2_41"; fi; \
-		echo "+ $(WAILS) build -s $$tags"; \
-		$(WAILS) build -s $$tags; \
+		gtk=""; \
+		if pkg-config --modversion webkit2gtk-4.1 >/dev/null 2>&1; then gtk="-tags gtk3"; \
+		elif pkg-config --modversion webkit2gtk-4.0 >/dev/null 2>&1; then gtk="-tags gtk3"; fi; \
+		echo "+ CGO_ENABLED=1 go build $$gtk -o build/bin/virta ."; \
+		CGO_ENABLED=1 go build $$gtk -ldflags '-s -w' -o build/bin/virta .; \
 	}
+	@echo "✓ desktop bundle: frontends/desktop/build/bin/virta"
 
-## app-debug: debug build with WebKit inspector (right-click → Inspect Element).
-## Output goes to frontends/desktop/build/bin/virta-debug to avoid overwriting the release binary.
+## app-debug: same as app but with DevToolsEnabled per window and no binary stripping.
+## Launch the binary and go to Settings → About → Open WebKit Inspector.
 app-debug:
-	@test -x "$(WAILS)" || { echo "wails CLI not found: run 'go install github.com/wailsapp/wails/v2/cmd/wails@latest' and install your OS's WebKit dev libraries"; exit 1; }
+	@command -v pkg-config >/dev/null 2>&1 || { echo "pkg-config not found — install pkg-config and webkit dev libraries"; exit 1; }
 	cd frontends/web && npm install && npm run build
 	@find frontends/desktop/assets -mindepth 1 ! -name .gitkeep -delete
 	cp -r frontends/web/dist/. frontends/desktop/assets/
@@ -140,14 +138,15 @@ app-debug:
 	@cp -r frontends/web/dist/. internal/webui/dist/
 	@ext=""; [ "$$(go env GOOS)" = "windows" ] && ext=".exe"; \
 		CGO_ENABLED=0 go build -ldflags '$(LDFLAGS)' -o frontends/desktop/bin/virtad$$ext ./cmd/virtad
-	@mkdir -p frontends/desktop/build && cp frontends/ui-kit/src/assets/virta-logo-512.png frontends/desktop/build/appicon.png
+	@mkdir -p frontends/desktop/build/bin
 	@cd frontends/desktop && go mod tidy && { \
-		tags="-tags devtools"; \
-		if pkg-config --modversion webkit2gtk-4.1 >/dev/null 2>&1 && ! pkg-config --modversion webkit2gtk-4.0 >/dev/null 2>&1; then tags="-tags webkit2_41,devtools"; fi; \
-		echo "+ $(WAILS) build -s $$tags -o virta-debug"; \
-		$(WAILS) build -s $$tags -o virta-debug; \
+		gtk=""; \
+		if pkg-config --modversion webkit2gtk-4.1 >/dev/null 2>&1; then gtk="-tags gtk3,devtools"; \
+		elif pkg-config --modversion webkit2gtk-4.0 >/dev/null 2>&1; then gtk="-tags gtk3,devtools"; fi; \
+		echo "+ CGO_ENABLED=1 go build $$gtk -o build/bin/virta-debug ."; \
+		CGO_ENABLED=1 go build $$gtk -o build/bin/virta-debug .; \
 	}
-	@echo "✓ debug bundle: frontends/desktop/build/bin/virta-debug  (right-click → Inspect Element)"
+	@echo "✓ debug bundle: frontends/desktop/build/bin/virta-debug  (Settings → About → Open WebKit Inspector)"
 
 ## app-appimage: Linux AppImage. Requires appimagetool + the app target's prerequisites.
 app-appimage: app
