@@ -1,5 +1,6 @@
 import { Tooltip } from '@virta/ui-kit';
 import Icon from '../Icon';
+import AccountItem from './AccountItem';
 import { PRIMARY_VIEWS, type ViewDef, type ViewId } from './views';
 import styles from './ActivityBar.module.css';
 
@@ -42,6 +43,9 @@ export default function ActivityBar({ activeView, sidebarOpen, onSelect, onOpenS
         </Tooltip>
       </div>
       <div className={styles.group}>
+        {/* Account — only rendered in hosted mode (AccountItem returns null otherwise). */}
+        <AccountItem />
+        <div className={styles.divider} />
         {/* Settings is an action too: it opens the Settings panel rather than the side bar. */}
         <Tooltip content="Settings" side="right">
           <button className={styles.item} aria-label="Settings" onClick={onOpenSettings}>

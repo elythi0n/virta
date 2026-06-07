@@ -40,17 +40,6 @@
   white-space: nowrap;
 }
 
-.dropdown {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  min-width: 200px;
-  background: var(--virta-bg-1);
-  border: 1px solid var(--virta-line);
-  border-radius: var(--virta-radius-md);
-  box-shadow: 0 8px 24px -8px rgba(0,0,0,0.5);
-  z-index: 200;
-}
 .dropdownUser {
   padding: var(--virta-space-12);
 }

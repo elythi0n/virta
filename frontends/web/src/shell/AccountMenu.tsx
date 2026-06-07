@@ -90,16 +90,14 @@ export default function AccountMenu() {
             </button>
           }
         >
-          <div className={styles.dropdown}>
-            <div className={styles.dropdownUser}>
-              <Text variant="ui" className={styles.dropName}>{user.display_name || 'Account'}</Text>
-              <Text variant="meta" tone="subtle">{user.email}</Text>
-            </div>
-            <div className={styles.dropDivider} />
-            <button type="button" className={styles.dropItem} onClick={() => { setMenuOpen(false); void doLogout(); }}>
-              <Icon name="x" size={14} /> Sign out
-            </button>
+          <div className={styles.dropdownUser}>
+            <Text variant="ui" className={styles.dropName}>{user.display_name || 'Account'}</Text>
+            <Text variant="meta" tone="subtle">{user.email}</Text>
           </div>
+          <div className={styles.dropDivider} />
+          <button type="button" className={styles.dropItem} onClick={() => { setMenuOpen(false); void doLogout(); }}>
+            <Icon name="x" size={14} /> Sign out
+          </button>
         </Popover>
       ) : (
         <button type="button" className={styles.signInBtn} onClick={() => setMode('login')}>

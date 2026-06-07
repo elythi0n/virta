@@ -46,3 +46,8 @@
   outline-offset: -3px;
   border-radius: var(--virta-radius-sm);
 }
+.divider {
+  height: 1px;
+  margin: 0 var(--virta-space-8);
+  background: var(--virta-line);
+}

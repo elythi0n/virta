@@ -1,0 +1,113 @@
+/* Matches ActivityBar's .item geometry exactly so it slots in without gap. */
+.btn {
+  position: relative;
+  width: 100%;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  transition: opacity var(--virta-motion-fast) ease;
+}
+
+/* Guest (not logged in): icon tinted like a normal sidebar item. */
+.btnGuest {
+  color: var(--virta-text-2);
+}
+.btnGuest:hover { color: var(--virta-text-1); }
+
+/* Avatar circle — accent background, white initial. */
+.avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--virta-accent);
+  color: var(--virta-bg-0);
+  font-family: var(--virta-font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  display: grid;
+  place-items: center;
+  flex: none;
+  transition: opacity var(--virta-motion-fast) ease;
+}
+.btn:hover .avatar { opacity: 0.85; }
+
+/* Popover content */
+.menu {
+  min-width: 180px;
+}
+.menuUser {
+  padding: var(--virta-space-12);
+}
+.menuName {
+  display: block;
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  font-weight: 600;
+  color: var(--virta-text-0);
+  margin-bottom: var(--virta-space-2);
+}
+.menuEmail {
+  margin: 0;
+}
+.menuDivider {
+  height: 1px;
+  background: var(--virta-line);
+}
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  width: 100%;
+  padding: var(--virta-space-8) var(--virta-space-12);
+  border: 0;
+  background: none;
+  color: var(--virta-text-1);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  cursor: pointer;
+  border-radius: 0 0 var(--virta-radius-md) var(--virta-radius-md);
+  text-align: left;
+}
+.menuItem:hover { background: var(--virta-bg-2); color: var(--virta-text-0); }
+
+/* Sign-in / register dialogs */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-12);
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-4);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 600;
+  color: var(--virta-text-1);
+}
+.hint {
+  font-weight: 400;
+  color: var(--virta-text-2);
+}
+.formError {
+  margin: 0;
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  color: var(--virta-danger);
+}
+.switchLink {
+  align-self: flex-start;
+  background: none;
+  border: 0;
+  color: var(--virta-accent);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  cursor: pointer;
+  padding: 0;
+}
+.switchLink:hover { text-decoration: underline; }
