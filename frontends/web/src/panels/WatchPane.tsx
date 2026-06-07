@@ -1,6 +1,5 @@
 import { Text } from '@virta/ui-kit';
 import Icon from '../Icon';
-import { useIsDesktop } from '../shell/useIsDesktop';
 import styles from './WatchPane.module.css';
 
 // Native page URL (not the embed URL) to open in an external browser.
@@ -27,7 +26,10 @@ function embedUrl(platform: string, slug: string): string | null {
 }
 
 export default function WatchPane({ channel }: { channel?: string }) {
-  const isDesktop = useIsDesktop();
+  // Only block iframes in the production Wails native window where the page runs
+  // at wails://wails/ and location.hostname === "wails". In wails dev mode and in
+  // a regular browser, hostname is "localhost" or a real domain and embeds work.
+  const isWailsNative = location.hostname === 'wails';
 
   if (!channel) {
     return (
@@ -39,11 +41,7 @@ export default function WatchPane({ channel }: { channel?: string }) {
 
   const [platform, slug = ''] = channel.split(':');
 
-  // In the Wails desktop app the page runs at wails://wails/ so
-  // location.hostname is "wails". Twitch and Kick both validate the parent=
-  // parameter against the actual embedding hostname and reject "wails".
-  // Opening in the system browser is the reliable path for the desktop app.
-  if (isDesktop) {
+  if (isWailsNative) {
     const url = nativeUrl(platform, slug);
     return (
       <div className={styles.placeholder}>
