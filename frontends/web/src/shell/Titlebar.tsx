@@ -166,7 +166,7 @@ export default function Titlebar({ onOpenPalette }: Props) {
               type="button"
               className={styles.winBtn}
               aria-label="Minimise window"
-              onClick={() => void window.go?.main?.App?.WindowMinimise?.()}
+              onClick={() => void window.wails?.Window?.Minimise?.()}
             >
               <Icon name="win-minimise" size={12} />
             </button>
@@ -174,7 +174,7 @@ export default function Titlebar({ onOpenPalette }: Props) {
               type="button"
               className={styles.winBtn}
               aria-label="Maximise / restore window"
-              onClick={() => void window.go?.main?.App?.WindowToggleMaximise?.()}
+              onClick={() => void window.wails?.Window?.ToggleMaximise?.()}
             >
               <Icon name="win-maximise" size={12} />
             </button>
@@ -182,7 +182,7 @@ export default function Titlebar({ onOpenPalette }: Props) {
               type="button"
               className={`${styles.winBtn} ${styles.winClose}`}
               aria-label="Close window"
-              onClick={() => void window.go?.main?.App?.WindowClose?.()}
+              onClick={() => void window.wails?.Application?.Quit?.()}
             >
               <Icon name="win-close" size={12} />
             </button>

@@ -269,7 +269,7 @@ function About() {
           <button
             type="button"
             className={styles.aboutDevBtn}
-            onClick={() => void window.go?.main?.App?.OpenInspector?.()}
+            onClick={() => void window.wails?.Window?.OpenDevTools?.()}
           >
             Open WebKit Inspector
           </button>
