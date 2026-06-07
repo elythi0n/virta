@@ -38,19 +38,16 @@
 .betaBadge {
   display: inline-flex;
   align-items: center;
-  padding: 1px 6px;
-  border-radius: 20px;
-  /* Accent-tinted pill — reads clearly without competing with the brand name */
-  background: color-mix(in srgb, var(--virta-accent) 14%, var(--virta-bg-2));
-  border: 1px solid color-mix(in srgb, var(--virta-accent) 35%, transparent);
-  color: var(--virta-accent);
+  padding: 1px 5px;
+  border-radius: var(--virta-radius-sm);
+  background: var(--virta-bg-2);
+  border: 1px solid var(--virta-line);
+  color: var(--virta-text-2);
   font-family: var(--virta-font-ui);
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  line-height: 1;
-  /* Nudge down slightly to sit on the baseline of the brand text */
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1.4;
   margin-top: 1px;
   user-select: none;
 }
