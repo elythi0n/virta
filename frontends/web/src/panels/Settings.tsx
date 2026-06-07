@@ -452,7 +452,7 @@ const PROVIDERS = [
     id: 'ollama',
     name: 'Ollama',
     placeholder: 'http://localhost:11434',
-    hint: 'No key needed. Enter just the host and port — /v1 is added automatically. Running via Docker on Linux? Use http://host.docker.internal:11434 (the docker-compose.yml extra_hosts entry makes this work).',
+    hint: 'No key needed — /v1 is added automatically. Docker Compose: http://ollama:11434. Native: http://localhost:11434.',
     isUrl: true,
     logo: (
       <svg viewBox="0 0 24 24" fill="currentColor" width={18} height={18} aria-hidden>

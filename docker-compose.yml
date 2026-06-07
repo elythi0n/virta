@@ -16,10 +16,6 @@ services:
     restart: unless-stopped
     ports:
       - "8344:8344"
-    # Lets the container resolve host.docker.internal → host IP on Linux.
-    # On Docker Desktop (Mac/Windows) this is automatic; on Linux it requires the entry below.
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     depends_on:
       db:
         condition: service_healthy
@@ -76,6 +72,8 @@ services:
   #     retries:  5
 
   # Ollama — optional. Runs local AI (Ask pane) without an external API key.
+  # Set OLLAMA_URL=http://ollama:11434 in .env (or in Settings → Intelligence) to use it.
+  # GPU passthrough: add `deploy: resources: reservations: devices:` (see Ollama Docker docs).
   ollama:
     image: ollama/ollama:latest
     restart: unless-stopped
@@ -83,6 +81,12 @@ services:
       - "0.0.0.0:11434:11434"
     volumes:
       - virta-ollama:/root/.ollama
+    healthcheck:
+      test:     ["CMD-SHELL", "ollama list || exit 1"]
+      interval: 10s
+      timeout:  5s
+      retries:  5
+      start_period: 30s
 
 volumes:
   virta-data:
