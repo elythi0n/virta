@@ -332,6 +332,58 @@ export default function AskPanel() {
 
   return (
     <div className={styles.pane}>
+      {/* ── Header ── */}
+      <header className={styles.chatHeader}>
+        {/* Left: conversation history dropdown */}
+        <Popover open={convOpen} onOpenChange={setConvOpen} side="bottom" align="start" trigger={
+          <button type="button" className={styles.historyBtn} aria-label="Conversation history">
+            <Icon name="list" size={14} />
+            <span>Chats</span>
+            <Icon name="chevron-down" size={11} className={styles.modelChevron} />
+          </button>
+        }>
+          <div className={styles.convMenu}>
+            <button type="button" className={styles.convNewBtn} onClick={startNew}>
+              <Icon name="plus" size={14} />New conversation
+            </button>
+            {conversations.length > 0 && (
+              <>
+                <div className={styles.convDivider} />
+                <div className={styles.convList}>
+                  {conversations.map(c => (
+                    <div key={c.id} className={`${styles.convItem} ${c.id === convId ? styles.convItemActive : ''}`}
+                      role="button" tabIndex={0}
+                      onClick={() => loadConversation(c.id, c.title, c.model)}
+                      onKeyDown={e => e.key === 'Enter' && loadConversation(c.id, c.title, c.model)}>
+                      <div className={styles.convItemTitle}>{c.title}</div>
+                      <div className={styles.convItemMeta}>
+                        <span>{relativeDate(c.updated_at)}</span>
+                        <button type="button" className={styles.convDeleteBtn}
+                          aria-label={`Delete ${c.title}`}
+                          onClick={e => handleDeleteConv(e, c.id)}>
+                          <Icon name="trash" size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            {conversations.length === 0 && (
+              <div className={styles.convEmpty}>No past conversations yet.</div>
+            )}
+          </div>
+        </Popover>
+
+        {/* Center: current conversation title */}
+        <div className={styles.chatTitle} title={convTitle}>{convTitle}</div>
+
+        {/* Right: new conversation */}
+        <button type="button" className={styles.newChatBtn} onClick={startNew} aria-label="New conversation" title="New conversation">
+          <Icon name="plus" size={15} />
+        </button>
+      </header>
+
       {/* ── Feed ── */}
       <div className={styles.feed}>
         {renderItems.length === 0 && (
@@ -417,44 +469,6 @@ export default function AskPanel() {
           />
           <div className={styles.inputFooter}>
             <div className={styles.footerLeft}>
-              {/* Conversation picker */}
-              <Popover open={convOpen} onOpenChange={setConvOpen} side="top" align="start" trigger={
-                <button type="button" className={styles.convBtn}>
-                  <Icon name="chat" size={12} className={styles.convIcon} />
-                  <span className={styles.convTitle}>{convTitle}</span>
-                  <Icon name="chevron-down" size={11} className={styles.modelChevron} />
-                </button>
-              }>
-                <div className={styles.convMenu}>
-                  <button type="button" className={styles.convNewBtn} onClick={startNew}>
-                    <Icon name="plus" size={14} />New conversation
-                  </button>
-                  {conversations.length > 0 && (
-                    <>
-                      <div className={styles.convDivider} />
-                      <div className={styles.convList}>
-                        {conversations.map(c => (
-                          <div key={c.id} className={`${styles.convItem} ${c.id === convId ? styles.convItemActive : ''}`}
-                            role="button" tabIndex={0}
-                            onClick={() => loadConversation(c.id, c.title, c.model)}
-                            onKeyDown={e => e.key === 'Enter' && loadConversation(c.id, c.title, c.model)}>
-                            <div className={styles.convItemTitle}>{c.title}</div>
-                            <div className={styles.convItemMeta}>
-                              <span>{relativeDate(c.updated_at)}</span>
-                              <button type="button" className={styles.convDeleteBtn}
-                                aria-label={`Delete ${c.title}`}
-                                onClick={e => handleDeleteConv(e, c.id)}>
-                                <Icon name="trash" size={12} />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-              </Popover>
-
               {/* Model picker */}
               <Popover open={modelOpen} onOpenChange={setModelOpen} side="top" align="start" trigger={
                 <button type="button" className={styles.modelBtn}>

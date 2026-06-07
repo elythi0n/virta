@@ -7,6 +7,83 @@
   overflow: hidden;
 }
 
+/* ── Header ────────────────────────────────────────────────────────── */
+.chatHeader {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  padding: 0 var(--virta-space-12);
+  height: 42px;
+  border-bottom: 1px solid var(--virta-line);
+  background: var(--virta-bg-1);
+}
+
+/* History dropdown trigger */
+.historyBtn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--virta-space-4);
+  padding: var(--virta-space-4) var(--virta-space-8);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-sm);
+  background: none;
+  color: var(--virta-text-2);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    border-color var(--virta-motion-fast) ease,
+    color var(--virta-motion-fast) ease,
+    background var(--virta-motion-fast) ease;
+}
+.historyBtn:hover {
+  border-color: var(--virta-text-2);
+  color: var(--virta-text-0);
+  background: var(--virta-bg-2);
+}
+
+/* Current conversation title — centered, fills available space */
+.chatTitle {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  font-weight: 600;
+  color: var(--virta-text-0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 var(--virta-space-8);
+}
+
+/* New conversation button */
+.newChatBtn {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-sm);
+  background: none;
+  color: var(--virta-text-2);
+  cursor: pointer;
+  transition:
+    border-color var(--virta-motion-fast) ease,
+    color var(--virta-motion-fast) ease,
+    background var(--virta-motion-fast) ease;
+}
+.newChatBtn:hover {
+  border-color: var(--virta-accent);
+  color: var(--virta-accent);
+  background: color-mix(in srgb, var(--virta-accent) 8%, transparent);
+}
+
 /* ── Feed ──────────────────────────────────────────────────────────── */
 .feed {
   flex: 1;
@@ -408,33 +485,7 @@
   flex: 1;
 }
 
-/* ── Conversation picker ───────────────────────────────────────────── */
-.convBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px var(--virta-space-8);
-  border: 1px solid var(--virta-line);
-  border-radius: 20px;
-  background: var(--virta-bg-1);
-  color: var(--virta-text-1);
-  font-family: var(--virta-font-ui);
-  font-size: var(--virta-type-meta-size);
-  font-weight: 500;
-  cursor: pointer;
-  max-width: 160px;
-  min-width: 0;
-  transition: border-color var(--virta-motion-fast) ease, color var(--virta-motion-fast) ease;
-}
-.convBtn:hover { border-color: var(--virta-text-2); color: var(--virta-text-0); }
-.convIcon { flex: none; opacity: 0.6; }
-.convTitle {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+/* ── Conversation list (used in header dropdown) ───────────────────── */
 .convMenu { min-width: 260px; max-width: 320px; }
 .convNewBtn {
   display: flex;
@@ -485,6 +536,13 @@
 }
 .convItem:hover .convDeleteBtn { opacity: 1; }
 .convDeleteBtn:hover { color: var(--virta-danger); }
+.convEmpty {
+  padding: var(--virta-space-12);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  color: var(--virta-text-2);
+  text-align: center;
+}
 
 /* ── Model picker ──────────────────────────────────────────────────── */
 .modelBtn {
