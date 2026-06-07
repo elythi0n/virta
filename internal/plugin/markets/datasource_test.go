@@ -3,7 +3,7 @@ package markets_test
 import (
 	"testing"
 
-	"github.com/elythi0n/virta/internal/markets"
+	"github.com/elythi0n/virta/internal/plugin/markets"
 )
 
 func TestNormaliseSymbol(t *testing.T) {

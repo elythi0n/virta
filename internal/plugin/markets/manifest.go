@@ -3,31 +3,31 @@ package markets
 import (
 	"encoding/json"
 
-	"github.com/elythi0n/virta/internal/pluginhost"
+	"github.com/elythi0n/virta/internal/plugin/host"
 )
 
 // BuiltInManifest returns the canonical Manifest for the built-in Markets plugin.
-func BuiltInManifest() *pluginhost.Manifest {
+func BuiltInManifest() *host.Manifest {
 	configSchema, _ := json.Marshal(configSchemaJSON)
-	return &pluginhost.Manifest{
+	return &host.Manifest{
 		ID:          "com.virta.markets",
 		Name:        "Markets",
 		Version:     "1.0.0",
 		Publisher:   "Virta",
 		Description: "Real-time crypto ticker and price board via free exchange WebSockets.",
 		Tags:        []string{"data", "ticker", "crypto"},
-		Scopes: []pluginhost.Scope{
-			pluginhost.ScopeUI,
-			pluginhost.ScopeHTTP, // outbound WS+REST to Binance/CoinGecko
+		Scopes: []host.Scope{
+			host.ScopeUI,
+			host.ScopeHTTP, // outbound WS+REST to Binance/CoinGecko
 		},
-		Contributes: pluginhost.Contributes{
-			Panels: []pluginhost.PanelContrib{
+		Contributes: host.Contributes{
+			Panels: []host.PanelContrib{
 				{Kind: "markets", Title: "Markets", Icon: "stats"},
 			},
-			Commands: []pluginhost.CommandContrib{
+			Commands: []host.CommandContrib{
 				{Name: "markets", Title: "Markets — look up a symbol", Scope: "both"},
 			},
-			DataSources: []pluginhost.DataSourceContrib{
+			DataSources: []host.DataSourceContrib{
 				{ID: "tick"},
 				{ID: "status"},
 			},

@@ -1,4 +1,4 @@
-package search
+package search_test
 
 import (
 	"context"
@@ -6,11 +6,13 @@ import (
 	"time"
 
 	"github.com/elythi0n/virta/internal/platform"
+	"github.com/elythi0n/virta/internal/search"
+	"github.com/elythi0n/virta/internal/search/noop"
 )
 
 func TestInMemory_IndexAndSearch(t *testing.T) {
-	idx := NewInMemory()
-	docs := []Document{
+	idx := noop.NewInMemory()
+	docs := []search.Document{
 		{ID: "1", Channel: "twitch:forsen", Author: "Alice", Body: "hello world", SentAt: time.Now()},
 		{ID: "2", Channel: "twitch:forsen", Author: "Bob", Body: "goodbye world", SentAt: time.Now()},
 		{ID: "3", Channel: "kick:xqc", Author: "Alice", Body: "hello there", SentAt: time.Now()},
@@ -19,7 +21,7 @@ func TestInMemory_IndexAndSearch(t *testing.T) {
 		t.Fatalf("Index: %v", err)
 	}
 	// Search across all channels.
-	hits, err := idx.Search(context.Background(), Query{Text: "hello", Limit: 10})
+	hits, err := idx.Search(context.Background(), search.Query{Text: "hello", Limit: 10})
 	if err != nil {
 		t.Fatalf("Search: %v", err)
 	}
@@ -27,54 +29,54 @@ func TestInMemory_IndexAndSearch(t *testing.T) {
 		t.Fatalf("expected 2 hits for 'hello', got %d", len(hits))
 	}
 	// Filter by channel.
-	channelHits, _ := idx.Search(context.Background(), Query{Text: "hello", Channel: "twitch:forsen"})
+	channelHits, _ := idx.Search(context.Background(), search.Query{Text: "hello", Channel: "twitch:forsen"})
 	if len(channelHits) != 1 || channelHits[0].ID != "1" {
 		t.Errorf("channel filter hits = %v", channelHits)
 	}
 	// Filter by author.
-	authorHits, _ := idx.Search(context.Background(), Query{Text: "world", Author: "Bob"})
+	authorHits, _ := idx.Search(context.Background(), search.Query{Text: "world", Author: "Bob"})
 	if len(authorHits) != 1 || authorHits[0].ID != "2" {
 		t.Errorf("author filter hits = %v", authorHits)
 	}
 }
 
 func TestInMemory_Delete(t *testing.T) {
-	idx := NewInMemory()
-	_ = idx.Index(context.Background(), []Document{{ID: "a", Channel: "twitch:x", Author: "u", Body: "test"}})
+	idx := noop.NewInMemory()
+	_ = idx.Index(context.Background(), []search.Document{{ID: "a", Channel: "twitch:x", Author: "u", Body: "test"}})
 	_ = idx.Delete(context.Background(), "a")
-	hits, _ := idx.Search(context.Background(), Query{Text: "test"})
+	hits, _ := idx.Search(context.Background(), search.Query{Text: "test"})
 	if len(hits) != 0 {
 		t.Error("document should be deleted")
 	}
 }
 
 func TestInMemory_DeleteChannel(t *testing.T) {
-	idx := NewInMemory()
-	_ = idx.Index(context.Background(), []Document{
+	idx := noop.NewInMemory()
+	_ = idx.Index(context.Background(), []search.Document{
 		{ID: "1", Channel: "twitch:a", Body: "test"},
 		{ID: "2", Channel: "twitch:b", Body: "test"},
 	})
 	_ = idx.DeleteChannel(context.Background(), "twitch:a")
-	hits, _ := idx.Search(context.Background(), Query{Text: "test"})
+	hits, _ := idx.Search(context.Background(), search.Query{Text: "test"})
 	if len(hits) != 1 || hits[0].ID != "2" {
 		t.Errorf("after DeleteChannel: %v", hits)
 	}
 }
 
 func TestNoop_AlwaysEmpty(t *testing.T) {
-	idx := Noop{}
+	idx := noop.Noop{}
 	if idx.Available(context.Background()) {
 		t.Error("Noop should not be available")
 	}
-	hits, err := idx.Search(context.Background(), Query{Text: "hello"})
+	hits, err := idx.Search(context.Background(), search.Query{Text: "hello"})
 	if err != nil || len(hits) != 0 {
 		t.Errorf("Noop.Search should return empty: err=%v hits=%v", err, hits)
 	}
 }
 
 func TestIndexer_IndexesMessages(t *testing.T) {
-	idx := NewInMemory()
-	indexer := NewIndexer(idx, nil, 100)
+	idx := noop.NewInMemory()
+	indexer := search.NewIndexer(idx, nil, 100)
 	indexer.Start()
 	defer indexer.Close()
 
@@ -90,15 +92,15 @@ func TestIndexer_IndexesMessages(t *testing.T) {
 	}})
 	// Give the async loop time to flush.
 	time.Sleep(700 * time.Millisecond)
-	hits, _ := idx.Search(context.Background(), Query{Text: "alice"})
+	hits, _ := idx.Search(context.Background(), search.Query{Text: "alice"})
 	if len(hits) == 0 {
 		t.Error("expected indexed message to be searchable")
 	}
 }
 
 func TestIndexer_SkipsEphemeral(t *testing.T) {
-	idx := NewInMemory()
-	indexer := NewIndexer(idx, nil, 100)
+	idx := noop.NewInMemory()
+	indexer := search.NewIndexer(idx, nil, 100)
 	indexer.Start()
 	defer indexer.Close()
 
@@ -109,7 +111,7 @@ func TestIndexer_SkipsEphemeral(t *testing.T) {
 		Ephemeral: true,
 	}})
 	time.Sleep(700 * time.Millisecond)
-	hits, _ := idx.Search(context.Background(), Query{Text: "ephemeral"})
+	hits, _ := idx.Search(context.Background(), search.Query{Text: "ephemeral"})
 	if len(hits) != 0 {
 		t.Error("ephemeral message should not be indexed")
 	}

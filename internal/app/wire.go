@@ -44,9 +44,9 @@ import (
 	"github.com/elythi0n/virta/internal/store/sqlite"
 	hostedpkg "github.com/elythi0n/virta/internal/hosted"
 	"github.com/elythi0n/virta/internal/intel"
-	marketspkg "github.com/elythi0n/virta/internal/markets"
-	pluginhostpkg "github.com/elythi0n/virta/internal/pluginhost"
-	"github.com/elythi0n/virta/internal/plugins"
+	markets "github.com/elythi0n/virta/internal/plugin/markets"
+	pluginhost "github.com/elythi0n/virta/internal/plugin/host"
+	pluginsource "github.com/elythi0n/virta/internal/plugin/source"
 	"github.com/elythi0n/virta/internal/streams"
 	"github.com/elythi0n/virta/internal/velocity"
 	"github.com/elythi0n/virta/internal/webui"
@@ -105,8 +105,8 @@ type Daemon struct {
 	kickAuth   *kickauth.Manager
 	api        *api.Server
 	toolBelt      *intel.ToolBelt
-	pluginHost    *pluginhostpkg.Registry
-	marketsDS     *marketspkg.DataSource
+	pluginHost    *pluginhost.Registry
+	marketsDS     *markets.DataSource
 }
 
 // authControl adapts the auth managers to the API's auth controller.
@@ -408,9 +408,9 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	}
 
 	// Plugin host: registry, built-in Markets plugin, and host API wiring.
-	hostAPI := pluginhostpkg.NewHostAPI(
-		func(ctx context.Context, ds pluginhostpkg.DataSourceRunner) error {
-			return plugins.Run(ctx, ds, runner)
+	hostAPI := pluginhost.NewHostAPI(
+		func(ctx context.Context, ds pluginhost.DataSourceRunner) error {
+			return pluginsource.Run(ctx, ds, runner)
 		},
 		func(pluginID, name, title string, fn func(ctx context.Context, args string) (string, error)) {
 			// Plugin commands are registered into the daemon's command extensions map.
@@ -420,15 +420,15 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 		},
 	)
 
-	pluginReg := pluginhostpkg.New(hostAPI, nil, log)
+	pluginReg := pluginhost.New(hostAPI, nil, log)
 
-	pluginInstaller := pluginhostpkg.NewInstaller(cfg.DataDir + "/plugins")
+	pluginInstaller := pluginhost.NewInstaller(cfg.DataDir + "/plugins")
 	pluginCtl := newPluginControl(pluginReg, pluginInstaller)
 	srv.SetPlugins(pluginCtl)
 	// Markets is a first-party built-in plugin — runs through the same DataSource seam.
 	marketsCfg := loadMarketsConfig(cfg)
-	marketsDS := marketspkg.New(marketsCfg)
-	marketsMeta := marketspkg.BuiltInManifest()
+	marketsDS := markets.New(marketsCfg)
+	marketsMeta := markets.BuiltInManifest()
 	if err := pluginReg.RegisterBuiltIn(marketsMeta); err != nil {
 		log.Warn("markets plugin register failed", "err", err)
 	}
@@ -440,7 +440,7 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 }
 
 // loadMarketsConfig reads the persisted Markets config from settings, falling back to defaults.
-func loadMarketsConfig(_ config.Config) marketspkg.Config { return marketspkg.Config{} }
+func loadMarketsConfig(_ config.Config) markets.Config { return markets.Config{} }
 
 // kickChatroomCache backs the Kick resolver's permanent cache with the channels table: a
 // resolved chatroom id is stored in the channel's meta JSON and never re-fetched.
@@ -1288,7 +1288,7 @@ func (d *Daemon) Start() error {
 	// Start the Markets DataSource in the background.
 	if d.marketsDS != nil {
 		go func() {
-			if err := plugins.Run(context.Background(), d.marketsDS, d.runner); err != nil {
+			if err := pluginsource.Run(context.Background(), d.marketsDS, d.runner); err != nil {
 				d.log.Warn("markets datasource stopped", "err", err)
 			}
 		}()

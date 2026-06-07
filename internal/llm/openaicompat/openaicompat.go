@@ -1,4 +1,4 @@
-package llm
+package openaicompat
 
 import (
 	"bufio"
@@ -9,6 +9,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/elythi0n/virta/internal/llm"
 )
 
 // OpenAICompatProvider covers any OpenAI-compatible endpoint: OpenAI, xAI (Grok), Ollama,
@@ -68,7 +70,7 @@ func (p *OpenAICompatProvider) Verify(ctx context.Context) error {
 	return err
 }
 
-func (p *OpenAICompatProvider) ListModels(ctx context.Context) ([]ModelInfo, error) {
+func (p *OpenAICompatProvider) ListModels(ctx context.Context) ([]llm.ModelInfo, error) {
 	raw, err := p.listModelsRaw(ctx)
 	if err != nil {
 		return nil, err
@@ -84,9 +86,9 @@ func (p *OpenAICompatProvider) ListModels(ctx context.Context) ([]ModelInfo, err
 		if err := json.Unmarshal(raw, &ollamaR); err != nil {
 			return nil, fmt.Errorf("ollama: parse models: %w", err)
 		}
-		out := make([]ModelInfo, 0, len(ollamaR.Models))
+		out := make([]llm.ModelInfo, 0, len(ollamaR.Models))
 		for _, m := range ollamaR.Models {
-			out = append(out, ModelInfo{ID: m.Name, DisplayName: ollamaDisplayName(m.Name), SupportsTools: modelSupportsTools(m.Name)})
+			out = append(out, llm.ModelInfo{ID: m.Name, DisplayName: ollamaDisplayName(m.Name), SupportsTools: modelSupportsTools(m.Name)})
 		}
 		return out, nil
 	}
@@ -101,9 +103,9 @@ func (p *OpenAICompatProvider) ListModels(ctx context.Context) ([]ModelInfo, err
 	if err := json.Unmarshal(raw, &r); err != nil {
 		return nil, fmt.Errorf("%s: parse models: %w", p.id, err)
 	}
-	out := make([]ModelInfo, 0, len(r.Data))
+	out := make([]llm.ModelInfo, 0, len(r.Data))
 	for _, m := range r.Data {
-		out = append(out, ModelInfo{
+		out = append(out, llm.ModelInfo{
 			ID:            m.ID,
 			DisplayName:   ollamaDisplayName(m.ID),
 			SupportsTools: modelSupportsTools(m.ID),
@@ -112,7 +114,7 @@ func (p *OpenAICompatProvider) ListModels(ctx context.Context) ([]ModelInfo, err
 	return out, nil
 }
 
-func (p *OpenAICompatProvider) Complete(ctx context.Context, req CompletionRequest) (Stream, error) {
+func (p *OpenAICompatProvider) Complete(ctx context.Context, req llm.CompletionRequest) (llm.Stream, error) {
 	type msg struct {
 		Role    string `json:"role"`
 		Content string `json:"content"`
@@ -172,12 +174,12 @@ func (p *OpenAICompatProvider) Complete(ctx context.Context, req CompletionReque
 // openaiStream reads OpenAI-style `data: {...}` SSE lines, accumulating tool-call
 // fragments until finish_reason arrives, then emitting them as EventToolCall events.
 type openaiStream struct {
-	body     io.ReadCloser
-	sc       *bufio.Scanner
+	body    io.ReadCloser
+	sc      *bufio.Scanner
 	// in-progress tool calls, keyed by their stream index
-	pending  map[int]*partialToolCall
+	pending map[int]*partialToolCall
 	// fully-assembled events ready to emit before reading more lines
-	ready    []Event
+	ready   []llm.Event
 }
 
 type partialToolCall struct {
@@ -188,7 +190,7 @@ type partialToolCall struct {
 
 func (s *openaiStream) Close() error { return s.body.Close() }
 
-func (s *openaiStream) Next() (Event, error) {
+func (s *openaiStream) Next() (llm.Event, error) {
 	// Drain any events assembled from a previous chunk before reading more lines.
 	if len(s.ready) > 0 {
 		ev := s.ready[0]
@@ -209,7 +211,7 @@ func (s *openaiStream) Next() (Event, error) {
 		}
 		payload := line[6:]
 		if payload == "[DONE]" {
-			return Event{Kind: EventDone}, io.EOF
+			return llm.Event{Kind: llm.EventDone}, io.EOF
 		}
 
 		var chunk struct {
@@ -239,9 +241,9 @@ func (s *openaiStream) Next() (Event, error) {
 
 		// Token usage — some providers send this in the final data line.
 		if chunk.Usage != nil && (chunk.Usage.PromptTokens > 0 || chunk.Usage.CompletionTokens > 0) {
-			s.ready = append(s.ready, Event{
-				Kind:  EventDone,
-				Usage: &Usage{InputTokens: chunk.Usage.PromptTokens, OutputTokens: chunk.Usage.CompletionTokens},
+			s.ready = append(s.ready, llm.Event{
+				Kind:  llm.EventDone,
+				Usage: &llm.Usage{InputTokens: chunk.Usage.PromptTokens, OutputTokens: chunk.Usage.CompletionTokens},
 			})
 		}
 
@@ -259,7 +261,7 @@ func (s *openaiStream) Next() (Event, error) {
 
 		// Text delta.
 		if t := choice.Delta.Content; t != "" {
-			return Event{Kind: EventText, Text: t}, nil
+			return llm.Event{Kind: llm.EventText, Text: t}, nil
 		}
 
 		// Tool-call deltas — accumulate fragments keyed by their stream index.
@@ -288,9 +290,9 @@ func (s *openaiStream) Next() (Event, error) {
 				// Emit all accumulated tool calls in index order.
 				for i := 0; i < len(s.pending); i++ {
 					tc := s.pending[i]
-					s.ready = append(s.ready, Event{
-						Kind: EventToolCall,
-						ToolCall: &ToolCall{
+					s.ready = append(s.ready, llm.Event{
+						Kind: llm.EventToolCall,
+						ToolCall: &llm.ToolCall{
 							ID:      tc.id,
 							Name:    tc.name,
 							ArgJSON: tc.args.String(),
@@ -304,11 +306,11 @@ func (s *openaiStream) Next() (Event, error) {
 					return ev, nil
 				}
 			case "stop", "length", "end_turn", "content_filter":
-				return Event{Kind: EventDone}, io.EOF
+				return llm.Event{Kind: llm.EventDone}, io.EOF
 			}
 		}
 	}
-	return Event{Kind: EventDone}, io.EOF
+	return llm.Event{Kind: llm.EventDone}, io.EOF
 }
 
 func (p *OpenAICompatProvider) listModelsRaw(ctx context.Context) ([]byte, error) {

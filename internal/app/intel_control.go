@@ -11,6 +11,8 @@ import (
 	"github.com/elythi0n/virta/internal/api"
 	"github.com/elythi0n/virta/internal/intel"
 	"github.com/elythi0n/virta/internal/llm"
+	anthropic "github.com/elythi0n/virta/internal/llm/anthropic"
+	openaicompat "github.com/elythi0n/virta/internal/llm/openaicompat"
 	"github.com/elythi0n/virta/internal/store"
 )
 
@@ -212,26 +214,26 @@ func (c *intelControl) SetConfig(ctx context.Context, cfg api.IntelConfig) error
 // applyProviders registers/deregisters LLM providers based on the stored config keys.
 func (c *intelControl) applyProviders(cfg api.IntelConfig) {
 	if k := cfg.ProviderKeys["anthropic"]; k != "" {
-		c.registry.Register(llm.NewAnthropic(k))
+		c.registry.Register(anthropic.NewAnthropic(k))
 	} else {
 		c.registry.Deregister("anthropic")
 	}
 	if k := cfg.ProviderKeys["openai"]; k != "" {
-		c.registry.Register(llm.NewOpenAI(k))
+		c.registry.Register(openaicompat.NewOpenAI(k))
 	} else {
 		c.registry.Deregister("openai")
 	}
 	if k := cfg.ProviderKeys["xai"]; k != "" {
-		c.registry.Register(llm.NewXAI(k))
+		c.registry.Register(openaicompat.NewXAI(k))
 	} else {
 		c.registry.Deregister("xai")
 	}
 	// Ollama is always available if the user has it running (no key needed).
 	if base := cfg.ProviderKeys["ollama"]; base != "" {
-		c.registry.Register(llm.NewOllama(base))
+		c.registry.Register(openaicompat.NewOllama(base))
 	} else {
 		// Register with the default localhost URL so it auto-discovers when running.
-		c.registry.Register(llm.NewOllama(""))
+		c.registry.Register(openaicompat.NewOllama(""))
 	}
 }
 

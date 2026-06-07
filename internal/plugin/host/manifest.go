@@ -1,7 +1,7 @@
 // Package pluginhost implements the Phase 8 plugin platform:
 // manifest parsing, remote installation (Git URL), sandboxed execution (WASM + GUI),
 // host API surface, and lifecycle management.
-package pluginhost
+package host
 
 import (
 	"encoding/json"

@@ -6,16 +6,16 @@ import (
 	"fmt"
 
 	"github.com/elythi0n/virta/internal/api"
-	pluginhostpkg "github.com/elythi0n/virta/internal/pluginhost"
+	pluginhost "github.com/elythi0n/virta/internal/plugin/host"
 )
 
 // pluginControl adapts the plugin Registry to the API's Plugins surface.
 type pluginControl struct {
-	reg       *pluginhostpkg.Registry
-	installer *pluginhostpkg.Installer
+	reg       *pluginhost.Registry
+	installer *pluginhost.Installer
 }
 
-func newPluginControl(reg *pluginhostpkg.Registry, installer *pluginhostpkg.Installer) *pluginControl {
+func newPluginControl(reg *pluginhost.Registry, installer *pluginhost.Installer) *pluginControl {
 	return &pluginControl{reg: reg, installer: installer}
 }
 
@@ -65,7 +65,7 @@ func (c *pluginControl) Install(url string) (api.PluginInfo, error) {
 		return api.PluginInfo{}, fmt.Errorf("install: manifest validation failed: %w", err)
 	}
 	// Require explicit ScopeHTTP if the plugin contributes DataSources (they make network calls).
-	if len(result.Manifest.Contributes.DataSources) > 0 && !result.Manifest.HasScope(pluginhostpkg.ScopeHTTP) {
+	if len(result.Manifest.Contributes.DataSources) > 0 && !result.Manifest.HasScope(pluginhost.ScopeHTTP) {
 		return api.PluginInfo{}, fmt.Errorf(
 			"install: plugin %q contributes DataSources but does not declare 'http' scope — installation rejected for safety",
 			result.Manifest.ID,
@@ -85,7 +85,7 @@ func (c *pluginControl) Install(url string) (api.PluginInfo, error) {
 		Publisher:   result.Manifest.Publisher,
 		Description: result.Manifest.Description,
 		Tags:        result.Manifest.Tags,
-		State:       string(pluginhostpkg.StateEnabled),
+		State:       string(pluginhost.StateEnabled),
 		BuiltIn:     false,
 	}, nil
 }

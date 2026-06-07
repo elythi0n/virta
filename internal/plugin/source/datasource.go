@@ -4,7 +4,7 @@
 // bus the same way the feed subscribes to messages, and no API keys, CORS, or rate limits ever
 // reach the renderer. There is no plugin host yet (remote loading is Phase 8); this is the seam our
 // own future panels (e.g. Markets) flow through, kept real so the contract is exercised early.
-package plugins
+package source
 
 import (
 	"context"

@@ -1,9 +1,9 @@
-package pluginhost_test
+package host_test
 
 import (
 	"testing"
 
-	"github.com/elythi0n/virta/internal/pluginhost"
+	"github.com/elythi0n/virta/internal/plugin/host"
 )
 
 func TestParseManifest_Valid(t *testing.T) {
@@ -14,21 +14,21 @@ func TestParseManifest_Valid(t *testing.T) {
 		"scopes": ["read", "http"],
 		"contributes": {}
 	}`)
-	m, err := pluginhost.ParseManifest(raw)
+	m, err := host.ParseManifest(raw)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !m.HasScope(pluginhost.ScopeRead) {
+	if !m.HasScope(host.ScopeRead) {
 		t.Error("expected ScopeRead")
 	}
-	if !m.HasScope(pluginhost.ScopeHTTP) {
+	if !m.HasScope(host.ScopeHTTP) {
 		t.Error("expected ScopeHTTP")
 	}
 }
 
 func TestParseManifest_MissingID(t *testing.T) {
 	raw := []byte(`{"name":"x","version":"1.0.0","scopes":[]}`)
-	_, err := pluginhost.ParseManifest(raw)
+	_, err := host.ParseManifest(raw)
 	if err == nil {
 		t.Error("expected error for missing id")
 	}
@@ -36,7 +36,7 @@ func TestParseManifest_MissingID(t *testing.T) {
 
 func TestParseManifest_InvalidScope(t *testing.T) {
 	raw := []byte(`{"id":"com.x.y","name":"x","version":"1.0.0","scopes":["superpower"]}`)
-	_, err := pluginhost.ParseManifest(raw)
+	_, err := host.ParseManifest(raw)
 	if err == nil {
 		t.Error("expected error for unknown scope")
 	}
@@ -44,8 +44,8 @@ func TestParseManifest_InvalidScope(t *testing.T) {
 
 func TestRegistry_ScopeEnforcementOnEnable(t *testing.T) {
 	// A plugin that contributes a DataSource without ScopeHTTP must be rejected.
-	host := pluginhost.NewHostAPI(nil, nil)
-	reg := pluginhost.New(host, nil, nil)
+	hapi := host.NewHostAPI(nil, nil)
+	reg := host.New(hapi, nil, nil)
 
 	raw := []byte(`{
 		"id": "com.test.no-http",
@@ -54,7 +54,7 @@ func TestRegistry_ScopeEnforcementOnEnable(t *testing.T) {
 		"scopes": ["ui"],
 		"contributes": {"data_sources": [{"id": "tick"}]}
 	}`)
-	m, err := pluginhost.ParseManifest(raw)
+	m, err := host.ParseManifest(raw)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -67,8 +67,8 @@ func TestRegistry_ScopeEnforcementOnEnable(t *testing.T) {
 }
 
 func TestRegistry_ScopeEnforcementPasses_WithHTTP(t *testing.T) {
-	host := pluginhost.NewHostAPI(nil, nil)
-	reg := pluginhost.New(host, nil, nil)
+	hapi := host.NewHostAPI(nil, nil)
+	reg := host.New(hapi, nil, nil)
 
 	raw := []byte(`{
 		"id": "com.test.with-http",
@@ -77,7 +77,7 @@ func TestRegistry_ScopeEnforcementPasses_WithHTTP(t *testing.T) {
 		"scopes": ["ui", "http"],
 		"contributes": {"data_sources": [{"id": "tick"}]}
 	}`)
-	m, err := pluginhost.ParseManifest(raw)
+	m, err := host.ParseManifest(raw)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

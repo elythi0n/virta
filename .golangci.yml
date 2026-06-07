@@ -41,24 +41,20 @@ linters:
               desc: "import store implementations only from internal/app (ADR-020)"
             - pkg: github.com/elythi0n/virta/internal/secrets/keychain
               desc: "import secrets implementations only from internal/app (ADR-020)"
-            - pkg: github.com/elythi0n/virta/internal/secrets/agevault
-              desc: "import secrets implementations only from internal/app (ADR-020)"
-            - pkg: github.com/elythi0n/virta/internal/search/fts
-              desc: "import search implementations only from internal/app (ADR-020)"
             - pkg: github.com/elythi0n/virta/internal/search/meilisearch
+              desc: "import search implementations only from internal/app (ADR-020)"
+            - pkg: github.com/elythi0n/virta/internal/search/noop
               desc: "import search implementations only from internal/app (ADR-020)"
             - pkg: github.com/elythi0n/virta/internal/llm/anthropic
               desc: "import llm implementations only from internal/app (ADR-020)"
             - pkg: github.com/elythi0n/virta/internal/llm/openaicompat
               desc: "import llm implementations only from internal/app (ADR-020)"
-            - pkg: github.com/elythi0n/virta/internal/translate/libretranslate
-              desc: "import translate implementations only from internal/app (ADR-020)"
-            - pkg: github.com/elythi0n/virta/internal/translate/deepl
-              desc: "import translate implementations only from internal/app (ADR-020)"
-            - pkg: github.com/elythi0n/virta/internal/embed/ollama
-              desc: "import embed implementations only from internal/app (ADR-020)"
-            - pkg: github.com/elythi0n/virta/internal/embed/voyage
-              desc: "import embed implementations only from internal/app (ADR-020)"
+            - pkg: github.com/elythi0n/virta/internal/plugin/host
+              desc: "import plugin implementations only from internal/app (ADR-020)"
+            - pkg: github.com/elythi0n/virta/internal/plugin/source
+              desc: "import plugin implementations only from internal/app (ADR-020)"
+            - pkg: github.com/elythi0n/virta/internal/plugin/markets
+              desc: "import plugin implementations only from internal/app (ADR-020)"
     forbidigo:
       forbid:
         - pattern: '^time\.Now$'

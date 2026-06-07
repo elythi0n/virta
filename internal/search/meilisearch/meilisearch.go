@@ -1,4 +1,4 @@
-package search
+package meilisearch
 
 import (
 	"context"
@@ -7,11 +7,13 @@ import (
 	"strings"
 
 	meili "github.com/meilisearch/meilisearch-go"
+
+	"github.com/elythi0n/virta/internal/search"
 )
 
 const meiliIndexName = "virta_messages"
 
-// Meili wraps a Meilisearch instance as a SearchIndex. Configure via Settings → Search.
+// Meili wraps a Meilisearch instance as a SearchIndex. Configure via Settings -> Search.
 type Meili struct {
 	client meili.ServiceManager
 }
@@ -36,7 +38,7 @@ func (m *Meili) Available(_ context.Context) bool {
 
 func (m *Meili) idx() meili.IndexManager { return m.client.Index(meiliIndexName) }
 
-func (m *Meili) Index(_ context.Context, docs []Document) error {
+func (m *Meili) Index(_ context.Context, docs []search.Document) error {
 	if len(docs) == 0 {
 		return nil
 	}
@@ -49,7 +51,7 @@ func (m *Meili) Index(_ context.Context, docs []Document) error {
 	return nil
 }
 
-func (m *Meili) Search(_ context.Context, q Query) ([]Result, error) {
+func (m *Meili) Search(_ context.Context, q search.Query) ([]search.Result, error) {
 	limit := int64(q.Limit)
 	if limit <= 0 || limit > 200 {
 		limit = 100
@@ -69,11 +71,11 @@ func (m *Meili) Search(_ context.Context, q Query) ([]Result, error) {
 	if err != nil {
 		return nil, fmt.Errorf("meili: search: %w", err)
 	}
-	out := make([]Result, 0, len(res.Hits))
+	out := make([]search.Result, 0, len(res.Hits))
 	for _, h := range res.Hits {
-		var doc Document
+		var doc search.Document
 		if err := decodeHit(h, &doc); err == nil {
-			out = append(out, Result{
+			out = append(out, search.Result{
 				ID: doc.ID, Channel: doc.Channel, Author: doc.Author,
 				Body: doc.Body, Type: doc.Type, SentAt: doc.SentAt,
 			})

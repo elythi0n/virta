@@ -1,4 +1,4 @@
-package pluginhost
+package host
 
 import (
 	"archive/tar"

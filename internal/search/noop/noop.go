@@ -1,8 +1,10 @@
-package search
+package noop
 
 import (
 	"context"
 	"strings"
+
+	"github.com/elythi0n/virta/internal/search"
 )
 
 // Noop is the default no-configuration SearchIndex: it returns no results, so the caller
@@ -10,25 +12,25 @@ import (
 // and never fails — it just doesn't add Tier-2 quality improvements.
 type Noop struct{}
 
-func (Noop) Name() string                          { return "noop" }
-func (Noop) Available(_ context.Context) bool      { return false }
-func (Noop) Index(_ context.Context, _ []Document) error { return nil }
-func (Noop) Delete(_ context.Context, _ string) error    { return nil }
-func (Noop) DeleteChannel(_ context.Context, _ string) error { return nil }
+func (Noop) Name() string                                      { return "noop" }
+func (Noop) Available(_ context.Context) bool                  { return false }
+func (Noop) Index(_ context.Context, _ []search.Document) error { return nil }
+func (Noop) Delete(_ context.Context, _ string) error          { return nil }
+func (Noop) DeleteChannel(_ context.Context, _ string) error   { return nil }
 
 // Search on the noop implementation does a simple substring match so the tool belt still
 // returns results when Meilisearch is not configured (not as fast or typo-tolerant, but correct).
-func (Noop) Search(_ context.Context, q Query) ([]Result, error) { return nil, nil }
+func (Noop) Search(_ context.Context, q search.Query) ([]search.Result, error) { return nil, nil }
 
 // InMemory is a test-only in-memory index used by unit tests that don't want to run Meilisearch.
 type InMemory struct {
-	docs []Document
+	docs []search.Document
 }
 
 func NewInMemory() *InMemory { return &InMemory{} }
-func (*InMemory) Name() string     { return "in-memory" }
+func (*InMemory) Name() string                    { return "in-memory" }
 func (*InMemory) Available(_ context.Context) bool { return true }
-func (m *InMemory) Index(_ context.Context, docs []Document) error {
+func (m *InMemory) Index(_ context.Context, docs []search.Document) error {
 	for _, d := range docs {
 		// Replace existing by ID.
 		replaced := false
@@ -55,7 +57,7 @@ func (m *InMemory) Delete(_ context.Context, id string) error {
 	return nil
 }
 func (m *InMemory) DeleteChannel(_ context.Context, channel string) error {
-	var keep []Document
+	var keep []search.Document
 	for _, d := range m.docs {
 		if d.Channel != channel {
 			keep = append(keep, d)
@@ -64,12 +66,12 @@ func (m *InMemory) DeleteChannel(_ context.Context, channel string) error {
 	m.docs = keep
 	return nil
 }
-func (m *InMemory) Search(_ context.Context, q Query) ([]Result, error) {
+func (m *InMemory) Search(_ context.Context, q search.Query) ([]search.Result, error) {
 	needle := strings.ToLower(strings.TrimSpace(q.Text))
 	if needle == "" {
 		return nil, nil
 	}
-	var out []Result
+	var out []search.Result
 	for _, d := range m.docs {
 		if q.Channel != "" && d.Channel != q.Channel {
 			continue
@@ -80,7 +82,7 @@ func (m *InMemory) Search(_ context.Context, q Query) ([]Result, error) {
 		if !strings.Contains(strings.ToLower(d.Body), needle) {
 			continue
 		}
-		out = append(out, Result{
+		out = append(out, search.Result{
 			ID: d.ID, Channel: d.Channel, Author: d.Author,
 			Body: d.Body, Type: d.Type, SentAt: d.SentAt,
 		})
