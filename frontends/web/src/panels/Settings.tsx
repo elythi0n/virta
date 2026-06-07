@@ -431,9 +431,14 @@ function IntelligenceSettings() {
   if (unavailable) {
     return (
       <Placeholder>
-        Intelligence features are not available — is logging enabled and virtad running?
+        Could not load Intelligence settings. Make sure virtad is running and try reopening this panel.
       </Placeholder>
     );
+  }
+
+  // Show a loading skeleton until the config arrives.
+  if (cfg === null) {
+    return <Text variant="meta" tone="subtle">Loading…</Text>;
   }
 
   return (

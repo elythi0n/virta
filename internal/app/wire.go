@@ -332,8 +332,9 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	// Continue.dev, etc.) can query logged chat data. Read-only; never sends platform messages.
 	toolBelt := intel.New(st)
 	srv.SetMCPHandler(toolBelt.MCPHandler())
-	// Store for the virtad mcp subcommand.
-	_ = toolBelt // accessed via d.ToolBelt() below
+	// Intelligence controller: LLM registry, meter, Ask streaming, config persistence.
+	intelCtl := newIntelControl(toolBelt, st.Settings())
+	srv.SetIntel(intelCtl)
 
 	// OAuth app credentials are read through providers so they can be set at runtime via the UI
 	// (stored in the vault), seeded from the env vars on first run.
