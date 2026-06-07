@@ -331,7 +331,7 @@ function Integrations() {
               <div key={t.id} className={styles.tokenRow}>
                 <div className={styles.tokenMeta}>
                   <span className={styles.tokenName}>{t.name}</span>
-                  <span className={styles.tokenScopes}>{t.scopes.join(', ')}</span>
+                  <span className={styles.tokenScopes}>{(t.scopes ?? []).join(', ')}</span>
                   {t.last_used_at_ms ? (
                     <span className={styles.tokenUsed}>last used {new Date(t.last_used_at_ms).toLocaleDateString()}</span>
                   ) : (
@@ -588,7 +588,7 @@ function IntelligenceSettings() {
                 ariaLabel="Default model"
                 value={cfg?.selected_model || (models[0]?.models[0]?.id ?? '')}
                 onValueChange={v => void save({ selected_model: v })}
-                options={models.flatMap(g => g.models.map(m => ({ value: m.id, label: `${g.display_name} — ${m.display_name}` })))}
+                options={models.flatMap(g => (g.models ?? []).map(m => ({ value: m.id, label: `${g.display_name} — ${m.display_name}` })))}
               />
             </Field>
           )}
@@ -617,7 +617,7 @@ function PlatformIntegration() {
         {report.session ? ` (${report.session})` : ''}. The lowest rung is always a working in-app
         fallback, never a missing feature.
       </Text>
-      {report.features.map((f) => {
+      {(report.features ?? []).map((f) => {
         const copy = RUNG[`${f.id}:${f.rung}`] ?? { label: f.rung, tone: 'neutral' as const };
         const note = f.detail ? DETAIL_NOTE[f.detail] ?? f.detail : '';
         return (

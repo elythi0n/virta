@@ -59,7 +59,11 @@ func (m *MemTokens) List() []TokenInfo {
 	defer m.mu.Unlock()
 	out := make([]TokenInfo, len(m.rows))
 	for i, r := range m.rows {
-		out[i] = r.info
+		info := r.info
+		if info.Scopes == nil {
+			info.Scopes = []string{}
+		}
+		out[i] = info
 	}
 	return out
 }
