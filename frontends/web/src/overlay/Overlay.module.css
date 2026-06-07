@@ -1,11 +1,73 @@
-/* Transparent overlay; OBS browser source should have "Allow transparency" checked. */
+/* ---- Root layout ---- */
 .root {
-  width: 100vw;
-  height: 100vh;
-  background: transparent;
+  position: fixed;
+  inset: 0;
+  width: var(--overlay-width, 100vw);
+  max-width: 100vw;
   overflow: hidden;
-  /* Flip so newest messages appear at the bottom, scrolling upward. */
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
+  font-family: var(--virta-font-ui);
+  font-size: var(--overlay-font-size, var(--virta-type-chat-comfortable-size));
+}
+
+/* ---- Alignment ---- */
+.align-bottom { display: flex; flex-direction: column; justify-content: flex-end; }
+.align-top    { display: flex; flex-direction: column; justify-content: flex-start; }
+.align-left   { display: flex; flex-direction: row;    align-items: flex-end; }
+.align-right  { display: flex; flex-direction: row-reverse; align-items: flex-end; }
+
+/* ---- Themes ---- */
+.theme-transparent {
+  background: transparent;
+}
+.theme-frosted-dark {
+  background: color-mix(in srgb, #0E0F12 72%, transparent);
+  backdrop-filter: blur(12px) saturate(1.4);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+}
+.theme-frosted-light {
+  background: color-mix(in srgb, #FAFBFC 75%, transparent);
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  --virta-text-0: #1A1D23;
+  --virta-text-1: #5C6370;
+  --virta-text-2: #7C8492;
+  --virta-bg-0: rgba(241,243,245,0.5);
+  --virta-bg-1: rgba(231,234,237,0.5);
+  --virta-line: rgba(213,217,223,0.6);
+}
+.theme-solid-dark  { background: #0E0F12; }
+.theme-solid-light {
+  background: #FAFBFC;
+  --virta-text-0: #1A1D23;
+  --virta-text-1: #5C6370;
+  --virta-text-2: #7C8492;
+  --virta-bg-0: #FAFBFC;
+  --virta-bg-1: #F1F3F5;
+  --virta-line: #D5D9DF;
+}
+
+/* ---- Text shadow for legibility on busy scenes ---- */
+.textShadow { --ts: 0 1px 3px rgba(0,0,0,.7), 0 1px 1px rgba(0,0,0,.9); }
+.textShadow :global([class*='author']),
+.textShadow :global([class*='body']),
+.textShadow :global([class*='eventText']),
+.textShadow :global([class*='eventAuthor']) {
+  text-shadow: var(--ts);
+}
+.theme-frosted-light.textShadow,
+.theme-solid-light.textShadow { --ts: 0 1px 2px rgba(255,255,255,.8); }
+
+/* Feed container: transparent bg so theme shows through */
+.root :global([class*='viewport']) { background: transparent !important; }
+.theme-transparent :global([class*='row']),
+.theme-transparent :global([class*='event']) {
+  background: transparent !important;
+}
+.theme-transparent :global([class*='row']:hover),
+.theme-transparent :global([class*='event']:hover) {
+  background: rgba(255,255,255,.05) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root * { animation: none !important; transition: none !important; }
 }

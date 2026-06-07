@@ -2,25 +2,25 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Feed, useFeedBuffer } from '@virta/feed-core';
 import { channelKey, toFeedMessage } from '../daemon';
 import type { WireEvent } from '../daemon/wire.gen';
+import { parseOverlayConfig } from './overlayConfig';
 import styles from './Overlay.module.css';
 
-// Read config from the overlay URL: ?channels=twitch:forsen,kick:xqc&max=80&token=...
-function parseConfig() {
-  const p = new URLSearchParams(location.search);
-  const channels = p.get('channels')?.split(',').filter(Boolean) ?? [];
-  const max = Math.min(500, Math.max(20, parseInt(p.get('max') ?? '80', 10)));
-  const token = p.get('token') ?? '';
-  return { channels, max, token };
-}
-
-// Transparent overlay rendering the live feed — designed for an OBS browser source.
-// Every element uses semi-transparent backgrounds so the stream is visible through text.
-// Mounting on transparent: no background-color at all on the root, only on text lines.
 export default function Overlay() {
-  const { channels, max, token } = useMemo(parseConfig, []);
-  const { messages, push, markDeleted, clearChannel } = useFeedBuffer({ max });
-
+  const cfg = useMemo(parseOverlayConfig, []);
+  const { messages, push, markDeleted, clearChannel } = useFeedBuffer({ max: cfg.maxMessages });
   const lastSeq = useRef(0);
+  const fadeTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+
+  const scheduleFade = useCallback((id: string) => {
+    if (!cfg.fadeMs) return;
+    const prev = fadeTimers.current.get(id);
+    if (prev) clearTimeout(prev);
+    const t = setTimeout(() => {
+      markDeleted({ id });
+      fadeTimers.current.delete(id);
+    }, cfg.fadeMs);
+    fadeTimers.current.set(id, t);
+  }, [cfg.fadeMs, markDeleted]);
 
   const handleMessage = useCallback((ev: MessageEvent<string>) => {
     try {
@@ -30,42 +30,66 @@ export default function Overlay() {
         lastSeq.current = e.seq;
       }
       if (e.type === 'message' && e.message) {
-        push(toFeedMessage(e.message));
+        const m = e.message;
+        const isChat = !m.type || m.type === 'chat' || m.type === 'action';
+        const isEvent = !isChat;
+        if (cfg.kind === 'chat' && isEvent) return;
+        if (cfg.kind === 'events' && isChat) return;
+        const fm = toFeedMessage(m);
+        push(fm);
+        scheduleFade(fm.id);
       } else if (e.type === 'message_deleted') {
         markDeleted({ id: e.message_id || undefined, platformMessageId: e.platform_message_id || undefined });
       } else if (e.type === 'channel_clear' && e.channel) {
-        const key = channelKey(e.channel.platform, e.channel.slug);
-        clearChannel(key, e.target_user_id || undefined);
+        clearChannel(channelKey(e.channel.platform, e.channel.slug), e.target_user_id || undefined);
       }
-    } catch {
-      // ignore malformed frames
-    }
-  }, [push, markDeleted, clearChannel]);
+    } catch { /* ignore malformed frames */ }
+  }, [cfg.kind, push, markDeleted, clearChannel, scheduleFade]);
 
   useEffect(() => {
-    const base = location.origin.replace(/^http/, 'ws');
-    const params = new URLSearchParams({ token });
-    const ws = new WebSocket(`${base}/v1/stream?${params}`);
-    ws.addEventListener('open', () => {
-      ws.send(JSON.stringify({ action: 'subscribe', channels, since: 0 }));
-    });
-    ws.addEventListener('message', handleMessage);
-    ws.addEventListener('close', () => {
-      // Reconnect after a short delay; OBS sources can outlive daemon restarts.
-      setTimeout(() => window.location.reload(), 3000);
-    });
-    return () => ws.close();
-  }, [channels.join(','), token, handleMessage]);
+    const wsBase = location.origin.replace(/^http/, 'ws');
+    let dead = false;
+    let retryDelay = 1000;
+    let ws: WebSocket;
+    const connect = () => {
+      if (dead) return;
+      ws = new WebSocket(`${wsBase}/v1/stream?token=${encodeURIComponent(cfg.token)}`);
+      ws.addEventListener('open', () => {
+        retryDelay = 1000;
+        ws.send(JSON.stringify({ action: 'subscribe', channels: cfg.channels, since: lastSeq.current }));
+      });
+      ws.addEventListener('message', handleMessage);
+      ws.addEventListener('close', () => {
+        if (!dead) setTimeout(connect, retryDelay = Math.min(retryDelay * 1.5, 15000));
+      });
+    };
+    connect();
+    return () => { dead = true; ws?.close(); };
+  // deps: channel list and token are stable strings; handleMessage is memoized
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cfg.channels.join(','), cfg.token, handleMessage]);
+
+  const rootStyle: Record<string, string> = {};
+  if (cfg.fontSize) rootStyle['--overlay-font-size'] = `${cfg.fontSize}px`;
+  if (cfg.width) rootStyle['--overlay-width'] = `${cfg.width}px`;
 
   return (
-    <div className={styles.root}>
+    <div
+      className={[
+        styles.root,
+        styles[`theme-${cfg.theme}`],
+        styles[`align-${cfg.align}`],
+        cfg.textShadow ? styles.textShadow : '',
+      ].filter(Boolean).join(' ')}
+      style={rootStyle as React.CSSProperties}
+    >
       <Feed
         messages={messages}
         background="rgba(0,0,0,0)"
-        showSource={channels.length !== 1}
-        density="comfortable"
-        showTimestamps
-        celebrate={false}
+        showSource={cfg.showSource}
+        showTimestamps={cfg.showTimestamps}
+        density={cfg.density}
+        celebrate={cfg.kind === 'celebrations'}
       />
     </div>
   );

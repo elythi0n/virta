@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { IconName } from '../Icon';
 import AskPanel from './AskPanel';
 import CelebrationsPane from './CelebrationsPane';
+import OBSPanel from './OBSPanel';
 import FeedPanel from './FeedPanel';
 import FiltersPanel from './FiltersPanel';
 import HeldQueuePanel from './HeldQueuePanel';
@@ -50,6 +51,7 @@ export const PANELS: PanelContribution[] = [
   { kind: 'ask', title: 'Ask AI', icon: 'chat', render: () => <AskPanel /> },
   { kind: 'search', title: 'Search', icon: 'search', render: () => <SearchPanel /> },
   { kind: 'stats', title: 'Stats', icon: 'stats', render: () => <Placeholder title="Stats" /> },
+  { kind: 'obs', title: 'OBS', icon: 'stream', render: () => <OBSPanel /> },
   // Opened programmatically, not from the catalog.
   { kind: 'watch', title: 'Stream', icon: 'stream', catalog: false, render: (p) => <StreamPane channel={p.channels?.[0]} /> },
   { kind: 'plugins', title: 'Plugins', icon: 'plugins', catalog: false, render: () => <PluginsPanel /> },
