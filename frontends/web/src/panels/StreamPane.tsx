@@ -6,6 +6,7 @@ import { useChannels, useStats, useStreams } from '../daemon';
 import { groupStreams, type StreamGroup } from '../shell/streamGroups';
 import { useOpenChannel } from '../openChannel';
 import { useOpenStream } from '../openStream';
+import { useOpenUnifiedChat } from '../openUnifiedChat';
 import styles from './StreamPane.module.css';
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -17,6 +18,7 @@ export default function StreamPane() {
   const { stats } = useStats();
   const openChannel = useOpenChannel();
   const openStream = useOpenStream();
+  const openUnifiedChat = useOpenUnifiedChat();
   const [query, setQuery] = useState('');
 
   const groups = useMemo(() => {
@@ -80,6 +82,7 @@ export default function StreamPane() {
               feeds={listFeeds()}
               openChannel={openChannel}
               openStream={openStream}
+              openUnifiedChat={openUnifiedChat}
               onRemove={() => g.variants.forEach(v => void leave(v.platform, v.slug))}
             />
           ))}
@@ -95,6 +98,7 @@ function StreamCard({
   feeds,
   openChannel,
   openStream,
+  openUnifiedChat,
   onRemove,
 }: {
   group: StreamGroup;
@@ -102,26 +106,31 @@ function StreamCard({
   feeds: { id: string; title: string }[];
   openChannel: (key: string, label: string) => void;
   openStream: (key: string, label: string) => void;
+  openUnifiedChat: (keys: string[], label: string) => void;
   onRemove: () => void;
 }) {
   const { primary, display, variants, live, viewers } = group;
   const info = primary.info;
   const liveCount = variants.filter(v => v.info?.live).length;
+  const isMultiPlatform = variants.length > 1;
+  const allKeys = variants.map(v => v.key);
 
   const menuItems: ContextMenuEntry[] = [
     { kind: 'item', label: 'Watch stream', onSelect: () => openStream(primary.key, display) },
-    { kind: 'item', label: 'Open chat', onSelect: () => openChannel(primary.key, display) },
+    {
+      kind: 'item',
+      label: isMultiPlatform ? 'Open unified chat' : 'Open chat',
+      onSelect: () => openUnifiedChat(allKeys, display),
+    },
   ];
-  for (const v of variants) {
-    if (v.key === primary.key) continue;
-    menuItems.push({
-      kind: 'submenu',
-      label: `Open on ${cap(v.platform)}`,
-      items: [
-        { kind: 'item', label: 'Watch stream', onSelect: () => openStream(v.key, display) },
-        { kind: 'item', label: 'Open chat', onSelect: () => openChannel(v.key, display) },
-      ],
-    });
+  if (isMultiPlatform) {
+    for (const v of variants) {
+      menuItems.push({
+        kind: 'item',
+        label: `${cap(v.platform)} chat only`,
+        onSelect: () => openChannel(v.key, display),
+      });
+    }
   }
   if (feeds.length > 0) {
     menuItems.push({
@@ -133,7 +142,7 @@ function StreamCard({
   menuItems.push({ kind: 'separator' });
   menuItems.push({
     kind: 'item',
-    label: variants.length > 1 ? 'Remove from streams (all platforms)' : 'Remove from streams',
+    label: isMultiPlatform ? 'Remove from streams (all platforms)' : 'Remove from streams',
     danger: true,
     onSelect: onRemove,
   });
@@ -142,11 +151,11 @@ function StreamCard({
     <li className={styles.item} data-live={live}>
       <ContextMenu items={menuItems} trigger={
         <div className={styles.card}>
-          {/* Thumbnail — always present; shows fallback gradient when offline or no image */}
+          {/* Thumbnail */}
           <button
             type="button"
             className={styles.thumb}
-            onClick={() => live ? openStream(primary.key, display) : openChannel(primary.key, display)}
+            onClick={() => live ? openStream(primary.key, display) : openUnifiedChat(allKeys, display)}
             aria-label={live ? `Watch ${display}` : `Open chat for ${display}`}
           >
             {info?.thumbnail_url ? (
@@ -170,36 +179,48 @@ function StreamCard({
             )}
           </button>
 
-          {/* Info row */}
+          {/* Info section */}
           <div className={styles.info}>
+            {/* Name row */}
             <div className={styles.row}>
-              <span className={styles.glyphs}>
-                {variants.map(v => (
-                  <PlatformGlyph
-                    key={v.key}
-                    platform={v.platform as Platform}
-                    className={v.key === primary.key ? styles.glyph : styles.glyphMuted}
-                  />
-                ))}
-              </span>
               <button
                 type="button"
                 className={styles.nameBtn}
-                onClick={() => openChannel(primary.key, display)}
-                title={`Open chat for ${display}`}
+                onClick={() => openUnifiedChat(allKeys, display)}
+                title={isMultiPlatform ? `Open unified chat for ${display}` : `Open chat for ${display}`}
               >
                 {display}
               </button>
               <button
                 type="button"
                 className={styles.chatBtn}
-                onClick={() => openChannel(primary.key, display)}
-                aria-label={`Open chat for ${display}`}
-                title="Open chat"
+                onClick={() => openUnifiedChat(allKeys, display)}
+                aria-label={isMultiPlatform ? `Open unified chat for ${display}` : `Open chat for ${display}`}
+                title={isMultiPlatform ? 'Open unified chat' : 'Open chat'}
               >
                 <Icon name="chat" size={13} />
               </button>
             </div>
+
+            {/* Per-platform chips — only shown when the streamer is on multiple platforms */}
+            {isMultiPlatform && (
+              <div className={styles.platformChips}>
+                {variants.map(v => (
+                  <button
+                    key={v.key}
+                    type="button"
+                    className={styles.platformChip}
+                    onClick={() => openChannel(v.key, display)}
+                    title={`Open ${cap(v.platform)} chat only`}
+                  >
+                    <PlatformGlyph platform={v.platform as Platform} className={styles.chipGlyph} />
+                    <span>{cap(v.platform)}</span>
+                    <span className={styles.chipArrow}>›</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
             {live && (info?.category || info?.title) && (
               <div className={styles.meta}>
                 {info?.category && <span className={styles.category}>{info.category}</span>}

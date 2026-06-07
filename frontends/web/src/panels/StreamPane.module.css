@@ -200,6 +200,47 @@
 .glyph  { width: 14px; height: 14px; flex: none; }
 .glyphMuted { width: 12px; height: 12px; flex: none; opacity: 0.35; }
 
+/* Per-platform chips — shown only when a streamer is live on multiple platforms */
+.platformChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--virta-space-4);
+}
+.platformChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px var(--virta-space-8) 3px 6px;
+  border: 1px solid var(--virta-line);
+  border-radius: 20px;
+  background: var(--virta-bg-0);
+  color: var(--virta-text-2);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    border-color var(--virta-motion-fast) ease,
+    color var(--virta-motion-fast) ease,
+    background var(--virta-motion-fast) ease;
+}
+.platformChip:hover {
+  border-color: color-mix(in srgb, var(--virta-accent) 50%, var(--virta-line));
+  color: var(--virta-text-0);
+  background: var(--virta-bg-2);
+}
+.chipGlyph {
+  width: 13px;
+  height: 13px;
+  flex: none;
+}
+.chipArrow {
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0.5;
+  margin-left: 1px;
+}
+
 .nameBtn {
   flex: 1 1 auto;
   min-width: 0;

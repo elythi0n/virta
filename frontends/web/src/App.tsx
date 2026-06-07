@@ -14,6 +14,7 @@ import { loadLayout, saveLayoutDebounced } from './shell/layout';
 import { ActionsProvider } from './actions';
 import { OpenChannelProvider } from './openChannel';
 import { OpenStreamProvider } from './openStream';
+import { OpenUnifiedChatProvider } from './openUnifiedChat';
 import { HostedAuthProvider } from './daemon/hostedAuth';
 import { DensityProvider } from './density';
 import { FeedDisplayProvider } from './feedDisplay';
@@ -222,6 +223,19 @@ export default function App() {
     api.addPanel({ id, component: 'panel', params: { kind: 'feed', channels, title }, title });
   }, []);
 
+  // Open a unified feed for one streamer across all their platforms. Uses a stable ID derived from
+  // the sorted channel keys so a second click focuses the existing pane instead of duplicating.
+  const openUnifiedChat = useCallback((channelKeys: string[], label: string) => {
+    const api = apiRef.current;
+    if (!api || channelKeys.length === 0) return;
+    const id = channelKeys.length === 1
+      ? `channel-${channelKeys[0]}`
+      : `unified-${channelKeys.slice().sort().join('+')}`;
+    const existing = api.getPanel(id);
+    if (existing) { existing.api.setActive(); return; }
+    api.addPanel({ id, component: 'panel', params: { kind: 'feed', channels: channelKeys, title: label }, title: label });
+  }, []);
+
   // Open a single-channel feed pane from the streams rail. The id is stable per channel, so a
   // second click focuses the existing pane instead of opening a duplicate.
   const openChannel = useCallback((channelKey: string, label: string) => {
@@ -328,6 +342,7 @@ export default function App() {
         <ActionsProvider value={actions}>
           <OpenChannelProvider value={openChannel}>
           <OpenStreamProvider value={openStream}>
+          <OpenUnifiedChatProvider value={openUnifiedChat}>
           <TooltipProvider>
           <div className="app">
           <Titlebar onOpenPalette={() => setPaletteOpen(true)} />
@@ -360,6 +375,7 @@ export default function App() {
           <ShortcutHelp open={helpOpen} onOpenChange={setHelpOpen} actions={actions} />
           <NewFeedDialog open={newFeedOpen} onClose={() => setNewFeedOpen(false)} onSubmit={openFeedSet} />
           </TooltipProvider>
+          </OpenUnifiedChatProvider>
           </OpenStreamProvider>
           </OpenChannelProvider>
         </ActionsProvider>
