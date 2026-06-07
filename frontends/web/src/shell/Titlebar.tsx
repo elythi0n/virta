@@ -1,26 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button, Popover, Text } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { useProfiles } from '../daemon';
 import AccountMenu from './AccountMenu';
+import { useIsDesktop } from './useIsDesktop';
 import styles from './Titlebar.module.css';
 
-// Wails injects window.go with bound Go methods when running inside the desktop shell.
-// We use optional chaining so the same code is a no-op in a browser context.
-declare global {
-  interface Window {
-    go?: { main?: { App?: { WindowMinimise?(): Promise<void>; WindowToggleMaximise?(): Promise<void>; WindowClose?(): Promise<void> } } };
-  }
-}
-
-function useIsDesktop(): boolean {
-  const [desktop, setDesktop] = useState(false);
-  useEffect(() => {
-    // window.go is injected by Wails at runtime; not present in a plain browser.
-    setDesktop(typeof window !== 'undefined' && !!window.go?.main?.App);
-  }, []);
-  return desktop;
-}
 
 type Props = {
   onOpenPalette: () => void;

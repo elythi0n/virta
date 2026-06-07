@@ -4,6 +4,7 @@ import { Popover, Tooltip } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { PANEL_CATALOG } from '../shell/views';
 import { useTheme } from '../theme';
+import { useIsDesktop } from '../shell/useIsDesktop';
 import styles from './HeaderActions.module.css';
 
 const uid = () => `panel-${crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)}`;
@@ -13,6 +14,7 @@ const uid = () => `panel-${crypto.randomUUID?.() ?? Math.random().toString(36).s
 export default function HeaderActions(props: IDockviewHeaderActionsProps) {
   const { theme } = useTheme();
   const [addOpen, setAddOpen] = useState(false);
+  const isDesktop = useIsDesktop();
   const inGrid = !props.location || props.location.type === 'grid';
 
   const addPanel = (kind: string, title: string) => {
@@ -58,7 +60,7 @@ export default function HeaderActions(props: IDockviewHeaderActionsProps) {
         </div>
       </Popover>
 
-      {inGrid && (
+      {inGrid && !isDesktop && (
         <Tooltip content="Pop out to window" side="bottom">
           <button className={styles.action} aria-label="Pop out to window" onClick={popOut}>
             <Icon name="popout" size={15} />
