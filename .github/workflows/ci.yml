@@ -25,6 +25,10 @@ jobs:
         uses: golangci/golangci-lint-action@v7
         with:
           version: v2.11.4
+          # cmd/virta-overlay requires CGO headers (GTK/WebKit, WebView2) not available
+          # on bare CI runners. run.exclude-dirs is not a valid v2 config key, so we
+          # pass the exclusion via CLI args where it is valid.
+          args: --exclude-dirs=cmd/virta-overlay
       # Windows runners lack `make` by default; the matrix's Linux/macOS legs cover the
       # gate. A Windows-native build step is added with the M4 packaging work.
       - name: make ci

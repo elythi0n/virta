@@ -5,13 +5,6 @@ version: "2"
 
 run:
   timeout: 5m
-  # cmd/virta-overlay requires platform-specific CGO headers (GTK/WebKit on Linux,
-  # WebView2 on Windows) that are not installed on bare CI runners. Excluding it at
-  # the run level prevents golangci-lint from attempting to load the package at all,
-  # which is necessary because typecheck fires during package loading — before any
-  # per-issue exclusion rules can apply.
-  exclude-dirs:
-    - cmd/virta-overlay
 
 linters:
   # standard = errcheck, govet, ineffassign, staticcheck, unused (covers substantive
