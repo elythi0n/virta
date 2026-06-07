@@ -179,6 +179,60 @@ func (m *Manager) RemoveChannel(ctx context.Context, ch platform.ChannelRef) err
 	return m.save(ctx)
 }
 
+// AddChannelForUser adds a channel to the current user's default profile in the DB without
+// touching the in-memory global active state. Used in hosted mode.
+func (m *Manager) AddChannelForUser(ctx context.Context, ch platform.ChannelRef, mode platform.ConnMode) error {
+	prof, err := m.repo.Default(ctx) // scoped to the user via context
+	if err != nil {
+		return err
+	}
+	doc, err := Migrate(prof.Doc)
+	if err != nil {
+		return err
+	}
+	key := channelKey(ch.Platform, ch.Slug)
+	for _, c := range doc.Channels {
+		if channelKey(c.Platform, c.Slug) == key {
+			return nil // already present
+		}
+	}
+	doc.Channels = append(doc.Channels, ChannelSpec{Platform: ch.Platform, Slug: ch.Slug, Mode: mode})
+	raw, err := doc.Marshal()
+	if err != nil {
+		return err
+	}
+	_, err = m.repo.Update(ctx, prof.ID, raw)
+	return err
+}
+
+// RemoveChannelForUser removes a channel from the current user's default profile in the DB
+// without touching the in-memory global active state. Used in hosted mode so one user's
+// leave does not affect the shared in-memory manager or other users' profiles.
+func (m *Manager) RemoveChannelForUser(ctx context.Context, ch platform.ChannelRef) error {
+	prof, err := m.repo.Default(ctx) // scoped to the user via context
+	if err != nil {
+		return err
+	}
+	doc, err := Migrate(prof.Doc)
+	if err != nil {
+		return err
+	}
+	key := channelKey(ch.Platform, ch.Slug)
+	kept := doc.Channels[:0:0]
+	for _, c := range doc.Channels {
+		if channelKey(c.Platform, c.Slug) != key {
+			kept = append(kept, c)
+		}
+	}
+	doc.Channels = kept
+	raw, err := doc.Marshal()
+	if err != nil {
+		return err
+	}
+	_, err = m.repo.Update(ctx, prof.ID, raw)
+	return err
+}
+
 // Filters returns a copy of the active profile's filter rules.
 func (m *Manager) Filters() []filter.Rule {
 	m.mu.Lock()

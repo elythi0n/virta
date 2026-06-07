@@ -8,12 +8,12 @@ type EmoteInfo struct {
 	URL  string `json:"url"`
 }
 
-func (s *Server) handleListEmotes(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) handleListEmotes(w http.ResponseWriter, r *http.Request) {
 	if s.channels == nil {
 		http.Error(w, "channel control unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	list := s.channels.Emotes()
+	list := s.channels.Emotes(r.Context())
 	if list == nil {
 		list = []EmoteInfo{}
 	}

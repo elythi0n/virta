@@ -16,12 +16,12 @@ type StreamInfo struct {
 	StartedAt    string `json:"started_at,omitempty"` // RFC3339; empty when unknown
 }
 
-func (s *Server) handleListStreams(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) handleListStreams(w http.ResponseWriter, r *http.Request) {
 	if s.channels == nil {
 		http.Error(w, "channel control unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	list := s.channels.Streams()
+	list := s.channels.Streams(r.Context())
 	if list == nil {
 		list = []StreamInfo{}
 	}

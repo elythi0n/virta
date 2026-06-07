@@ -18,7 +18,13 @@ import (
 	"github.com/elythi0n/virta/internal/id"
 	"github.com/elythi0n/virta/internal/platform"
 	"github.com/elythi0n/virta/internal/store"
+	"github.com/elythi0n/virta/internal/userctx"
 )
+
+// uid returns the user id from ctx. Store methods append AND user_id = ? to every query when
+// the id is non-empty (hosted mode), isolating each user's rows. An empty id means single-user
+// mode: the empty-string user_id matches all rows written before hosted mode was enabled.
+func uid(ctx context.Context) string { return userctx.FromContext(ctx) }
 
 // Dialect captures the per-backend SQL differences.
 type Dialect struct {
@@ -173,15 +179,16 @@ func (r profileRepo) Create(ctx context.Context, name string, doc json.RawMessag
 	if p.Doc == nil {
 		p.Doc = json.RawMessage("null")
 	}
+	userID := uid(ctx)
 	var count int
-	if err := r.c.queryRow(ctx, `SELECT COUNT(*) FROM profiles`).Scan(&count); err != nil {
+	if err := r.c.queryRow(ctx, `SELECT COUNT(*) FROM profiles WHERE user_id = ?`, userID).Scan(&count); err != nil {
 		return store.Profile{}, err
 	}
 	p.IsDefault = count == 0
 
 	_, err := r.c.exec(ctx,
-		`INSERT INTO profiles (id, name, doc, is_default, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
-		p.ID, p.Name, string(p.Doc), boolToInt(p.IsDefault), tsStore(now), tsStore(now))
+		`INSERT INTO profiles (id, name, doc, is_default, user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		p.ID, p.Name, string(p.Doc), boolToInt(p.IsDefault), userID, tsStore(now), tsStore(now))
 	if r.c.dia.IsUnique(err) {
 		return store.Profile{}, store.ErrConflict
 	}
@@ -209,7 +216,8 @@ func (r profileRepo) scan(row interface{ Scan(...any) error }) (store.Profile, e
 const profileCols = `id, name, doc, is_default, created_at, updated_at`
 
 func (r profileRepo) Get(ctx context.Context, id string) (store.Profile, error) {
-	p, err := r.scan(r.c.queryRow(ctx, `SELECT `+profileCols+` FROM profiles WHERE id = ?`, id))
+	p, err := r.scan(r.c.queryRow(ctx,
+		`SELECT `+profileCols+` FROM profiles WHERE id = ? AND user_id = ?`, id, uid(ctx)))
 	if errors.Is(err, sql.ErrNoRows) {
 		return store.Profile{}, store.ErrNotFound
 	}
@@ -217,7 +225,8 @@ func (r profileRepo) Get(ctx context.Context, id string) (store.Profile, error) 
 }
 
 func (r profileRepo) GetByName(ctx context.Context, name string) (store.Profile, error) {
-	p, err := r.scan(r.c.queryRow(ctx, `SELECT `+profileCols+` FROM profiles WHERE name = ?`, name))
+	p, err := r.scan(r.c.queryRow(ctx,
+		`SELECT `+profileCols+` FROM profiles WHERE name = ? AND user_id = ?`, name, uid(ctx)))
 	if errors.Is(err, sql.ErrNoRows) {
 		return store.Profile{}, store.ErrNotFound
 	}
@@ -225,7 +234,8 @@ func (r profileRepo) GetByName(ctx context.Context, name string) (store.Profile,
 }
 
 func (r profileRepo) List(ctx context.Context) ([]store.Profile, error) {
-	rows, err := r.c.query(ctx, `SELECT `+profileCols+` FROM profiles ORDER BY id`)
+	rows, err := r.c.query(ctx,
+		`SELECT `+profileCols+` FROM profiles WHERE user_id = ? ORDER BY id`, uid(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -245,8 +255,9 @@ func (r profileRepo) Update(ctx context.Context, id string, doc json.RawMessage)
 	if doc == nil {
 		doc = json.RawMessage("null")
 	}
-	res, err := r.c.exec(ctx, `UPDATE profiles SET doc = ?, updated_at = ? WHERE id = ?`,
-		string(doc), tsStore(r.c.clk.Now()), id)
+	res, err := r.c.exec(ctx,
+		`UPDATE profiles SET doc = ?, updated_at = ? WHERE id = ? AND user_id = ?`,
+		string(doc), tsStore(r.c.clk.Now()), id, uid(ctx))
 	if err != nil {
 		return store.Profile{}, err
 	}
@@ -257,7 +268,7 @@ func (r profileRepo) Update(ctx context.Context, id string, doc json.RawMessage)
 }
 
 func (r profileRepo) Delete(ctx context.Context, id string) error {
-	res, err := r.c.exec(ctx, `DELETE FROM profiles WHERE id = ?`, id)
+	res, err := r.c.exec(ctx, `DELETE FROM profiles WHERE id = ? AND user_id = ?`, id, uid(ctx))
 	if err != nil {
 		return err
 	}
@@ -268,6 +279,7 @@ func (r profileRepo) Delete(ctx context.Context, id string) error {
 }
 
 func (r profileRepo) SetDefault(ctx context.Context, id string) error {
+	userID := uid(ctx)
 	tx, err := r.c.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -275,22 +287,24 @@ func (r profileRepo) SetDefault(ctx context.Context, id string) error {
 	defer func() { _ = tx.Rollback() }()
 
 	var exists int
-	if err := tx.QueryRowContext(ctx, r.c.dia.Rebind(`SELECT COUNT(*) FROM profiles WHERE id = ?`), id).Scan(&exists); err != nil {
+	if err := tx.QueryRowContext(ctx,
+		r.c.dia.Rebind(`SELECT COUNT(*) FROM profiles WHERE id = ? AND user_id = ?`), id, userID).Scan(&exists); err != nil {
 		return err
 	}
 	if exists == 0 {
 		return store.ErrNotFound
 	}
-	// CASE (not `is_default = (id = ?)`) so the result is an integer in both dialects —
-	// Postgres won't assign a boolean to an integer column.
-	if _, err := tx.ExecContext(ctx, r.c.dia.Rebind(`UPDATE profiles SET is_default = CASE WHEN id = ? THEN 1 ELSE 0 END`), id); err != nil {
+	if _, err := tx.ExecContext(ctx,
+		r.c.dia.Rebind(`UPDATE profiles SET is_default = CASE WHEN id = ? THEN 1 ELSE 0 END WHERE user_id = ?`),
+		id, userID); err != nil {
 		return err
 	}
 	return tx.Commit()
 }
 
 func (r profileRepo) Default(ctx context.Context) (store.Profile, error) {
-	p, err := r.scan(r.c.queryRow(ctx, `SELECT `+profileCols+` FROM profiles WHERE is_default = 1 LIMIT 1`))
+	p, err := r.scan(r.c.queryRow(ctx,
+		`SELECT `+profileCols+` FROM profiles WHERE is_default = 1 AND user_id = ? LIMIT 1`, uid(ctx)))
 	if errors.Is(err, sql.ErrNoRows) {
 		return store.Profile{}, store.ErrNotFound
 	}
@@ -319,20 +333,21 @@ func (r accountRepo) scan(row interface{ Scan(...any) error }) (store.Account, e
 
 func (r accountRepo) Upsert(ctx context.Context, a store.Account) (store.Account, error) {
 	now := r.c.clk.Now()
+	userID := uid(ctx)
 	var existingID string
 	var createdNanos int64
 	err := r.c.queryRow(ctx,
-		`SELECT id, created_at FROM accounts WHERE platform = ? AND platform_uid = ?`,
-		string(a.Platform), a.PlatformUID).Scan(&existingID, &createdNanos)
+		`SELECT id, created_at FROM accounts WHERE platform = ? AND platform_uid = ? AND user_id = ?`,
+		string(a.Platform), a.PlatformUID, userID).Scan(&existingID, &createdNanos)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		a.ID = r.c.gen.New()
 		a.CreatedAt = now
 		a.UpdatedAt = now
 		_, err := r.c.exec(ctx,
-			`INSERT INTO accounts (`+accountCols+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			`INSERT INTO accounts (`+accountCols+`, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			a.ID, string(a.Platform), a.PlatformUID, a.Login, a.DisplayName, a.SecretRef,
-			encodeStrings(a.Scopes), tsStore(now), tsStore(now))
+			encodeStrings(a.Scopes), tsStore(now), tsStore(now), userID)
 		if err != nil {
 			return store.Account{}, err
 		}
@@ -344,8 +359,8 @@ func (r accountRepo) Upsert(ctx context.Context, a store.Account) (store.Account
 		a.CreatedAt = tsLoad(createdNanos)
 		a.UpdatedAt = now
 		_, err := r.c.exec(ctx,
-			`UPDATE accounts SET login = ?, display_name = ?, secret_ref = ?, scopes = ?, updated_at = ? WHERE id = ?`,
-			a.Login, a.DisplayName, a.SecretRef, encodeStrings(a.Scopes), tsStore(now), a.ID)
+			`UPDATE accounts SET login = ?, display_name = ?, secret_ref = ?, scopes = ?, updated_at = ? WHERE id = ? AND user_id = ?`,
+			a.Login, a.DisplayName, a.SecretRef, encodeStrings(a.Scopes), tsStore(now), a.ID, userID)
 		if err != nil {
 			return store.Account{}, err
 		}
@@ -354,7 +369,8 @@ func (r accountRepo) Upsert(ctx context.Context, a store.Account) (store.Account
 }
 
 func (r accountRepo) Get(ctx context.Context, id string) (store.Account, error) {
-	a, err := r.scan(r.c.queryRow(ctx, `SELECT `+accountCols+` FROM accounts WHERE id = ?`, id))
+	a, err := r.scan(r.c.queryRow(ctx,
+		`SELECT `+accountCols+` FROM accounts WHERE id = ? AND user_id = ?`, id, uid(ctx)))
 	if errors.Is(err, sql.ErrNoRows) {
 		return store.Account{}, store.ErrNotFound
 	}
@@ -362,11 +378,13 @@ func (r accountRepo) Get(ctx context.Context, id string) (store.Account, error) 
 }
 
 func (r accountRepo) List(ctx context.Context) ([]store.Account, error) {
-	return r.queryAll(ctx, `SELECT `+accountCols+` FROM accounts ORDER BY id`)
+	return r.queryAll(ctx, `SELECT `+accountCols+` FROM accounts WHERE user_id = ? ORDER BY id`, uid(ctx))
 }
 
 func (r accountRepo) ListByPlatform(ctx context.Context, p platform.Platform) ([]store.Account, error) {
-	return r.queryAll(ctx, `SELECT `+accountCols+` FROM accounts WHERE platform = ? ORDER BY id`, string(p))
+	return r.queryAll(ctx,
+		`SELECT `+accountCols+` FROM accounts WHERE platform = ? AND user_id = ? ORDER BY id`,
+		string(p), uid(ctx))
 }
 
 func (r accountRepo) queryAll(ctx context.Context, q string, args ...any) ([]store.Account, error) {
@@ -387,7 +405,7 @@ func (r accountRepo) queryAll(ctx context.Context, q string, args ...any) ([]sto
 }
 
 func (r accountRepo) Delete(ctx context.Context, id string) error {
-	res, err := r.c.exec(ctx, `DELETE FROM accounts WHERE id = ?`, id)
+	res, err := r.c.exec(ctx, `DELETE FROM accounts WHERE id = ? AND user_id = ?`, id, uid(ctx))
 	if err != nil {
 		return err
 	}

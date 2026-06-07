@@ -15,15 +15,15 @@ type Channels interface {
 	// an empty mode means the recommended default.
 	Join(ctx context.Context, platform, slug, mode string) error
 	// Leave parts a channel.
-	Leave(platform, slug string) error
-	// List returns the currently joined channels and their connection state.
-	List() []ChannelInfo
+	Leave(ctx context.Context, platform, slug string) error
+	// List returns the channels joined by the current user (scoped by user id in hosted mode).
+	List(ctx context.Context) []ChannelInfo
 	// Capabilities reports each platform's current capabilities, keyed by platform name.
 	Capabilities() map[string]Capabilities
-	// Streams returns live stream metadata (viewer count, title, thumbnail) for joined channels.
-	Streams() []StreamInfo
-	// Emotes returns the usable emotes across joined channels, for composer autocomplete.
-	Emotes() []EmoteInfo
+	// Streams returns live stream metadata for the current user's joined channels.
+	Streams(ctx context.Context) []StreamInfo
+	// Emotes returns the usable emotes across the current user's joined channels.
+	Emotes(ctx context.Context) []EmoteInfo
 }
 
 // Capabilities mirrors a platform adapter's current capabilities for the wire, so a frontend can
@@ -57,12 +57,12 @@ type channelRequest struct {
 // exists; until then the channel endpoints report the feature as unavailable.
 func (s *Server) SetChannels(c Channels) { s.channels = c }
 
-func (s *Server) handleListChannels(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) handleListChannels(w http.ResponseWriter, r *http.Request) {
 	if s.channels == nil {
 		http.Error(w, "channel control unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	list := s.channels.List()
+	list := s.channels.List(r.Context())
 	if list == nil {
 		list = []ChannelInfo{}
 	}
@@ -110,7 +110,7 @@ func (s *Server) handleLeaveChannel(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "expected platform and slug query parameters", http.StatusBadRequest)
 		return
 	}
-	if err := s.channels.Leave(platform, slug); err != nil {
+	if err := s.channels.Leave(r.Context(), platform, slug); err != nil {
 		s.channelError(w, err)
 		return
 	}

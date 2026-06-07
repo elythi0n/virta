@@ -19,19 +19,19 @@ type AccountInfo struct {
 // SetAccounts. Disconnect revokes an account: its keychain secret and row are removed and the
 // platform reverts to anonymous read-only.
 type Accounts interface {
-	Accounts() []AccountInfo
+	Accounts(ctx context.Context) []AccountInfo
 	Disconnect(ctx context.Context, id string) error
 }
 
 // SetAccounts installs the accounts controller.
 func (s *Server) SetAccounts(a Accounts) { s.accounts = a }
 
-func (s *Server) handleListAccounts(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) handleListAccounts(w http.ResponseWriter, r *http.Request) {
 	if s.accounts == nil {
 		http.Error(w, "accounts unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	list := s.accounts.Accounts()
+	list := s.accounts.Accounts(r.Context())
 	if list == nil {
 		list = []AccountInfo{}
 	}

@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+
+	"github.com/elythi0n/virta/internal/userctx"
 )
 
 // Scope is a capability a third-party API token may be granted (ADR-017 / docs-15 §1). The
@@ -86,6 +88,10 @@ func hasScope(granted []Scope, need Scope) bool {
 // scoped wraps a handler so it admits the root token (all scopes) or a minted token that holds the
 // required scope; an empty scope means "any valid token". Insufficient scope is 403, not 401, so a
 // caller can tell "wrong token" from "token lacks this capability".
+//
+// In hosted mode (hostedAuth != nil) a valid bearer token is necessary but not sufficient: the
+// request must also carry a valid user session. The resolved user id is embedded in the request
+// context via userctx.WithUser so every downstream handler and store query can scope to that user.
 func (s *Server) scoped(scope Scope, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tok := presentedToken(r)
@@ -93,21 +99,32 @@ func (s *Server) scoped(scope Scope, next http.Handler) http.Handler {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
-		if subtle.ConstantTimeCompare([]byte(tok), []byte(s.token)) == 1 {
-			next.ServeHTTP(w, r) // root token: every scope
-			return
-		}
-		if s.tokens != nil {
+		isRoot := subtle.ConstantTimeCompare([]byte(tok), []byte(s.token)) == 1
+		isMinted := false
+		if !isRoot && s.tokens != nil {
 			if granted, ok := s.tokens.Verify(tok); ok {
-				if scope == "" || hasScope(granted, scope) {
-					next.ServeHTTP(w, r)
+				if scope != "" && !hasScope(granted, scope) {
+					http.Error(w, "insufficient scope: requires "+string(scope), http.StatusForbidden)
 					return
 				}
-				http.Error(w, "insufficient scope: requires "+string(scope), http.StatusForbidden)
-				return
+				isMinted = true
 			}
 		}
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		if !isRoot && !isMinted {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		// In hosted mode every authenticated request must also carry a valid user session.
+		// The resolved user id is embedded in the context so store repos scope to that user.
+		if s.hostedAuth != nil {
+			user, err := s.hostedAuth.Resolve(r.Context(), r)
+			if err != nil {
+				http.Error(w, "hosted: session required — please sign in", http.StatusUnauthorized)
+				return
+			}
+			r = r.WithContext(userctx.WithUser(r.Context(), user.ID))
+		}
+		next.ServeHTTP(w, r)
 	})
 }
 

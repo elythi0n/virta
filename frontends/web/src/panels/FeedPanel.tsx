@@ -520,7 +520,7 @@ export default function FeedPanel({ channels, panelId }: Props) {
         }
       >
         <Text variant="ui" tone="subtle" as="p">
-          They won’t be able to chat until you unban them.
+          They won't be able to chat until you unban them.
         </Text>
       </Dialog>
     </div>

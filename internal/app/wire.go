@@ -16,6 +16,7 @@ import (
 
 	"github.com/elythi0n/virta/internal/api"
 	kickauth "github.com/elythi0n/virta/internal/auth/kick"
+	"github.com/elythi0n/virta/internal/userctx"
 	twitchauth "github.com/elythi0n/virta/internal/auth/twitch"
 	"github.com/elythi0n/virta/internal/badges"
 	"github.com/elythi0n/virta/internal/clock"
@@ -294,7 +295,7 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	// logging policy on activation and persists live channel changes. Profiles activate at Start.
 	logCtl := loggingControl{eng: eng, sink: logSink, sweeper: sweeper}
 	mgr := profiles.New(st.Profiles(), eng, filterStage, logCtl, runner, clk)
-	srv.SetChannels(channelControl{eng: eng, emotes: emoteResolver, badges: badgeResolver, streams: streamResolver, profiles: mgr})
+	srv.SetChannels(channelControl{eng: eng, emotes: emoteResolver, badges: badgeResolver, streams: streamResolver, profiles: mgr, profRepo: st.Profiles()})
 	srv.SetProfiles(profileControl{mgr: mgr, repo: st.Profiles()})
 	srv.SetFilters(filterControl{mgr: mgr})
 	srv.SetConnections(connectionsControl{mgr: mgr})
@@ -469,6 +470,7 @@ type channelControl struct {
 	badges   *badges.Resolver
 	streams  *streams.Resolver
 	profiles *profiles.Manager
+	profRepo store.ProfileRepo // for per-user channel reads in hosted mode
 }
 
 func (c channelControl) Join(ctx context.Context, plat, slug, mode string) error {
@@ -478,32 +480,43 @@ func (c channelControl) Join(ctx context.Context, plat, slug, mode string) error
 	}
 	m := platform.ConnMode(mode)
 	if m == "" {
-		m = c.profiles.MethodFor(p) // honor the platform's pinned connection method (else Automatic)
+		m = c.profiles.MethodFor(p)
 	}
 	ref := platform.ChannelRef{Platform: p, Slug: slug}
 	if err := c.eng.Join(ctx, ref, m); err != nil {
 		return err
 	}
-	_ = c.profiles.AddChannel(ctx, ref, m) // persist to the active profile
-	// Warm the channel's third-party emote set and badge artwork off the request path. Badges
-	// resolve by login, so they fill in here; emotes stay a no-op until the platform user id is
-	// known, but are wired so they light up the moment it is.
+	if userctx.FromContext(ctx) != "" {
+		// Hosted mode: persist to this user's profile doc directly, not the global manager.
+		_ = c.profiles.AddChannelForUser(ctx, ref, m)
+	} else {
+		// Single-user mode: update the in-memory active profile and persist.
+		_ = c.profiles.AddChannel(ctx, ref, m)
+	}
+	// Warm emotes, badges, and stream metadata off the request path.
 	go func() { _ = c.emotes.Refresh(context.Background(), ref) }()
 	go c.badges.Refresh(context.Background(), ref)
 	go func() { _ = c.streams.Refresh(context.Background(), ref) }()
 	return nil
 }
 
-func (c channelControl) Leave(plat, slug string) error {
+func (c channelControl) Leave(ctx context.Context, plat, slug string) error {
 	p, ok := parsePlatform(plat)
 	if !ok {
 		return fmt.Errorf("%w: %q", api.ErrUnknownPlatform, plat)
 	}
 	ref := platform.ChannelRef{Platform: p, Slug: slug}
-	if err := c.eng.Leave(ref); err != nil {
-		return err
+	if userctx.FromContext(ctx) != "" {
+		// Hosted mode: only remove from the user's profile; the engine keeps the channel joined
+		// as long as any other user still has it. Other users' feeds are unaffected.
+		_ = c.profiles.RemoveChannelForUser(ctx, ref)
+	} else {
+		// Single-user mode: leave from the engine and the active profile.
+		if err := c.eng.Leave(ref); err != nil {
+			return err
+		}
+		_ = c.profiles.RemoveChannel(context.Background(), ref)
 	}
-	_ = c.profiles.RemoveChannel(context.Background(), ref)
 	return nil
 }
 
@@ -624,8 +637,8 @@ type accountsControl struct {
 	deauth map[platform.Platform]func()
 }
 
-func (c accountsControl) Accounts() []api.AccountInfo {
-	list, err := c.repo.List(context.Background())
+func (c accountsControl) Accounts(ctx context.Context) []api.AccountInfo {
+	list, err := c.repo.List(ctx) // user_id-scoped via context
 	if err != nil {
 		return nil
 	}
@@ -710,16 +723,54 @@ func (c channelControl) Capabilities() map[string]api.Capabilities {
 	return out
 }
 
-func (c channelControl) List() []api.ChannelInfo {
-	statuses := c.eng.Channels()
-	out := make([]api.ChannelInfo, 0, len(statuses))
-	for _, s := range statuses {
-		out = append(out, api.ChannelInfo{
-			Platform: string(s.Channel.Platform),
-			Slug:     s.Channel.Slug,
-			State:    string(s.Health.State),
-			Reason:   string(s.Health.Reason),
-		})
+func (c channelControl) List(ctx context.Context) []api.ChannelInfo {
+	if userctx.FromContext(ctx) == "" {
+		// Single-user mode: the engine IS the channel list.
+		statuses := c.eng.Channels()
+		out := make([]api.ChannelInfo, 0, len(statuses))
+		for _, s := range statuses {
+			out = append(out, api.ChannelInfo{
+				Platform: string(s.Channel.Platform),
+				Slug:     s.Channel.Slug,
+				State:    string(s.Health.State),
+				Reason:   string(s.Health.Reason),
+			})
+		}
+		return out
+	}
+	// Hosted mode: derive from the user's profile doc so each user only sees their own channels.
+	return c.userChannelInfos(ctx)
+}
+
+// userChannelInfos reads the current user's channel list from their profile doc and cross-
+// references the engine's join state to populate the connection status.
+func (c channelControl) userChannelInfos(ctx context.Context) []api.ChannelInfo {
+	prof, err := c.profRepo.Default(ctx) // scoped to user via context
+	if err != nil {
+		return []api.ChannelInfo{}
+	}
+	doc, err := profiles.Migrate(prof.Doc)
+	if err != nil {
+		return []api.ChannelInfo{}
+	}
+	// Build a quick lookup of engine state by channel key.
+	engineStatuses := c.eng.Channels()
+	stateByKey := make(map[string]engine.ChannelStatus, len(engineStatuses))
+	for _, s := range engineStatuses {
+		stateByKey[s.Channel.Key()] = s
+	}
+	out := make([]api.ChannelInfo, 0, len(doc.Channels))
+	for _, ch := range doc.Channels {
+		info := api.ChannelInfo{
+			Platform: string(ch.Platform),
+			Slug:     ch.Slug,
+			State:    "connecting",
+		}
+		if s, ok := stateByKey[ch.Ref().Key()]; ok {
+			info.State = string(s.Health.State)
+			info.Reason = string(s.Health.Reason)
+		}
+		out = append(out, info)
 	}
 	return out
 }
@@ -735,11 +786,24 @@ func emoteURL(e platform.EmoteRef) string {
 	return strings.ReplaceAll(e.URLTemplate, "{size}", size)
 }
 
-func (c channelControl) Emotes() []api.EmoteInfo {
+func (c channelControl) Emotes(ctx context.Context) []api.EmoteInfo {
+	var channels []platform.ChannelRef
+	if userctx.FromContext(ctx) == "" {
+		for _, s := range c.eng.Channels() {
+			channels = append(channels, s.Channel)
+		}
+	} else {
+		for _, info := range c.userChannelInfos(ctx) {
+			p, ok := parsePlatform(info.Platform)
+			if ok {
+				channels = append(channels, platform.ChannelRef{Platform: p, Slug: info.Slug})
+			}
+		}
+	}
 	seen := map[string]struct{}{}
 	var out []api.EmoteInfo
-	for _, s := range c.eng.Channels() {
-		for _, e := range c.emotes.Snapshot(emotes.Key(s.Channel)).Entries() {
+	for _, ch := range channels {
+		for _, e := range c.emotes.Snapshot(emotes.Key(ch)).Entries() {
 			if _, dup := seen[e.Name]; dup {
 				continue
 			}
@@ -750,12 +814,24 @@ func (c channelControl) Emotes() []api.EmoteInfo {
 	return out
 }
 
-func (c channelControl) Streams() []api.StreamInfo {
-	statuses := c.eng.Channels()
-	out := make([]api.StreamInfo, 0, len(statuses))
-	for _, s := range statuses {
-		ref := s.Channel
-		c.streams.EnsureFresh(ref) // background re-fetch when stale; never blocks the response
+func (c channelControl) Streams(ctx context.Context) []api.StreamInfo {
+	// Determine which channels belong to the current user.
+	var refs []platform.ChannelRef
+	if userctx.FromContext(ctx) == "" {
+		for _, s := range c.eng.Channels() {
+			refs = append(refs, s.Channel)
+		}
+	} else {
+		for _, info := range c.userChannelInfos(ctx) {
+			p, ok := parsePlatform(info.Platform)
+			if ok {
+				refs = append(refs, platform.ChannelRef{Platform: p, Slug: info.Slug})
+			}
+		}
+	}
+	out := make([]api.StreamInfo, 0, len(refs))
+	for _, ref := range refs {
+		c.streams.EnsureFresh(ref)
 		si := api.StreamInfo{Platform: string(ref.Platform), Slug: ref.Slug}
 		if info := c.streams.Snapshot(streams.Key(ref)); info != nil {
 			si.Live = info.Live
@@ -1094,25 +1170,61 @@ func parsePlatform(s string) (platform.Platform, bool) {
 // Start launches the pipeline and begins serving the local API.
 func (d *Daemon) Start() error {
 	d.runner.Start()
-	d.stats.Start(d.runner) // feed StatsEvents back through the pipeline
-	d.logSink.Start()       // periodic batch flush
-	d.sweeper.Start()       // retention sweeps
+	d.stats.Start(d.runner)
+	d.logSink.Start()
+	d.sweeper.Start()
 
-	// Activate the default profile so its channels connect and its filters apply on startup.
 	ctx := context.Background()
-	def, err := d.profiles.EnsureDefault(ctx)
-	if err != nil {
-		_ = d.runner.Close()
-		return fmt.Errorf("ensure default profile: %w", err)
-	}
-	if err := d.profiles.Activate(ctx, def.ID); err != nil {
-		_ = d.runner.Close()
-		return fmt.Errorf("activate default profile: %w", err)
+	if d.cfg.Hosted {
+		// Hosted mode: join every channel from every user's profiles so event streams are
+		// active from the moment the daemon starts. Each request still scopes which channels
+		// the requesting user *sees* — the engine is a shared connection pool, not a data
+		// boundary. Single-user startup (EnsureDefault + Activate) is intentionally skipped:
+		// each user manages their own profiles.
+		if err := d.joinAllHostedChannels(ctx); err != nil {
+			d.log.Warn("could not pre-join hosted channels on startup", "err", err)
+		}
+	} else {
+		// Single-user mode: activate the default profile so its channels connect and its
+		// filters apply immediately.
+		def, err := d.profiles.EnsureDefault(ctx)
+		if err != nil {
+			_ = d.runner.Close()
+			return fmt.Errorf("ensure default profile: %w", err)
+		}
+		if err := d.profiles.Activate(ctx, def.ID); err != nil {
+			_ = d.runner.Close()
+			return fmt.Errorf("activate default profile: %w", err)
+		}
 	}
 
 	if err := d.api.Start(); err != nil {
 		_ = d.runner.Close()
 		return err
+	}
+	return nil
+}
+
+// joinAllHostedChannels reads every profile from the DB (all users, no user_id filter) and
+// joins each channel in the shared engine so live data flows before any user connects.
+func (d *Daemon) joinAllHostedChannels(ctx context.Context) error {
+	// List with a background context so no user_id filter is applied (we want all rows).
+	allProfiles, err := d.store.Profiles().List(ctx)
+	if err != nil {
+		return err
+	}
+	for _, p := range allProfiles {
+		doc, err := profiles.Migrate(p.Doc)
+		if err != nil {
+			continue
+		}
+		for _, ch := range doc.Channels {
+			mode := ch.Mode
+			if mode == "" {
+				mode = platform.ModeAutomatic
+			}
+			_ = d.engine.Join(ctx, ch.Ref(), mode)
+		}
 	}
 	return nil
 }

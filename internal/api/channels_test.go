@@ -30,20 +30,20 @@ func (f *fakeChannels) Join(_ context.Context, platform, slug, mode string) erro
 	return nil
 }
 
-func (f *fakeChannels) Leave(platform, slug string) error {
+func (f *fakeChannels) Leave(_ context.Context, platform, slug string) error {
 	f.mu.Lock()
 	f.leaves = append(f.leaves, [2]string{platform, slug})
 	f.mu.Unlock()
 	return nil
 }
 
-func (f *fakeChannels) List() []ChannelInfo { return f.list }
+func (f *fakeChannels) List(_ context.Context) []ChannelInfo { return f.list }
 
 func (f *fakeChannels) Capabilities() map[string]Capabilities { return f.caps }
 
-func (f *fakeChannels) Streams() []StreamInfo { return nil }
+func (f *fakeChannels) Streams(_ context.Context) []StreamInfo { return nil }
 
-func (f *fakeChannels) Emotes() []EmoteInfo { return nil }
+func (f *fakeChannels) Emotes(_ context.Context) []EmoteInfo { return nil }
 
 func (f *fakeChannels) joinCount() int {
 	f.mu.Lock()
