@@ -18,6 +18,7 @@ import (
 	kickauth "github.com/elythi0n/virta/internal/auth/kick"
 	"github.com/elythi0n/virta/internal/userctx"
 	twitchauth "github.com/elythi0n/virta/internal/auth/twitch"
+	"github.com/elythi0n/virta/internal/obsws"
 	"github.com/elythi0n/virta/internal/badges"
 	"github.com/elythi0n/virta/internal/clock"
 	"github.com/elythi0n/virta/internal/config"
@@ -108,6 +109,7 @@ type Daemon struct {
 	pluginHost    *pluginhost.Registry
 	marketsDS     *markets.DataSource
 	hostedStore   hostedpkg.Store // non-nil only when cfg.Hosted
+	obswsSink     *obsws.Manager
 }
 
 // authControl adapts the auth managers to the API's auth controller.
@@ -272,10 +274,11 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	webhookMgr := webhook.NewManager(log, nil)
 	idGen := func() string { s, _ := api.NewTokenSecret(); if len(s) > 8 { return s[:8] }; return s }
 	webhookSink := webhook.NewSink(webhookMgr, idGen)
+	obswsSink := obsws.New(vault, st.Settings(), log)
 	runner := pipeline.NewRunner(pipeline.Options{
 		Clock:  clk,
 		Stages: []pipeline.Stage{filterStage, emotes.NewStage(emoteResolver), badges.NewStage(badgeResolver, badgeResolver), velocityStage},
-		Sinks:  []pipeline.Sink{srv.Sink(), statsAgg, logSink, heldQueue, scrollbackRing, webhookSink},
+		Sinks:  []pipeline.Sink{srv.Sink(), statsAgg, logSink, heldQueue, scrollbackRing, webhookSink, obswsSink},
 		Logger: log,
 	})
 
@@ -435,10 +438,13 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 		log.Warn("markets plugin register failed", "err", err)
 	}
 
+	srv.SetOBSWS(obswsSink)
+
 	return &Daemon{cfg: cfg, log: log, store: st, vault: vault, runner: runner, engine: eng,
 		stats: statsAgg, logSink: logSink, sweeper: sweeper, profiles: mgr,
 		twitchAuth: twitchAuth, kickAuth: kickAuth, api: srv, toolBelt: toolBelt,
-		pluginHost: pluginReg, marketsDS: marketsDS, hostedStore: hostedStore}, nil
+		pluginHost: pluginReg, marketsDS: marketsDS, hostedStore: hostedStore,
+		obswsSink: obswsSink}, nil
 }
 
 // loadMarketsConfig reads the persisted Markets config from settings, falling back to defaults.
@@ -1240,6 +1246,7 @@ func (d *Daemon) Start() error {
 	d.stats.Start(d.runner)
 	d.logSink.Start()
 	d.sweeper.Start()
+	d.obswsSink.Start()
 
 	ctx := context.Background()
 	if d.cfg.Hosted {

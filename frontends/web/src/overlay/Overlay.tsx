@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Feed, useFeedBuffer } from '@virta/feed-core';
 import { channelKey, toFeedMessage } from '../daemon';
 import type { WireEvent } from '../daemon/wire.gen';
+import { panelByKind } from '../panels/registry';
 import { parseOverlayConfig } from './overlayConfig';
 import styles from './Overlay.module.css';
 
@@ -38,7 +39,7 @@ export default function Overlay() {
         if (cfg.kind === 'events' && isChat) return;
         // 'mentions' kind: only include messages where the body contains at least one
         // of the channel's mention names. Since the overlay has no access to user names,
-        // all chat is passed through — the user can use the FeedPanel's mention filter
+        // all chat is passed through; the user can use the FeedPanel mention filter
         // in the main app for name-specific filtering. Mentions overlay = events + chat.
         const fm = toFeedMessage(m);
         push(fm);
@@ -74,9 +75,32 @@ export default function Overlay() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cfg.channels.join(','), cfg.token, handleMessage]);
 
-  const rootStyle: Record<string, string> = {};
+  const rootStyle: Record<string, string | number> = {};
   if (cfg.fontSize) rootStyle['--overlay-font-size'] = `${cfg.fontSize}px`;
   if (cfg.width) rootStyle['--overlay-width'] = `${cfg.width}px`;
+  if (cfg.height) rootStyle['--overlay-height'] = `${cfg.height}px`;
+
+  // When a panelId is set, render the matching panel contribution directly.
+  // The panel renders in a transparent overlay shell.
+  if (cfg.panelId) {
+    const contrib = panelByKind(cfg.panelId);
+    const rootCls = [
+      styles.root,
+      cfg.transparent ? styles.transparent : '',
+      cfg.width ? '' : styles.fullWidth,
+      cfg.height ? '' : styles.fullHeight,
+    ].filter(Boolean).join(' ');
+    return (
+      <div className={rootCls} style={rootStyle as React.CSSProperties}>
+        {contrib
+          ? contrib.render({ channels: cfg.channels.length ? cfg.channels : undefined })
+          : <span style={{ color: 'rgba(255,255,255,0.5)', fontFamily: 'sans-serif', padding: '1rem' }}>
+              Unknown panel: {cfg.panelId}
+            </span>
+        }
+      </div>
+    );
+  }
 
   return (
     <div
@@ -85,6 +109,7 @@ export default function Overlay() {
         styles[`theme-${cfg.theme}`],
         styles[`align-${cfg.align}`],
         cfg.textShadow ? styles.textShadow : '',
+        cfg.transparent ? styles.transparent : '',
       ].filter(Boolean).join(' ')}
       style={rootStyle as React.CSSProperties}
     >

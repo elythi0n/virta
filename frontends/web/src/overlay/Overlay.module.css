@@ -3,11 +3,16 @@
   position: fixed;
   inset: 0;
   width: var(--overlay-width, 100vw);
+  height: var(--overlay-height, 100vh);
   max-width: 100vw;
   overflow: hidden;
   font-family: var(--virta-font-ui);
   font-size: var(--overlay-font-size, var(--virta-type-chat-comfortable-size));
 }
+
+.transparent { background: transparent !important; }
+.fullWidth   { width: 100vw; }
+.fullHeight  { height: 100vh; }
 
 /* ---- Alignment ---- */
 .align-bottom { display: flex; flex-direction: column; justify-content: flex-end; }

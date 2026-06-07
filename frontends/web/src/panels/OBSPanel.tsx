@@ -1,408 +1,613 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Badge, Button, Segmented, Select, Text, Tooltip } from '@virta/ui-kit';
+import { Button, Input, StatusDot, Text, type DotStatus } from '@virta/ui-kit';
 import Icon from '../Icon';
-import { useChannels, discover } from '../daemon';
-import { buildOverlayUrl, type OverlayConfig, type OverlayKind, type OverlayTheme, type OverlayDensity, type OverlayAlign } from '../overlay/overlayConfig';
+import { discover } from '../daemon';
+import {
+  getOBSStatus, getOBSConfig, setOBSConfig, getOBSSources, detectOBS,
+  type OBSConfig, type OBSStatus, type OBSSourceInfo, type DataMapping,
+} from '../daemon/obsws';
+import { buildOverlayUrl } from '../overlay/overlayConfig';
 import styles from './OBSPanel.module.css';
 
-// Map platform ids to the Icon names that exist in the icon set.
-const PLATFORM_ICON: Record<string, 'x' | 'chat' | 'stream' | 'stream'> = {
-  twitch: 'stream',
-  kick: 'stream',
-  x: 'x',
+// ---- Overlay panel options ------------------------------------------------
+
+type OverlayPanelOption = { id: string; label: string };
+
+const OVERLAY_PANELS: OverlayPanelOption[] = [
+  { id: 'feed',         label: 'Chat' },
+  { id: 'mentions',     label: 'Mentions' },
+  { id: 'celebrations', label: 'Celebrations' },
+  { id: 'stats',        label: 'Stats' },
+  { id: 'markets',      label: 'Markets' },
+];
+
+// ---- Helpers ---------------------------------------------------------------
+
+type Tab = 'connect' | 'data' | 'overlays';
+
+function statusToDot(state: OBSStatus['state']): DotStatus {
+  if (state === 'connected') return 'live';
+  if (state === 'error') return 'offline';
+  return 'idle';
+}
+
+function statusLabel(s: OBSStatus): string {
+  if (s.state === 'connected') return 'Connected';
+  if (s.state === 'connecting') return 'Connecting…';
+  if (s.state === 'error') return s.error ?? 'Error';
+  return 'Not connected';
+}
+
+function copyText(text: string): Promise<void> {
+  if (navigator.clipboard) {
+    return navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+  }
+  return Promise.resolve(fallbackCopy(text));
+}
+
+function fallbackCopy(text: string): void {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  } catch { /* nothing */ }
+}
+
+// ---- Connect tab -----------------------------------------------------------
+
+function ConnectTab({
+  status,
+  onStatusChange,
+}: {
+  status: OBSStatus;
+  onStatusChange: () => void;
+}) {
+  const [host, setHost] = useState('localhost');
+  const [port, setPort] = useState('4455');
+  const [password, setPassword] = useState('');
+  const [clearPw, setClearPw] = useState(false);
+  const [enabled, setEnabled] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [detectResult, setDetectResult] = useState<string | null>(null);
+  const [detecting, setDetecting] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  // Load current config on mount.
+  useEffect(() => {
+    getOBSConfig().then(r => {
+      setHost(r.config.host || 'localhost');
+      setPort(String(r.config.port || 4455));
+      setEnabled(r.config.enabled);
+      setLoaded(true);
+    }).catch(() => {
+      setLoaded(true);
+    });
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveError('');
+    try {
+      const cfg: OBSConfig = {
+        enabled,
+        host: host.trim() || 'localhost',
+        port: parseInt(port, 10) || 4455,
+        has_password: false,
+        data_mappings: [],
+        event_rules: [],
+        update_interval_s: 5,
+      };
+      const pw = clearPw ? '' : (password || undefined);
+      await setOBSConfig(cfg, pw);
+      setPassword('');
+      setClearPw(false);
+      onStatusChange();
+    } catch (e: unknown) {
+      setSaveError(e instanceof Error ? e.message : 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDetect = async () => {
+    setDetecting(true);
+    setDetectResult(null);
+    try {
+      const r = await detectOBS();
+      setDetectResult(r.detected ? 'OBS detected on localhost:4455.' : 'OBS not found on localhost:4455.');
+    } catch {
+      setDetectResult('Detection failed. Is OBS running?');
+    } finally {
+      setDetecting(false);
+    }
+  };
+
+  if (!loaded) {
+    return <div className={styles.tabBody}><Text variant="meta" tone="subtle">Loading…</Text></div>;
+  }
+
+  return (
+    <div className={styles.tabBody}>
+      {/* Status row */}
+      <div className={styles.statusRow}>
+        <StatusDot status={statusToDot(status.state)} label={statusLabel(status)} />
+        <Text variant="ui" className={styles.statusText}>{statusLabel(status)}</Text>
+        {status.state === 'connected' && status.obs_version && (
+          <Text variant="meta" tone="subtle">
+            OBS {status.obs_version} / WS {status.websocket_version}
+          </Text>
+        )}
+      </div>
+
+      {/* Enabled toggle */}
+      <div className={styles.fieldRow}>
+        <label className={styles.checkLabel}>
+          <input
+            type="checkbox"
+            className={styles.checkbox}
+            checked={enabled}
+            onChange={e => setEnabled(e.currentTarget.checked)}
+          />
+          <span className={styles.fieldLabel}>Enable OBS WebSocket integration</span>
+        </label>
+      </div>
+
+      {/* Host / Port */}
+      <div className={styles.fieldRow}>
+        <span className={styles.fieldLabel}>Host</span>
+        <Input
+          aria-label="OBS host"
+          value={host}
+          onChange={e => setHost(e.currentTarget.value)}
+          placeholder="localhost"
+        />
+      </div>
+      <div className={styles.fieldRow}>
+        <span className={styles.fieldLabel}>Port</span>
+        <Input
+          aria-label="OBS WebSocket port"
+          type="number"
+          value={port}
+          onChange={e => setPort(e.currentTarget.value)}
+          placeholder="4455"
+        />
+      </div>
+
+      {/* Password */}
+      <div className={styles.fieldRow}>
+        <span className={styles.fieldLabel}>Password</span>
+        <Input
+          aria-label="OBS WebSocket password"
+          type="password"
+          value={password}
+          onChange={e => { setPassword(e.currentTarget.value); setClearPw(false); }}
+          placeholder={clearPw ? '' : '••••••••'}
+        />
+      </div>
+      <div className={styles.fieldHint}>
+        Leave empty to keep existing password.{' '}
+        <button
+          type="button"
+          className={styles.linkBtn}
+          onClick={() => { setPassword(''); setClearPw(true); }}
+        >
+          Clear password
+        </button>
+      </div>
+
+      {/* Actions */}
+      <div className={styles.actionRow}>
+        <Button variant="solid" size="sm" onClick={() => void handleSave()} disabled={saving}>
+          {saving ? 'Saving…' : 'Save and connect'}
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => void handleDetect()} disabled={detecting}>
+          <Icon name="search" size={13} />
+          {detecting ? 'Detecting…' : 'Detect OBS'}
+        </Button>
+      </div>
+
+      {detectResult && (
+        <Text variant="meta" tone="subtle" as="p" className={styles.inlineNote}>
+          {detectResult}
+        </Text>
+      )}
+
+      {saveError && (
+        <Text variant="meta" tone="subtle" as="p" className={styles.errorNote}>
+          {saveError}
+        </Text>
+      )}
+    </div>
+  );
+}
+
+// ---- Data tab --------------------------------------------------------------
+
+const STAT_LABELS: Record<DataMapping['stat'], string> = {
+  msgs_per_min: 'Msgs / min',
+  unique_chatters: 'Unique chatters',
 };
 
-// Overlay presets — pre-configured bundles for common streaming use-cases.
-// Each maps to a partial OverlayConfig; the user can still customise after selecting one.
-const PRESETS = [
-  {
-    id: 'chat-minimal',
-    name: 'Clean chat',
-    description: 'Transparent, comfortable size. Classic look.',
-    icon: 'chat',
-    cfg: { kind: 'chat' as OverlayKind, theme: 'transparent' as OverlayTheme, density: 'comfortable' as OverlayDensity, textShadow: true, maxMessages: 60 },
-  },
-  {
-    id: 'chat-frosted',
-    name: 'Frosted chat',
-    description: 'Semi-transparent dark glass panel.',
-    icon: 'chat',
-    cfg: { kind: 'chat' as OverlayKind, theme: 'frosted-dark' as OverlayTheme, density: 'cozy' as OverlayDensity, textShadow: false, maxMessages: 80 },
-  },
-  {
-    id: 'events',
-    name: 'Events only',
-    description: 'Subs, raids, gifts — no chat noise.',
-    icon: 'gift',
-    cfg: { kind: 'events' as OverlayKind, theme: 'transparent' as OverlayTheme, density: 'comfortable' as OverlayDensity, textShadow: true, maxMessages: 20 },
-  },
-  {
-    id: 'chat-fade',
-    name: 'Fading chat',
-    description: 'Messages fade out after 8 s — minimal screen clutter.',
-    icon: 'chat',
-    cfg: { kind: 'chat' as OverlayKind, theme: 'transparent' as OverlayTheme, density: 'comfortable' as OverlayDensity, textShadow: true, maxMessages: 30, fadeMs: 8000 },
-  },
-  {
-    id: 'compact-left',
-    name: 'Compact left rail',
-    description: 'Compact chat docked to the left edge.',
-    icon: 'chat',
-    cfg: { kind: 'chat' as OverlayKind, theme: 'frosted-dark' as OverlayTheme, density: 'compact' as OverlayDensity, align: 'left' as OverlayAlign, width: 360, textShadow: false, maxMessages: 100 },
-  },
-  {
-    id: 'celebrations',
-    name: 'Celebrations',
-    description: 'Sub/raid/gift events with animation — great in a corner.',
-    icon: 'gift',
-    cfg: { kind: 'celebrations' as OverlayKind, theme: 'transparent' as OverlayTheme, density: 'comfortable' as OverlayDensity, textShadow: true, maxMessages: 10 },
-  },
-] as const;
+function DataTab({ obsConnected }: { obsConnected: boolean }) {
+  const [mappings, setMappings] = useState<DataMapping[]>([]);
+  const [interval, setInterval] = useState('5');
+  const [sources, setSources] = useState<OBSSourceInfo[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [loaded, setLoaded] = useState(false);
 
-const THEME_LABELS: Record<OverlayTheme, string> = {
-  'transparent': 'Transparent',
-  'frosted-dark': 'Frosted dark',
-  'frosted-light': 'Frosted light',
-  'solid-dark': 'Solid dark',
-  'solid-light': 'Solid light',
-};
-const KIND_LABELS: Record<OverlayKind, string> = {
-  chat: 'Chat messages',
-  mentions: 'Mentions',
-  celebrations: 'Events & celebrations',
-  events: 'Events only (no chat)',
-};
-const DENSITY_LABELS: Record<OverlayDensity, string> = {
-  compact: 'Compact', cozy: 'Cozy', comfortable: 'Comfortable', large: 'Large',
-};
+  useEffect(() => {
+    getOBSConfig().then(r => {
+      setMappings(r.config.data_mappings ?? []);
+      setInterval(String(r.config.update_interval_s ?? 5));
+      setLoaded(true);
+    }).catch(() => { setLoaded(true); });
 
-type Draft = Partial<Omit<OverlayConfig, 'token' | 'channels'>>;
+    if (obsConnected) {
+      getOBSSources().then(r => setSources(r.sources ?? [])).catch(() => {});
+    }
+  }, [obsConnected]);
 
-export default function OBSPanel() {
-  const { channels } = useChannels();
+  const addRow = () => setMappings(m => [...m, { stat: 'msgs_per_min', source_name: '' }]);
+
+  const removeRow = (i: number) => setMappings(m => m.filter((_, idx) => idx !== i));
+
+  const patchRow = (i: number, patch: Partial<DataMapping>) =>
+    setMappings(m => m.map((r, idx) => idx === i ? { ...r, ...patch } : r));
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveError('');
+    try {
+      const r = await getOBSConfig();
+      const cfg: OBSConfig = {
+        ...r.config,
+        data_mappings: mappings,
+        update_interval_s: parseInt(interval, 10) || 5,
+      };
+      await setOBSConfig(cfg);
+    } catch (e: unknown) {
+      setSaveError(e instanceof Error ? e.message : 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!loaded) {
+    return <div className={styles.tabBody}><Text variant="meta" tone="subtle">Loading…</Text></div>;
+  }
+
+  return (
+    <div className={styles.tabBody}>
+      {!obsConnected && (
+        <div className={styles.noticeBox}>
+          <Icon name="stream" size={14} />
+          <Text variant="meta" tone="subtle">Connect to OBS first to push live stats.</Text>
+        </div>
+      )}
+
+      <Text variant="meta" tone="subtle" as="p" className={styles.descNote}>
+        Push live stats to OBS text sources. Create a Text (GDI+) source in OBS and enter its name below.
+      </Text>
+
+      {/* Mapping rows */}
+      <div className={styles.mappingList}>
+        {mappings.map((m, i) => (
+          <div key={i} className={styles.mappingRow}>
+            <select
+              className={styles.nativeSelect}
+              aria-label="Stat"
+              value={m.stat}
+              onChange={e => patchRow(i, { stat: e.currentTarget.value as DataMapping['stat'] })}
+            >
+              {(Object.entries(STAT_LABELS) as [DataMapping['stat'], string][]).map(([v, l]) => (
+                <option key={v} value={v}>{l}</option>
+              ))}
+            </select>
+            <SourceInput
+              value={m.source_name}
+              sources={sources}
+              onChange={v => patchRow(i, { source_name: v })}
+            />
+            <button
+              type="button"
+              className={styles.removeBtn}
+              aria-label="Remove mapping"
+              onClick={() => removeRow(i)}
+            >
+              <Icon name="x" size={12} />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <button type="button" className={styles.addRowBtn} onClick={addRow}>
+        <Icon name="chat" size={13} />
+        Add mapping
+      </button>
+
+      {/* Update interval */}
+      <div className={styles.fieldRow}>
+        <span className={styles.fieldLabel}>Update every</span>
+        <div className={styles.intervalRow}>
+          <Input
+            aria-label="Update interval (seconds)"
+            type="number"
+            value={interval}
+            onChange={e => setInterval(e.currentTarget.value)}
+            placeholder="5"
+          />
+          <Text variant="meta" tone="subtle">seconds</Text>
+        </div>
+      </div>
+
+      <div className={styles.actionRow}>
+        <Button variant="solid" size="sm" onClick={() => void handleSave()} disabled={saving || !obsConnected}>
+          {saving ? 'Saving…' : 'Save'}
+        </Button>
+      </div>
+
+      {saveError && (
+        <Text variant="meta" tone="subtle" as="p" className={styles.errorNote}>
+          {saveError}
+        </Text>
+      )}
+    </div>
+  );
+}
+
+// Source name input with datalist autocomplete.
+function SourceInput({
+  value,
+  sources,
+  onChange,
+}: {
+  value: string;
+  sources: OBSSourceInfo[];
+  onChange: (v: string) => void;
+}) {
+  const listId = useRef(`sl-${Math.random().toString(36).slice(2)}`).current;
+  return (
+    <div className={styles.sourceInputWrap}>
+      <input
+        className={styles.sourceInput}
+        type="text"
+        list={listId}
+        value={value}
+        onChange={e => onChange(e.currentTarget.value)}
+        placeholder="OBS source name"
+        aria-label="OBS text source name"
+      />
+      {sources.length > 0 && (
+        <datalist id={listId}>
+          {sources.filter(s => s.kind.includes('text') || s.kind.includes('Text')).map(s => (
+            <option key={s.name} value={s.name} />
+          ))}
+        </datalist>
+      )}
+    </div>
+  );
+}
+
+// ---- Overlays tab ----------------------------------------------------------
+
+function OverlaysTab() {
   const [token, setToken] = useState('');
   const [baseUrl, setBaseUrl] = useState('');
-  const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
-  const [activePreset, setActivePreset] = useState<string>('chat-minimal');
-  const [draft, setDraft] = useState<Draft>({});
-  const [copied, setCopied] = useState<string | null>(null);
+  const [panelId, setPanelId] = useState('feed');
+  const [width, setWidth] = useState('400');
+  const [height, setHeight] = useState('600');
+  const [x, setX] = useState('0');
+  const [y, setY] = useState('0');
+  const [copied, setCopied] = useState(false);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Discover the daemon address and token.
   useEffect(() => {
     discover().then(d => {
       if (!d) return;
       setToken(d.token);
-      const base = d.addr ? `http://${d.addr}` : location.origin;
-      setBaseUrl(base);
+      setBaseUrl(d.addr ? `http://${d.addr}` : location.origin);
     }).catch(() => {});
+    return () => { if (copyTimer.current) clearTimeout(copyTimer.current); };
   }, []);
-
-  const preset = useMemo(() => PRESETS.find(p => p.id === activePreset) ?? PRESETS[0], [activePreset]);
-  const effectiveCfg = useMemo((): Draft & { kind: OverlayKind } => ({
-    ...preset.cfg,
-    ...draft,
-  }), [preset.cfg, draft]);
 
   const overlayUrl = useMemo(() => {
     if (!token || !baseUrl) return '';
     return buildOverlayUrl(baseUrl, {
-      ...effectiveCfg,
+      panelId,
       token,
-      channels: selectedChannels,
+      transparent: true,
+      width: parseInt(width, 10) || 0,
+      height: parseInt(height, 10) || 0,
     });
-  }, [effectiveCfg, token, baseUrl, selectedChannels]);
+  }, [token, baseUrl, panelId, width, height]);
 
-  // Pre-compute all gallery URLs once per meaningful change so the gallery map never rebuilds URLs inline.
-  const galleryUrls = useMemo(() =>
-    PRESETS.map(p => baseUrl && token ? buildOverlayUrl(baseUrl, { ...p.cfg, token, channels: selectedChannels }) : ''),
-    [baseUrl, token, selectedChannels],
-  );
-
-  // Store the active copied-state reset timer so we can cancel it on unmount or rapid re-clicks.
-  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => { if (copyTimer.current) clearTimeout(copyTimer.current); }, []);
-
-  const copyUrl = useCallback((id: string, url: string) => {
-    const doCopy = () => {
-      setCopied(id);
+  const handleCopy = useCallback(() => {
+    if (!overlayUrl) return;
+    void copyText(overlayUrl).then(() => {
+      setCopied(true);
       if (copyTimer.current) clearTimeout(copyTimer.current);
-      copyTimer.current = setTimeout(() => setCopied(null), 2000);
-    };
-    // navigator.clipboard is only available in secure contexts (HTTPS or localhost).
-    // Provide a graceful fallback via execCommand for HTTP local-network access.
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(url).then(doCopy).catch(() => {
-        try { document.execCommand?.('copy'); doCopy(); } catch { /* no feedback available */ }
-      });
-    } else {
-      try {
-        const ta = document.createElement('textarea');
-        ta.value = url;
-        ta.style.position = 'fixed';
-        ta.style.opacity = '0';
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        doCopy();
-      } catch { /* clipboard unavailable */ }
-    }
+      copyTimer.current = setTimeout(() => setCopied(false), 2000);
+    });
+  }, [overlayUrl]);
+
+  const handleOpen = useCallback(() => {
+    if (!overlayUrl) return;
+    window.open(overlayUrl, '_blank', `width=${width || 400},height=${height || 600},toolbar=no,menubar=no`);
+  }, [overlayUrl, width, height]);
+
+  const _x = x; const _y = y; // position inputs: informational, set in OBS
+
+  return (
+    <div className={styles.tabBody}>
+      <Text variant="meta" tone="subtle" as="p" className={styles.descNote}>
+        Add any panel as an OBS browser source. Configure size, then copy the URL.
+      </Text>
+
+      {/* Panel picker */}
+      <div className={styles.fieldRow}>
+        <span className={styles.fieldLabel}>Panel</span>
+        <select
+          className={styles.nativeSelect}
+          aria-label="Overlay panel"
+          value={panelId}
+          onChange={e => setPanelId(e.currentTarget.value)}
+        >
+          {OVERLAY_PANELS.map(p => (
+            <option key={p.id} value={p.id}>{p.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Size */}
+      <div className={styles.fieldRow}>
+        <span className={styles.fieldLabel}>Width</span>
+        <Input
+          aria-label="Overlay width"
+          type="number"
+          value={width}
+          onChange={e => setWidth(e.currentTarget.value)}
+          placeholder="400"
+        />
+      </div>
+      <div className={styles.fieldRow}>
+        <span className={styles.fieldLabel}>Height</span>
+        <Input
+          aria-label="Overlay height"
+          type="number"
+          value={height}
+          onChange={e => setHeight(e.currentTarget.value)}
+          placeholder="600"
+        />
+      </div>
+
+      {/* Position inputs: informational, user sets these in OBS */}
+      <div className={styles.sectionDivider}>
+        <Text variant="meta" tone="subtle">OBS position (set in OBS, not in URL)</Text>
+      </div>
+      <div className={styles.posRow}>
+        <div className={styles.fieldRow}>
+          <span className={styles.fieldLabel}>X</span>
+          <Input
+            aria-label="X position"
+            type="number"
+            value={_x}
+            onChange={e => setX(e.currentTarget.value)}
+            placeholder="0"
+          />
+        </div>
+        <div className={styles.fieldRow}>
+          <span className={styles.fieldLabel}>Y</span>
+          <Input
+            aria-label="Y position"
+            type="number"
+            value={_y}
+            onChange={e => setY(e.currentTarget.value)}
+            placeholder="0"
+          />
+        </div>
+      </div>
+
+      {/* URL output */}
+      {overlayUrl ? (
+        <>
+          <div className={styles.urlBox}>
+            <code className={styles.urlText}>{overlayUrl}</code>
+          </div>
+          <div className={styles.actionRow}>
+            <Button variant="solid" size="sm" onClick={handleCopy}>
+              <Icon name={copied ? 'check' : 'popout'} size={13} />
+              {copied ? 'Copied' : 'Copy URL'}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleOpen}>
+              <Icon name="stream" size={13} />
+              Preview
+            </Button>
+          </div>
+        </>
+      ) : (
+        <div className={styles.noticeBox}>
+          <Text variant="meta" tone="subtle">Daemon not reachable. Run the server first.</Text>
+        </div>
+      )}
+
+      {/* OBS instructions */}
+      <div className={styles.instructionBlock}>
+        <Text variant="heading" as="h4" className={styles.instructionTitle}>How to add in OBS</Text>
+        <ol className={styles.steps}>
+          <li><strong>Add Source</strong> then <strong>Browser</strong></li>
+          <li>Paste the URL above and set the width and height to match</li>
+          <li>Check <strong>Allow transparency</strong> for a transparent background</li>
+        </ol>
+        <Text variant="meta" tone="subtle" as="p" className={styles.tokenNote}>
+          The URL embeds a read token. Treat it like a password: anyone with it can read the chat feed.
+        </Text>
+      </div>
+    </div>
+  );
+}
+
+// ---- Root component --------------------------------------------------------
+
+export default function OBSPanel() {
+  const [tab, setTab] = useState<Tab>('connect');
+  const [status, setStatus] = useState<OBSStatus>({ state: 'disconnected' });
+
+  const refreshStatus = useCallback(() => {
+    getOBSStatus().then(setStatus).catch(() => {});
   }, []);
 
-  const openPreview = useCallback((url: string) => {
-    window.open(url, '_blank', 'width=480,height=720,toolbar=no,menubar=no');
-  }, []);
+  // Poll status while on the connect tab; light refresh elsewhere.
+  useEffect(() => {
+    refreshStatus();
+    const id = setInterval(refreshStatus, 5000);
+    return () => clearInterval(id);
+  }, [refreshStatus]);
 
-
-
-  const patch = (p: Draft) => setDraft(d => ({ ...d, ...p }));
+  const TABS: { id: Tab; label: string }[] = [
+    { id: 'connect', label: 'Connect' },
+    { id: 'data',    label: 'Data' },
+    { id: 'overlays', label: 'Overlays' },
+  ];
 
   return (
     <div className={styles.panel}>
-      {/* Header */}
-      <header className={styles.head}>
-        <Icon name="stream" size={20} />
-        <div>
-          <Text variant="title" as="h2" className={styles.title}>OBS Overlays</Text>
-          <Text variant="body" tone="subtle" as="p" className={styles.lead}>
-            Drop any overlay into OBS as a Browser Source. Pick a preset, configure it, copy the URL.
-          </Text>
-        </div>
-      </header>
+      {/* Tab bar */}
+      <div className={styles.tabBar} role="tablist" aria-label="OBS panel sections">
+        {TABS.map(t => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            className={`${styles.tabBtn} ${tab === t.id ? styles.tabActive : ''}`}
+            onClick={() => setTab(t.id)}
+          >
+            {t.label}
+            {t.id === 'connect' && (
+              <span className={`${styles.tabDot} ${styles[`tabDot-${statusToDot(status.state)}`]}`} aria-hidden />
+            )}
+          </button>
+        ))}
+      </div>
 
-      {!token && (
-        <div className={styles.noToken}>
-          <Icon name="settings" size={16} />
-          <Text variant="body" tone="subtle">
-            Daemon not reachable. Run <code>make serve</code> first.
-          </Text>
-        </div>
-      )}
-
-      {token && (
-        <>
-          {/* Channel selector */}
-          <section className={styles.section}>
-            <Text variant="heading" tone="subtle" as="h3" className={styles.sectionLabel}>Channels</Text>
-            <div className={styles.channelPills}>
-              <button
-                type="button"
-                className={`${styles.channelPill} ${selectedChannels.length === 0 ? styles.pillOn : ''}`}
-                onClick={() => setSelectedChannels([])}
-              >
-                All channels
-              </button>
-              {channels.map(c => {
-                const key = `${c.platform}:${c.slug}`;
-                const on = selectedChannels.includes(key);
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    className={`${styles.channelPill} ${on ? styles.pillOn : ''}`}
-                    onClick={() => setSelectedChannels(prev =>
-                      on ? prev.filter(k => k !== key) : [...prev, key]
-                    )}
-                  >
-                    <Icon name={PLATFORM_ICON[c.platform] ?? 'stream'} size={12} />
-                    {c.slug}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          {/* Presets */}
-          <section className={styles.section}>
-            <Text variant="heading" tone="subtle" as="h3" className={styles.sectionLabel}>Preset</Text>
-            <div className={styles.presetGrid}>
-              {PRESETS.map(p => (
-                <button
-                  key={p.id}
-                  type="button"
-                  className={`${styles.presetCard} ${activePreset === p.id ? styles.presetOn : ''}`}
-                  onClick={() => { setActivePreset(p.id); setDraft({}); }}
-                >
-                  <Icon name={p.icon as 'chat' | 'gift'} size={16} />
-                  <span className={styles.presetName}>{p.name}</span>
-                  <span className={styles.presetDesc}>{p.description}</span>
-                </button>
-              ))}
-            </div>
-          </section>
-
-          {/* Custom settings */}
-          <section className={styles.section}>
-            <Text variant="heading" tone="subtle" as="h3" className={styles.sectionLabel}>
-              Customise
-              {Object.keys(draft).length > 0 && (
-                <button type="button" className={styles.resetBtn} onClick={() => setDraft({})}>
-                  Reset to preset
-                </button>
-              )}
-            </Text>
-            <div className={styles.customGrid}>
-              <label className={styles.customField}>
-                <span className={styles.fieldLabel}>Content</span>
-                <Select
-                  ariaLabel="Overlay content"
-                  value={effectiveCfg.kind ?? 'chat'}
-                  onValueChange={v => patch({ kind: v as OverlayKind })}
-                  options={Object.entries(KIND_LABELS).map(([v, l]) => ({ value: v, label: l }))}
-                />
-              </label>
-              <label className={styles.customField}>
-                <span className={styles.fieldLabel}>Theme</span>
-                <Select
-                  ariaLabel="Overlay theme"
-                  value={effectiveCfg.theme ?? 'transparent'}
-                  onValueChange={v => patch({ theme: v as OverlayTheme })}
-                  options={Object.entries(THEME_LABELS).map(([v, l]) => ({ value: v, label: l }))}
-                />
-              </label>
-              <label className={styles.customField}>
-                <span className={styles.fieldLabel}>Density</span>
-                <Select
-                  ariaLabel="Text density"
-                  value={effectiveCfg.density ?? 'comfortable'}
-                  onValueChange={v => patch({ density: v as OverlayDensity })}
-                  options={Object.entries(DENSITY_LABELS).map(([v, l]) => ({ value: v, label: l }))}
-                />
-              </label>
-              <label className={styles.customField}>
-                <span className={styles.fieldLabel}>Align</span>
-                <Segmented
-                  ariaLabel="Message alignment"
-                  value={effectiveCfg.align ?? 'bottom'}
-                  onValueChange={v => patch({ align: v as OverlayAlign })}
-                  options={[
-                    { value: 'top', label: '↑ Top' },
-                    { value: 'bottom', label: '↓ Bottom' },
-                    { value: 'left', label: '← Left' },
-                    { value: 'right', label: '→ Right' },
-                  ]}
-                />
-              </label>
-              <label className={styles.customField}>
-                <span className={styles.fieldLabel}>Text shadow</span>
-                <Segmented
-                  ariaLabel="Text shadow"
-                  value={effectiveCfg.textShadow !== false ? 'on' : 'off'}
-                  onValueChange={v => patch({ textShadow: v === 'on' })}
-                  options={[{ value: 'on', label: 'On' }, { value: 'off', label: 'Off' }]}
-                />
-              </label>
-              <label className={styles.customField}>
-                <span className={styles.fieldLabel}>Timestamps</span>
-                <Segmented
-                  ariaLabel="Show timestamps"
-                  value={effectiveCfg.showTimestamps ? 'on' : 'off'}
-                  onValueChange={v => patch({ showTimestamps: v === 'on' })}
-                  options={[{ value: 'on', label: 'On' }, { value: 'off', label: 'Off' }]}
-                />
-              </label>
-              <label className={styles.customField}>
-                <span className={styles.fieldLabel}>Fade after</span>
-                <Select
-                  ariaLabel="Message fade"
-                  value={String(effectiveCfg.fadeMs ?? 0)}
-                  onValueChange={v => patch({ fadeMs: parseInt(v, 10) })}
-                  options={[
-                    { value: '0', label: 'Never' },
-                    { value: '5000', label: '5 seconds' },
-                    { value: '8000', label: '8 seconds' },
-                    { value: '15000', label: '15 seconds' },
-                    { value: '30000', label: '30 seconds' },
-                  ]}
-                />
-              </label>
-              <label className={styles.customField}>
-                <span className={styles.fieldLabel}>Max messages</span>
-                <Select
-                  ariaLabel="Max messages"
-                  value={String(effectiveCfg.maxMessages ?? 80)}
-                  onValueChange={v => patch({ maxMessages: parseInt(v, 10) })}
-                  options={[
-                    { value: '20', label: '20' },
-                    { value: '40', label: '40' },
-                    { value: '80', label: '80' },
-                    { value: '150', label: '150' },
-                  ]}
-                />
-              </label>
-            </div>
-          </section>
-
-          {/* Generated URL + OBS instructions */}
-          <section className={styles.section}>
-            <Text variant="heading" tone="subtle" as="h3" className={styles.sectionLabel}>Browser Source URL</Text>
-            <div className={styles.urlBox}>
-              <code className={styles.urlText}>{overlayUrl}</code>
-              <div className={styles.urlActions}>
-                <Tooltip content={copied === 'main' ? 'Copied!' : 'Copy URL'} side="top">
-                  <Button variant="solid" size="sm" onClick={() => copyUrl('main', overlayUrl)}>
-                    <Icon name={copied === 'main' ? 'check' : 'popout'} size={14} />
-                    {copied === 'main' ? 'Copied' : 'Copy'}
-                  </Button>
-                </Tooltip>
-                <Tooltip content="Open preview window" side="top">
-                  <Button variant="ghost" size="sm" onClick={() => openPreview(overlayUrl)}>
-                    <Icon name="stream" size={14} /> Preview
-                  </Button>
-                </Tooltip>
-              </div>
-            </div>
-
-            <div className={styles.obsInstructions}>
-              <Text variant="heading" as="h4" className={styles.instructionTitle}>
-                How to add in OBS
-              </Text>
-              <ol className={styles.steps}>
-                <li><strong>Add Source</strong> → <strong>Browser</strong></li>
-                <li>Paste the URL above</li>
-                <li>Set Width/Height to match your canvas (e.g. 400 × 900 for a side strip)</li>
-                <li>Check <strong>"Allow transparency"</strong> for transparent themes</li>
-                <li>Optional: <strong>Custom CSS</strong> to tune position/margin</li>
-              </ol>
-            </div>
-          </section>
-
-          {/* Quick-add gallery — all presets as one-click copy */}
-          <section className={styles.section}>
-            <Text variant="heading" tone="subtle" as="h3" className={styles.sectionLabel}>
-              Quick-add all presets
-            </Text>
-            <Text variant="body" tone="subtle" as="p" className={styles.galleryNote}>
-              One-click copy for every preset using your current channel selection.
-            </Text>
-            <div className={styles.gallery}>
-              {galleryUrls.map((url, idx) => {
-                const p = PRESETS[idx];
-                const id = `gallery-${p.id}`;
-                return (
-                  <div key={p.id} className={styles.galleryCard}>
-                    <div className={styles.galleryCardHead}>
-                      <Icon name={p.icon as 'chat' | 'gift'} size={16} />
-                      <span className={styles.galleryName}>{p.name}</span>
-                      <Badge tone="neutral">{THEME_LABELS[p.cfg.theme as OverlayTheme]}</Badge>
-                    </div>
-                    <Text variant="ui" tone="subtle" as="p">{p.description}</Text>
-                    <div className={styles.galleryActions}>
-                      <Button variant="ghost" size="sm" onClick={() => copyUrl(id, url)}>
-                        <Icon name={copied === id ? 'check' : 'popout'} size={13} />
-                        {copied === id ? 'Copied!' : 'Copy URL'}
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => openPreview(url)}>
-                        Preview
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        </>
-      )}
+      {/* Tab content */}
+      <div className={styles.tabContent} role="tabpanel">
+        {tab === 'connect' && (
+          <ConnectTab status={status} onStatusChange={refreshStatus} />
+        )}
+        {tab === 'data' && (
+          <DataTab obsConnected={status.state === 'connected'} />
+        )}
+        {tab === 'overlays' && (
+          <OverlaysTab />
+        )}
+      </div>
     </div>
   );
 }

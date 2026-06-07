@@ -64,6 +64,7 @@ type Server struct {
 	mcpHandler        http.Handler      // MCP server, installed via SetMCPHandler (nil = not available)
 	intel             Intel             // intelligence controller, installed via SetIntel
 	plugins           Plugins           // plugin host controller, installed via SetPlugins (nil = not available)
+	obsws             OBSWSController   // OBS WebSocket integration, installed via SetOBSWS (nil = not available)
 	hostedAuth        HostedAuth        // multi-user account surface (nil in local/desktop mode)
 	webui             http.Handler      // embedded web UI, installed via SetWebUI (nil = not served)
 	webuiIndexHTML    func() ([]byte, error) // reads index.html directly, bypassing the file server
@@ -472,6 +473,13 @@ func (s *Server) routes() []route {
 		{"GET", "/v1/intel/conversations/{id}", ScopeRead, s.handleGetConversation, "Get a single conversation with messages"},
 		{"POST", "/v1/intel/conversations", ScopeControl, s.handleSaveConversation, "Create or update a conversation"},
 		{"DELETE", "/v1/intel/conversations/{id}", ScopeControl, s.handleDeleteConversation, "Delete a conversation"},
+		{"GET", "/v1/obsws/status", ScopeRead, s.handleGetOBSStatus, "OBS WebSocket connection status"},
+		{"GET", "/v1/obsws/config", ScopeControl, s.handleGetOBSConfig, "Get OBS WebSocket configuration"},
+		{"PUT", "/v1/obsws/config", ScopeControl, s.handlePutOBSConfig, "Update OBS WebSocket configuration"},
+		{"GET", "/v1/obsws/sources", ScopeRead, s.handleGetOBSSources, "List OBS input sources"},
+		{"GET", "/v1/obsws/scenes", ScopeRead, s.handleGetOBSScenes, "List OBS scenes"},
+		{"POST", "/v1/obsws/test-source", ScopeControl, s.handlePostOBSTestSource, "Set a text source value in OBS"},
+		{"POST", "/v1/obsws/detect", ScopeRead, s.handlePostOBSDetect, "Detect a local OBS WebSocket server"},
 		{"GET", "/dev", ScopeRead, s.handleDev, "Developer event probe page"},
 	}
 }
