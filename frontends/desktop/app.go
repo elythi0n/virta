@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"net/http"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/elythi0n/virta/internal/api"
@@ -92,20 +93,27 @@ func (a *App) OpenStreamWindow(title, url string) {
 
 // ---- Asset handler ----
 
+// wailsRuntimeTag is injected into every index.html response. In Wails v3 the
+// runtime is NOT auto-injected via WebKit UserContentManager — the page must load it
+// explicitly. Without this tag window.wails is undefined and drag, window controls,
+// and all runtime APIs silently fail.
+const wailsRuntimeTag = `<script type="module" src="/wails/runtime.js"></script>`
+
 // assetHandler serves requests from the embedded UI:
 //   - /__discovery: returns daemon address + token; 503 until ready.
 //   - /__integration: host OS/session capabilities.
+//   - /index.html (and /): served with the Wails v3 runtime script injected.
 //   - All other paths: served from the embedded assets FS.
 //
 // The embed.FS root contains an "assets/" sub-directory (matching the //go:embed
-// directive). fs.Sub strips that prefix so "/" maps to assets/index.html, not to a
-// directory listing of the "assets/" folder.
+// directive). fs.Sub strips that prefix so "/" maps to assets/index.html.
 func (a *App) assetHandler(embeds fs.FS) http.Handler {
 	sub, err := fs.Sub(embeds, "assets")
 	if err != nil {
 		sub = embeds // should never happen; fallback to raw FS
 	}
 	fileServer := http.FileServer(http.FS(sub))
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/__discovery":
@@ -115,9 +123,22 @@ func (a *App) assetHandler(embeds fs.FS) http.Handler {
 			}
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(a.discovery)
+
 		case "/__integration":
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(a.integration)
+
+		case "/", "/index.html":
+			// Read, inject the Wails runtime script, then serve.
+			data, readErr := fs.ReadFile(sub, "index.html")
+			if readErr != nil {
+				http.Error(w, "index.html not found", http.StatusNotFound)
+				return
+			}
+			html := strings.Replace(string(data), "</head>", wailsRuntimeTag+"</head>", 1)
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			_, _ = w.Write([]byte(html))
+
 		default:
 			fileServer.ServeHTTP(w, r)
 		}
