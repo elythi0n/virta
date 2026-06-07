@@ -43,11 +43,10 @@ export default function WatchPane({ channel }: { channel?: string }) {
 
   if (isWailsNative) {
     const url = nativeUrl(platform, slug);
+    const label = slug;
+    const plat = platform.charAt(0).toUpperCase() + platform.slice(1);
     return (
       <div className={styles.placeholder}>
-        <Text variant="ui" tone="subtle" as="p" className={styles.desktopNote}>
-          Stream embeds require a browser context. Open this stream in your browser:
-        </Text>
         {url ? (
           <button
             type="button"
@@ -55,11 +54,14 @@ export default function WatchPane({ channel }: { channel?: string }) {
             onClick={() => void window.go?.main?.App?.BrowserOpen?.(url)}
           >
             <Icon name="popout" size={14} />
-            Watch {slug} on {platform.charAt(0).toUpperCase() + platform.slice(1)}
+            Watch {label} on {plat}
           </button>
         ) : (
           <Text variant="meta" tone="subtle">No player available for {platform}.</Text>
         )}
+        <Text variant="meta" tone="subtle" as="p" className={styles.desktopNote}>
+          Opens in your default browser.
+        </Text>
       </div>
     );
   }
