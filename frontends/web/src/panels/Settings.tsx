@@ -48,18 +48,30 @@ const CATEGORIES: Category[] = [
   { id: 'about', label: 'About', keywords: 'version license credits' },
 ];
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+// Field: side-by-side label + compact control (toggles, selects, badges).
+// Pass `stack` when the control needs full width (text inputs, grids).
+function Field({ label, hint, children, stack }: { label: string; hint?: string; children: ReactNode; stack?: boolean }) {
   return (
-    <div className={styles.field}>
+    <div className={`${styles.field} ${stack ? styles.fieldStack : ''}`}>
       <div className={styles.fieldText}>
-        <Text variant="ui">{label}</Text>
-        {hint && (
-          <Text variant="meta" tone="subtle">
-            {hint}
-          </Text>
-        )}
+        <Text variant="ui" className={styles.fieldLabel}>{label}</Text>
+        {hint && <Text variant="meta" tone="subtle" className={styles.fieldHint}>{hint}</Text>}
       </div>
       <div className={styles.fieldControl}>{children}</div>
+    </div>
+  );
+}
+
+// Section: a labelled block for full-width content (provider cards, token lists, etc.)
+// that must not be constrained to the side-by-side field max-width.
+function Section({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+  return (
+    <div className={styles.section}>
+      <div className={styles.sectionHead}>
+        <Text variant="ui" className={styles.fieldLabel}>{label}</Text>
+        {hint && <Text variant="meta" tone="subtle" className={styles.fieldHint}>{hint}</Text>}
+      </div>
+      {children}
     </div>
   );
 }
@@ -109,7 +121,7 @@ function Appearance() {
           ]}
         />
       </Field>
-      <Field label="Highlight my names" hint="Comma-separated. Messages mentioning these collect in the Mentions inbox.">
+      <Field label="Highlight my names" hint="Comma-separated. Messages mentioning these collect in the Mentions inbox." stack>
         <Input
           aria-label="Highlight names"
           placeholder="e.g. yourname, your_handle"
@@ -223,7 +235,7 @@ function About() {
         Virta
       </Text>
       <Placeholder>
-        Unified live chat for Twitch, Kick, and X. Your connections and tokens stay on your machine.
+        Unified live chat for Twitch, Kick, and X.
       </Placeholder>
     </>
   );
@@ -468,7 +480,7 @@ function ProviderKeys({ keys, onSave }: { keys: Record<string, string>; onSave: 
   };
 
   return (
-    <Field label="AI providers" hint="Keys are stored in the OS keychain; never in the database. Leave a field blank to keep the existing key.">
+    <Section label="AI providers" hint="Keys are stored securely on the server — never shown again after saving. Leave a field blank to keep the existing value.">
       <div className={styles.providerGrid}>
         {PROVIDERS.map(p => {
           const saved = keys[p.id];
@@ -524,7 +536,7 @@ function ProviderKeys({ keys, onSave }: { keys: Record<string, string>; onSave: 
           );
         })}
       </div>
-    </Field>
+    </Section>
   );
 }
 
@@ -576,8 +588,8 @@ function IntelligenceSettings() {
   return (
     <>
       <Text variant="body" tone="subtle" as="p" className={styles.introNote}>
-        AI features are opt-in, off by default. When enabled, only configured providers receive data;
-        local-only mode (Ollama) involves no external calls at all.
+        AI features are opt-in and off by default. Only the providers you configure receive data.
+        Ollama runs locally with no external calls.
       </Text>
       <OnOff
         label="Enable AI features"
@@ -598,7 +610,7 @@ function IntelligenceSettings() {
               />
             </Field>
           )}
-          <Field label="Daily budget (USD)" hint="0 = no limit. Stops new calls when the day's spend reaches this amount.">
+          <Field label="Daily budget (USD)" hint="0 = no limit. Stops new calls when the day's spend reaches this amount." stack>
             <Input
               aria-label="Daily budget"
               type="number"

@@ -6,38 +6,40 @@
   background: var(--virta-bg-0);
 }
 
+/* ── Search toolbar ──────────────────────────────────────────────── */
 .toolbar {
   flex: none;
   padding: var(--virta-space-12) var(--virta-space-16);
   border-bottom: 1px solid var(--virta-line);
-}
-.toolbar :global(input) {
-  max-width: 320px;
+  background: var(--virta-bg-1);
 }
 
+/* ── Two-column shell ────────────────────────────────────────────── */
 .main {
   flex: 1 1 auto;
   display: flex;
   min-height: 0;
 }
 
+/* ── Left nav ────────────────────────────────────────────────────── */
 .nav {
   flex: none;
-  width: 184px;
+  width: 192px;
   display: flex;
   flex-direction: column;
   gap: 2px;
   padding: var(--virta-space-12) var(--virta-space-8);
   border-right: 1px solid var(--virta-line);
   overflow-y: auto;
+  background: var(--virta-bg-1);
 }
 .navItem {
   position: relative;
-  padding: var(--virta-space-8);
+  padding: var(--virta-space-8) var(--virta-space-12);
   border: 0;
   border-radius: var(--virta-radius-sm);
   background: none;
-  color: var(--virta-text-1);
+  color: var(--virta-text-2);
   font-family: var(--virta-font-ui);
   font-size: var(--virta-type-ui-size);
   line-height: var(--virta-type-ui-line);
@@ -48,12 +50,13 @@
     color var(--virta-motion-fast) ease;
 }
 .navItem:hover {
-  background: var(--virta-bg-1);
+  background: var(--virta-bg-2);
   color: var(--virta-text-0);
 }
 .navActive {
   background: var(--virta-bg-2);
   color: var(--virta-text-0);
+  font-weight: 500;
 }
 .navActive::before {
   content: '';
@@ -69,7 +72,11 @@
   outline: 2px solid var(--virta-accent);
   outline-offset: -2px;
 }
+.navEmpty {
+  padding: var(--virta-space-8) var(--virta-space-12);
+}
 
+/* ── Right content ───────────────────────────────────────────────── */
 .content {
   flex: 1 1 auto;
   min-width: 0;
@@ -77,32 +84,63 @@
   padding: var(--virta-space-24) var(--virta-space-32);
 }
 .heading {
-  margin-bottom: var(--virta-space-16);
+  margin: 0 0 var(--virta-space-24);
+  color: var(--virta-text-0);
 }
 
+/* ── Row field: label left + compact control right ───────────────── */
 .field {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--virta-space-24);
-  max-width: 560px;
+  max-width: 640px;
   padding: var(--virta-space-16) 0;
   border-bottom: 1px solid var(--virta-line);
 }
 .fieldText {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--virta-space-2);
-  min-width: 0;
+  gap: var(--virta-space-4);
+}
+.fieldLabel {
+  font-weight: 500;
+  color: var(--virta-text-0);
+}
+.fieldHint {
+  line-height: 1.5;
 }
 .fieldControl {
   flex: none;
 }
 
-.navEmpty {
-  padding: var(--virta-space-8);
+/* Stack variant: full-width control below the label */
+.fieldStack {
+  flex-direction: column;
+  gap: var(--virta-space-8);
+}
+.fieldStack .fieldControl {
+  width: 100%;
 }
 
+/* ── Section: labelled full-width block (provider grids, token lists) */
+.section {
+  max-width: 640px;
+  padding: var(--virta-space-16) 0;
+  border-bottom: 1px solid var(--virta-line);
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-12);
+}
+.sectionHead {
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-4);
+}
+
+/* ── Misc helpers ────────────────────────────────────────────────── */
 .shortcutList {
   list-style: none;
   margin: 0;
@@ -110,7 +148,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  max-width: 480px;
+  max-width: 520px;
 }
 .shortcutRow {
   display: flex;
@@ -121,13 +159,14 @@
   border-bottom: 1px solid var(--virta-line);
 }
 .kbd {
-  padding: 1px var(--virta-space-8);
+  padding: 2px var(--virta-space-8);
   border: 1px solid var(--virta-line);
   border-radius: var(--virta-radius-sm);
-  background: var(--virta-bg-0);
-  color: var(--virta-text-2);
+  background: var(--virta-bg-1);
+  color: var(--virta-text-1);
   font-family: var(--virta-font-mono);
   font-size: var(--virta-type-meta-size);
+  white-space: nowrap;
 }
 
 .textarea {
@@ -144,9 +183,7 @@
   line-height: var(--virta-type-ui-line);
   resize: vertical;
 }
-.textarea::placeholder {
-  color: var(--virta-text-2);
-}
+.textarea::placeholder { color: var(--virta-text-2); }
 .textarea:focus-visible {
   outline: 2px solid var(--virta-accent);
   outline-offset: 1px;
@@ -154,8 +191,11 @@
 }
 
 .introNote {
-  margin: 0 0 var(--virta-space-4);
+  max-width: 560px;
+  margin: 0 0 var(--virta-space-8);
+  line-height: 1.6;
 }
+
 .integrationRung {
   display: inline-flex;
   align-items: center;
@@ -167,7 +207,7 @@
   font-size: var(--virta-type-meta-size);
 }
 
-/* Integrations panel */
+/* ── Token list ──────────────────────────────────────────────────── */
 .tokenList {
   display: flex;
   flex-direction: column;
@@ -180,7 +220,7 @@
   padding: var(--virta-space-8) var(--virta-space-12);
   border: 1px solid var(--virta-line);
   border-radius: var(--virta-radius-md);
-  background: var(--virta-bg-0);
+  background: var(--virta-bg-1);
 }
 .tokenMeta {
   flex: 1;
@@ -221,6 +261,8 @@
   border-color: var(--virta-danger);
   background: color-mix(in srgb, var(--virta-danger) 10%, transparent);
 }
+
+/* ── Mint token form ─────────────────────────────────────────────── */
 .mintForm {
   display: flex;
   flex-direction: column;
@@ -242,9 +284,7 @@
   cursor: pointer;
   transition: border-color var(--virta-motion-fast) ease;
 }
-.scopeChip:hover {
-  border-color: var(--virta-text-2);
-}
+.scopeChip:hover { border-color: var(--virta-text-2); }
 .scopeOn {
   border-color: var(--virta-accent);
   background: color-mix(in srgb, var(--virta-accent) 8%, var(--virta-bg-0));
@@ -276,6 +316,7 @@
 }
 .mintBtn:hover:not(:disabled) { filter: brightness(1.1); }
 .mintBtn:disabled { opacity: 0.5; cursor: default; }
+
 .mintedBox {
   display: flex;
   flex-direction: column;
@@ -294,10 +335,10 @@
 .errorNote { color: var(--virta-danger); }
 .link { color: var(--virta-accent); }
 
-/* AI provider picker */
+/* ── AI provider cards ───────────────────────────────────────────── */
 .providerGrid {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: var(--virta-space-8);
 }
 .providerCard {
@@ -307,12 +348,12 @@
   padding: var(--virta-space-12);
   border: 1px solid var(--virta-line);
   border-radius: var(--virta-radius-md);
-  background: var(--virta-bg-0);
+  background: var(--virta-bg-2);
   transition: border-color var(--virta-motion-fast) ease;
 }
 .providerOn {
-  border-color: var(--virta-ok);
-  background: color-mix(in srgb, var(--virta-ok) 4%, var(--virta-bg-0));
+  border-color: color-mix(in srgb, var(--virta-ok) 40%, var(--virta-line));
+  background: color-mix(in srgb, var(--virta-ok) 4%, var(--virta-bg-2));
 }
 .providerHead {
   display: flex;
@@ -323,8 +364,8 @@
   flex: none;
   display: grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
 }
 .providerName {
   font-family: var(--virta-font-ui);
@@ -336,9 +377,9 @@
 .connectedPill {
   font-family: var(--virta-font-ui);
   font-size: var(--virta-type-meta-size);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--virta-ok);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
 }
 .clearKeyBtn {
   flex: none;
@@ -353,10 +394,8 @@
   font-size: 14px;
   cursor: pointer;
 }
-.clearKeyBtn:hover {
-  background: var(--virta-bg-2);
-  color: var(--virta-danger);
-}
+.clearKeyBtn:hover { background: var(--virta-bg-0); color: var(--virta-danger); }
+
 .providerInputRow {
   display: flex;
   gap: var(--virta-space-4);
@@ -379,15 +418,13 @@
   cursor: pointer;
   transition: border-color var(--virta-motion-fast) ease;
 }
-.showHideBtn:hover {
-  border-color: var(--virta-text-2);
-  color: var(--virta-text-0);
-}
+.showHideBtn:hover { border-color: var(--virta-text-2); color: var(--virta-text-0); }
 .providerHint {
   margin: 0;
+  line-height: 1.5;
 }
 
-/* Provider brand colors — only on the logo glyph, never as backgrounds or text. */
+/* Provider brand colors — logo glyph only */
 .providerLogo[data-provider='anthropic'] { color: var(--virta-brand-anthropic); }
 .providerLogo[data-provider='openai']    { color: var(--virta-brand-openai); }
 .providerLogo[data-provider='xai']       { color: var(--virta-text-1); }
