@@ -232,8 +232,11 @@ func (s *Server) serveInjectedHTML(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store") // token is in the page; don't cache
 	w.Header().Set("Content-Security-Policy",
+		// frame-src: allow the two known stream player embed origins used by WatchPane.
+		// Everything else falls back to default-src 'self'.
 		"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "+
 			"img-src 'self' https: data:; connect-src 'self' ws: wss:; font-src 'self' data:; "+
+			"frame-src https://player.twitch.tv https://player.kick.com; "+
 			"object-src 'none'; base-uri 'self'; frame-ancestors 'none'")
 	_, _ = w.Write(body)
 }

@@ -139,10 +139,6 @@ func (s *Server) handleAsk(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleGetIntelConfig(w http.ResponseWriter, _ *http.Request) {
-	if s.hostedAuth != nil {
-		http.Error(w, "LLM configuration is operator-only in hosted mode", http.StatusForbidden)
-		return
-	}
 	if s.intel == nil {
 		http.Error(w, "intelligence unavailable", http.StatusServiceUnavailable)
 		return
