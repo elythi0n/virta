@@ -57,11 +57,16 @@ type Provider interface {
 }
 
 // NormaliseSymbol cleans user-entered symbols: upper-cases and strips common suffixes
-// (e.g. "btcusdt" → "BTC", "Eth" → "ETH").
+// so that "btcusdt", "BTC-USD", "eth/usdt", and "ETH" all normalise to the base asset.
 func NormaliseSymbol(s, quoteCurrency string) string {
 	s = strings.ToUpper(strings.TrimSpace(s))
-	s = strings.TrimSuffix(s, strings.ToUpper(quoteCurrency))
-	s = strings.TrimSuffix(s, "-"+strings.ToUpper(quoteCurrency))
-	s = strings.TrimSuffix(s, "/"+strings.ToUpper(quoteCurrency))
+	q := strings.ToUpper(quoteCurrency)
+	// Try each separator variant, longest match first.
+	for _, sep := range []string{"-", "/", ""} {
+		if strings.HasSuffix(s, sep+q) {
+			s = strings.TrimSuffix(s, sep+q)
+			break
+		}
+	}
 	return s
 }

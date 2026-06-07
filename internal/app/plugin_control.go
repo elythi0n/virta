@@ -58,6 +58,17 @@ func (c *pluginControl) Install(url string) (api.PluginInfo, error) {
 	if err != nil {
 		return api.PluginInfo{}, err
 	}
+	// Validate declared scopes are all known before accepting the plugin.
+	if err := result.Manifest.Validate(); err != nil {
+		return api.PluginInfo{}, fmt.Errorf("install: manifest validation failed: %w", err)
+	}
+	// Require explicit ScopeHTTP if the plugin contributes DataSources (they make network calls).
+	if len(result.Manifest.Contributes.DataSources) > 0 && !result.Manifest.HasScope(pluginhostpkg.ScopeHTTP) {
+		return api.PluginInfo{}, fmt.Errorf(
+			"install: plugin %q contributes DataSources but does not declare 'http' scope — installation rejected for safety",
+			result.Manifest.ID,
+		)
+	}
 	if regErr := c.reg.RegisterBuiltIn(result.Manifest); regErr != nil {
 		// Already registered — still enable it.
 		_ = regErr

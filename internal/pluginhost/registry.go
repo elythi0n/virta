@@ -161,6 +161,8 @@ func (r *Registry) Start(ctx context.Context) error {
 }
 
 // Enable starts a registered plugin, wiring its contributions into the host.
+// Scope enforcement happens here: contributions requiring ScopeHTTP are only activated
+// if the manifest declares it, and data-source contributions require ScopeHTTP.
 func (r *Registry) Enable(ctx context.Context, id string) error {
 	r.mu.Lock()
 	e, ok := r.entries[id]
@@ -172,6 +174,16 @@ func (r *Registry) Enable(ctx context.Context, id string) error {
 		r.mu.Unlock()
 		return nil // already running
 	}
+
+	// Enforce: a plugin that contributes DataSources makes outbound network calls and
+	// therefore must declare ScopeHTTP. Reject activation if the scope is missing.
+	if len(e.Manifest.Contributes.DataSources) > 0 && !e.Manifest.HasScope(ScopeHTTP) {
+		e.State = StateError
+		e.Error = "plugin contributes DataSources but does not declare the 'http' scope in its manifest"
+		r.mu.Unlock()
+		return fmt.Errorf("plugin %q: DataSource contributions require 'http' scope (not declared)", id)
+	}
+
 	_, cancel := context.WithCancel(ctx)
 	e.cancel = cancel
 	e.State = StateEnabled

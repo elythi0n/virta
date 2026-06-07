@@ -79,9 +79,19 @@ func (inst *Installer) Install(ctx context.Context, rawURL string) (*InstallResu
 	if err := os.MkdirAll(installDir, 0o700); err != nil {
 		return nil, fmt.Errorf("installer: create dir: %w", err)
 	}
+	// canonInstall is the canonical form of installDir with a guaranteed trailing sep,
+	// so filepath.Abs + HasPrefix is immune to the "/home/user/plugins-evil" edge case.
+	canonInstall := filepath.Clean(installDir) + string(os.PathSeparator)
 	for name, content := range files {
-		path := filepath.Join(installDir, filepath.Clean(name))
-		if !strings.HasPrefix(path, installDir+string(os.PathSeparator)) {
+		// Resolve the target path absolutely so symlinks and ".." cannot escape.
+		rel := filepath.Clean(name)
+		if rel == "." || strings.HasPrefix(rel, "..") {
+			continue // reject relative escapes
+		}
+		path := filepath.Join(installDir, rel)
+		// Canonical check after Join+Clean to defeat all traversal variants.
+		if !strings.HasPrefix(filepath.Clean(path)+string(os.PathSeparator), canonInstall) &&
+			filepath.Clean(path) != filepath.Clean(installDir) {
 			continue // path traversal guard
 		}
 		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {

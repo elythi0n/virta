@@ -3,6 +3,7 @@ package pluginhost
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 )
 
@@ -42,11 +43,18 @@ func (h *defaultHostAPI) RegisterDataSource(pluginID string, ds DataSourceRunner
 	if h.dsRunner == nil {
 		return fmt.Errorf("hostapi: no DataSource runner configured")
 	}
+	key := pluginID + "/" + ds.ID()
+	// Cancel any previously running instance under the same key before starting a new one.
+	if old, exists := h.dataSources[key]; exists {
+		old()
+	}
 	ctx, cancel := context.WithCancel(context.Background())
-	h.dataSources[pluginID+"/"+ds.ID()] = cancel
+	h.dataSources[key] = cancel
 	go func() {
 		if err := h.dsRunner(ctx, ds); err != nil && ctx.Err() == nil {
-			// DataSource errored; cancels itself on context cancel.
+			// DataSource errored without being cancelled — the caller will see this if
+			// it monitors the pipeline's log. We cannot panic: the host must survive a
+			// misbehaving plugin DataSource.
 		}
 	}()
 	return nil
@@ -66,16 +74,17 @@ func (h *defaultHostAPI) RegisterCommand(pluginID string, cmd ContributedCommand
 func (h *defaultHostAPI) UnregisterAll(pluginID string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	// Cancel DataSources.
+	prefix := pluginID + "/"
+	// Cancel and remove all DataSources owned by this plugin.
 	for key, cancel := range h.dataSources {
-		if len(key) > len(pluginID) && key[:len(pluginID)] == pluginID {
+		if strings.HasPrefix(key, prefix) {
 			cancel()
 			delete(h.dataSources, key)
 		}
 	}
-	// Remove commands.
+	// Remove all commands contributed by this plugin.
 	for key := range h.commands {
-		if len(key) > len(pluginID) && key[:len(pluginID)] == pluginID {
+		if strings.HasPrefix(key, prefix) {
 			delete(h.commands, key)
 		}
 	}

@@ -18,6 +18,7 @@ func BuiltInManifest() *pluginhost.Manifest {
 		Tags:        []string{"data", "ticker", "crypto"},
 		Scopes: []pluginhost.Scope{
 			pluginhost.ScopeUI,
+			pluginhost.ScopeHTTP, // outbound WS+REST to Binance/CoinGecko
 		},
 		Contributes: pluginhost.Contributes{
 			Panels: []pluginhost.PanelContrib{

@@ -84,24 +84,39 @@ func IFrameAttribs(pluginID string) map[string]string {
 
 // HostSDKBootstrap generates the inline bootstrap snippet injected into the plugin's index.html.
 // This snippet establishes the postMessage bridge and provides the @virta/plugin SDK surface.
+// Scopes are embedded so the plugin can self-check before making requests, and the host-side
+// message handler can verify the plugin ID matches what was granted.
 // The plugin's JS calls window.__virta.send({type, payload}) to dispatch to the host.
 func HostSDKBootstrap(pluginID string, scopes []Scope) string {
 	scopeJSON, _ := json.Marshal(scopes)
-	_ = scopeJSON
+	// scopeSet is embedded in the JS for client-side scope self-checking.
+	// The authoritative enforcement is on the server (Go), but having it in JS
+	// allows the plugin SDK to give clear errors before a round-trip.
 	return strings.ReplaceAll(strings.ReplaceAll(`(function() {
   'use strict';
   var _pending = {};
   var _seq = 0;
   var _handlers = {};
+  var _scopes = new Set(__SCOPES__);
+
+  // hasScope lets the plugin verify it declared a scope before calling an API that requires it.
+  function hasScope(s) { return _scopes.has(s); }
+
   window.__virta = {
     id: "__PLUGIN_ID__",
-    scopes: __SCOPES__,
+    scopes: Array.from(_scopes),
+    hasScope: hasScope,
     // Send a request to the host and get a Promise back.
+    // The host verifies the plugin id and scope on receipt; rejected requests
+    // resolve with {error: "..."} rather than crashing the bridge.
     send: function(msg) {
       var id = ++_seq;
       return new Promise(function(resolve, reject) {
         _pending[id] = { resolve: resolve, reject: reject };
-        window.parent.postMessage({ __virta: true, seq: id, plugin: "__PLUGIN_ID__", msg: msg }, '*');
+        window.parent.postMessage(
+          { __virta: true, seq: id, plugin: "__PLUGIN_ID__", msg: msg },
+          window.location.origin  // restrict to same origin — not '*'
+        );
       });
     },
     // Subscribe to events from the host (e.g. plugin data stream ticks).
@@ -114,8 +129,13 @@ func HostSDKBootstrap(pluginID string, scopes []Scope) string {
       _handlers[type] = _handlers[type].filter(function(h) { return h !== handler; });
     },
   };
+
   window.addEventListener('message', function(ev) {
+    // Only accept messages from the same origin (parent page = the host SPA).
+    if (ev.origin !== window.location.origin) return;
     if (!ev.data || !ev.data.__virta_host) return;
+    // Verify the message is addressed to this plugin instance.
+    if (ev.data.plugin && ev.data.plugin !== "__PLUGIN_ID__") return;
     var d = ev.data;
     if (d.seq && _pending[d.seq]) {
       if (d.error) { _pending[d.seq].reject(new Error(d.error)); }
