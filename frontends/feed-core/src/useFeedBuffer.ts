@@ -63,7 +63,7 @@ export interface FeedBuffer {
  * (a chat firehose) becomes one render per frame instead of one render per message. The newest
  * `max` are kept to bound memory.
  */
-export function useFeedBuffer({ max = 5000 }: { max?: number } = {}): FeedBuffer {
+export function useFeedBuffer({ max = 2000 }: { max?: number } = {}): FeedBuffer {
   const [messages, setMessages] = useState<FeedMessage[]>([]);
   const queue = useRef<FeedMessage[]>([]);
   const frame = useRef<number | null>(null);

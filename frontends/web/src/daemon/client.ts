@@ -8,6 +8,8 @@ export type ConnectionStatus = 'offline' | 'connecting' | 'connected' | 'reconne
 export interface DaemonClient {
   start(): void;
   stop(): void;
+  /** Send a new subscribe message on the open socket, updating the channel filter live. */
+  updateChannels(channels: string[]): void;
 }
 
 export interface DaemonClientOptions {
@@ -45,6 +47,7 @@ export function createDaemonClient(opts: DaemonClientOptions): DaemonClient {
   let lastSeq = 0;
   let attempt = 0;
   let retry: ReturnType<typeof setTimeout> | null = null;
+  let currentChannels: string[] = opts.channels ?? [];
 
   async function connect() {
     if (stopped) return;
@@ -64,7 +67,7 @@ export function createDaemonClient(opts: DaemonClientOptions): DaemonClient {
     ws.onopen = () => {
       attempt = 0;
       opts.onStatus('connected');
-      ws.send(JSON.stringify({ action: 'subscribe', channels: opts.channels ?? [], since: lastSeq }));
+      ws.send(JSON.stringify({ action: 'subscribe', channels: currentChannels, since: lastSeq }));
     };
     ws.onmessage = (ev) => {
       let event: WireEvent;
@@ -123,6 +126,12 @@ export function createDaemonClient(opts: DaemonClientOptions): DaemonClient {
         socket.onclose = null; // a deliberate stop should not trigger a reconnect
         socket.close();
         socket = null;
+      }
+    },
+    updateChannels(channels) {
+      currentChannels = channels;
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ action: 'subscribe', channels, since: lastSeq }));
       }
     },
   };

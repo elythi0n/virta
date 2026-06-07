@@ -179,7 +179,7 @@ function makeMessage(): FeedMessage {
 
 type Rate = 'off' | 'live' | 'stress';
 const RATES: Record<Rate, number> = { off: 0, live: 12, stress: 200 }; // messages/second
-const MAX_MESSAGES = 8000; // bound memory; oldest drop once exceeded
+const MAX_MESSAGES = 2000; // bound memory; oldest drop once exceeded
 const TICK_MS = 50;
 // Calm-mode paced release: up to CALM_RELEASE_BATCH messages every CALM_RELEASE_TICK_MS (~18/s),
 // so each line stays on screen long enough to read; the rest queue behind the "+N" pill.
@@ -231,8 +231,11 @@ export default function FeedPanel({ channels, panelId }: Props) {
   const emptyRef = useRef(true);
   emptyRef.current = messages.length === 0;
   const channelsKey = channels ? channels.join(',') : '';
+  const backfilledRef = useRef(new Set<string>());
   useEffect(() => {
     if (!channels || channels.length === 0 || status !== 'connected') return;
+    if (backfilledRef.current.has(channelsKey)) return;
+    backfilledRef.current.add(channelsKey);
     let cancelled = false;
     Promise.all(channels.map((c) => getHistory(c, '', 50).catch(() => [] as LoggedMessage[]))).then((lists) => {
       if (cancelled || !emptyRef.current) return;
@@ -318,7 +321,8 @@ export default function FeedPanel({ channels, panelId }: Props) {
   const chatters = useMemo(() => {
     const seen = new Set<string>();
     const out: string[] = [];
-    for (let i = messages.length - 1; i >= 0 && out.length < 100; i--) {
+    const scanFrom = Math.max(0, messages.length - 200);
+    for (let i = messages.length - 1; i >= scanFrom && out.length < 100; i--) {
       const a = messages[i].author;
       if (a && !seen.has(a)) {
         seen.add(a);

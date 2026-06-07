@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { DeletionRef, FeedMessage } from '@virta/feed-core';
-import { createDaemonClient, type ConnectionStatus } from './client';
+import type { ConnectionStatus } from './client';
 import type { ChatSettings, HeldMessage } from './wire.gen';
+import { useSharedStream } from './sharedStream';
 
 export interface StreamHandlers {
   onMessage: (msg: FeedMessage) => void;
@@ -19,25 +20,43 @@ export interface StreamHandlers {
 // Handlers are read through a ref, so passing fresh closures each render never reconnects the
 // socket; only a change to the channel set does.
 export function useDaemonStream(handlers: StreamHandlers, channels?: string[]): ConnectionStatus {
-  const [status, setStatus] = useState<ConnectionStatus>('connecting');
+  const conn = useSharedStream();
+  const [status, setStatus] = useState<ConnectionStatus>(() => conn.getStatus());
   const ref = useRef(handlers);
   ref.current = handlers;
-  // Stable key so re-renders with an equivalent set don't reconnect.
+  // Stable per-mount subscriber ID so each hook call owns its own subscription slot.
+  const idRef = useRef<string | null>(null);
+  if (!idRef.current) {
+    idRef.current = Math.random().toString(36).slice(2);
+  }
+  const stableId = idRef.current;
+
+  // Stable key so re-renders with an equivalent set don't re-subscribe.
   const key = channels ? channels.join(',') : '';
+
   useEffect(() => {
-    const client = createDaemonClient({
-      onMessage: (m) => ref.current.onMessage(m),
-      onDeleted: (r) => ref.current.onDeleted?.(r),
-      onClear: (c, u) => ref.current.onClear?.(c, u),
-      onChatSettings: (c, s) => ref.current.onChatSettings?.(c, s),
-      onHeld: (h) => ref.current.onHeld?.(h),
-      onHeldResolved: (c, id, approved) => ref.current.onHeldResolved?.(c, id, approved),
-      onPlugin: (stream, data) => ref.current.onPlugin?.(stream, data),
-      onStatus: setStatus,
-      channels: key ? key.split(',') : undefined,
-    });
-    client.start();
-    return () => client.stop();
+    const off = conn.onStatusChange(setStatus);
+    setStatus(conn.getStatus());
+    conn.subscribe(
+      stableId,
+      {
+        onMessage: (m) => ref.current.onMessage(m),
+        onDeleted: (r) => ref.current.onDeleted?.(r),
+        onClear: (c, u) => ref.current.onClear?.(c, u),
+        onChatSettings: (c, s) => ref.current.onChatSettings?.(c, s),
+        onHeld: (h) => ref.current.onHeld?.(h),
+        onHeldResolved: (c, id, approved) => ref.current.onHeldResolved?.(c, id, approved),
+        onPlugin: (stream, data) => ref.current.onPlugin?.(stream, data),
+      },
+      key ? key.split(',') : undefined,
+    );
+    return () => {
+      conn.unsubscribe(stableId);
+      off();
+    };
+    // Re-subscribe when the channel set changes; stableId and conn never change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
+
   return status;
 }

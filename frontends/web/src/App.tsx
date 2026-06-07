@@ -16,6 +16,8 @@ import { OpenChannelProvider } from './openChannel';
 import { OpenStreamProvider } from './openStream';
 import { OpenUnifiedChatProvider } from './openUnifiedChat';
 import { HostedAuthProvider } from './daemon/hostedAuth';
+import { SharedDaemonStreamProvider } from './daemon/sharedStream';
+import { ChannelsProvider } from './daemon/ChannelsProvider';
 import { DensityProvider } from './density';
 import { FeedDisplayProvider } from './feedDisplay';
 import { A11yProvider } from './a11y';
@@ -333,6 +335,8 @@ export default function App() {
 
   return (
     <HostedAuthProvider>
+    <SharedDaemonStreamProvider>
+    <ChannelsProvider>
     <ThemeProvider value={{ mode, setMode, theme }}>
       <A11yProvider value={{ reduceMotion, setReduceMotion, dyslexicFont, setDyslexicFont }}>
       <DensityProvider value={{ density, setDensity }}>
@@ -384,6 +388,8 @@ export default function App() {
       </DensityProvider>
       </A11yProvider>
     </ThemeProvider>
+    </ChannelsProvider>
+    </SharedDaemonStreamProvider>
     </HostedAuthProvider>
   );
 }
