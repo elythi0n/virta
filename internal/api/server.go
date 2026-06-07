@@ -63,6 +63,7 @@ type Server struct {
 	webhooks          Webhooks          // outbound webhook management, installed via SetWebhooks
 	mcpHandler        http.Handler      // MCP server, installed via SetMCPHandler (nil = not available)
 	intel             Intel             // intelligence controller, installed via SetIntel
+	plugins           Plugins           // plugin host controller, installed via SetPlugins (nil = not available)
 	hostedAuth        HostedAuth        // multi-user account surface (nil in local/desktop mode)
 	webui             http.Handler      // embedded web UI, installed via SetWebUI (nil = not served)
 	webuiIndexHTML    func() ([]byte, error) // reads index.html directly, bypassing the file server
@@ -446,6 +447,11 @@ func (s *Server) routes() []route {
 		{"POST", "/v1/themes", ScopeControl, s.handleImportTheme, "Import a .vtheme JSON"},
 		{"GET", "/v1/themes/{id}/export", ScopeRead, s.handleExportTheme, "Export a theme as .vtheme JSON"},
 		{"DELETE", "/v1/themes/{id}", ScopeControl, s.handleDeleteTheme, "Delete a custom theme"},
+		{"GET", "/v1/plugins", ScopeRead, s.handleListPlugins, "List registered plugins and their state"},
+		{"POST", "/v1/plugins/{id}/enable", ScopeAdmin, s.handleEnablePlugin, "Enable a plugin"},
+		{"POST", "/v1/plugins/{id}/disable", ScopeAdmin, s.handleDisablePlugin, "Disable a plugin"},
+		{"POST", "/v1/plugins/install", ScopeAdmin, s.handleInstallPlugin, "Install a plugin from a Git URL"},
+		{"DELETE", "/v1/plugins/{id}", ScopeAdmin, s.handleUninstallPlugin, "Uninstall a remote plugin"},
 		{"GET", "/v1/intel/models", ScopeRead, s.handleListModels, "List available AI models"},
 		{"POST", "/v1/intel/ask", ScopeRead, s.handleAsk, "Ask a question over logged chat (agent loop, NDJSON stream)"},
 		{"POST", "/v1/intel/title", ScopeRead, s.handleGenerateTitle, "Stream a short AI-generated title for a conversation"},

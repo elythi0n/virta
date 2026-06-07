@@ -7,6 +7,7 @@ import FeedPanel from './FeedPanel';
 import FiltersPanel from './FiltersPanel';
 import HeldQueuePanel from './HeldQueuePanel';
 import MentionInbox from './MentionInbox';
+import MarketsPanel from './MarketsPanel';
 import PluginsPanel from './PluginsPanel';
 import SearchPanel from './SearchPanel';
 import StreamPane from './StreamPane';
@@ -51,6 +52,7 @@ export const PANELS: PanelContribution[] = [
   { kind: 'ask', title: 'Ask AI', icon: 'chat', render: () => <AskPanel /> },
   { kind: 'search', title: 'Search', icon: 'search', render: () => <SearchPanel /> },
   { kind: 'stats', title: 'Stats', icon: 'stats', render: () => <Placeholder title="Stats" /> },
+  { kind: 'markets', title: 'Markets', icon: 'stats', render: () => <MarketsPanel /> },
   { kind: 'obs', title: 'OBS', icon: 'stream', render: () => <OBSPanel /> },
   // Opened programmatically, not from the catalog.
   { kind: 'watch', title: 'Stream', icon: 'stream', catalog: false, render: (p) => <WatchPane channel={p.channels?.[0]} /> },

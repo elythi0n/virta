@@ -1,60 +1,95 @@
-import { useState } from 'react';
-import { Badge, Text } from '@virta/ui-kit';
-import Icon, { type IconName } from '../Icon';
+import { useCallback, useEffect, useState } from 'react';
+import { Badge, Button, Input, Text } from '@virta/ui-kit';
+import type { IconName } from '../Icon';
+import Icon from '../Icon';
+import { listPlugins, enablePlugin, disablePlugin, installPlugin, uninstallPlugin } from '../daemon/plugins';
+import type { PluginInfo } from '../daemon/plugins';
 import styles from './PluginsPanel.module.css';
-
-type PluginStatus = 'installed' | 'available' | 'coming-soon';
-
-interface PluginDef {
-  id: string;
-  name: string;
-  description: string;
-  author: string;
-  icon: IconName;
-  status: PluginStatus;
-  tags: string[];
-}
-
-const PLUGINS: PluginDef[] = [
-  { id: 'virta.chat',         name: 'Chat',          description: 'Unified live chat across Twitch, Kick, and X in one feed.',                       author: 'Virta', icon: 'chat',     status: 'installed',   tags: ['chat', 'feed'] },
-  { id: 'virta.mentions',     name: 'Mentions',      description: 'Collects every message that names you across all channels.',                        author: 'Virta', icon: 'mentions', status: 'installed',   tags: ['chat'] },
-  { id: 'virta.celebrations', name: 'Celebrations',  description: 'Shoutout wall for subs, raids, gifts, and announcements.',                          author: 'Virta', icon: 'gift',     status: 'installed',   tags: ['events'] },
-  { id: 'virta.filters',      name: 'Filters',       description: 'Highlight, hide, or mask messages by keyword, author, regex, or platform.',         author: 'Virta', icon: 'filter',   status: 'installed',   tags: ['moderation'] },
-  { id: 'virta.mods',         name: 'Mod queue',     description: 'AutoMod hold queue — approve or deny held messages from the dock.',                 author: 'Virta', icon: 'mods',     status: 'installed',   tags: ['moderation'] },
-  { id: 'virta.search',       name: 'Search',        description: 'Full-text search over your chat history with channel and author filters.',          author: 'Virta', icon: 'search',   status: 'installed',   tags: ['history'] },
-  { id: 'virta.ask-ai',       name: 'Ask AI',        description: 'Ask questions about chat history using an AI agent: top fans, user stats.',         author: 'Virta', icon: 'chat',     status: 'installed',   tags: ['ai'] },
-  { id: 'virta.stream',       name: 'Streams',       description: 'Grid of all joined channels with live thumbnails, viewer counts, and quick launch.', author: 'Virta', icon: 'stream',   status: 'installed',   tags: ['stream'] },
-  { id: 'virta.stats',        name: 'Stats',         description: 'Live stats: messages per second, unique chatters, top emotes, activity timelines.', author: 'Virta', icon: 'stats',    status: 'coming-soon', tags: ['analytics'] },
-  { id: 'virta.markets',      name: 'Markets',       description: 'Real-time ticker for crypto, stocks, and FX via exchange WebSockets.',              author: 'Virta', icon: 'stats',    status: 'coming-soon', tags: ['data'] },
-];
 
 type FilterTab = 'all' | 'installed' | 'available';
 
-const STATUS_LABEL: Record<PluginStatus, string> = {
-  installed: 'Installed',
-  available: 'Available',
-  'coming-soon': 'Soon',
+// Static catalog used as fallback while the API is loading.
+const BUILT_IN_CATALOG: PluginInfo[] = [
+  { id: 'virta.chat',         name: 'Chat',          description: 'Unified live chat across Twitch, Kick, and X in one feed.',                         built_in: true, state: 'enabled',  tags: ['chat', 'feed'],   version: '1.0.0', publisher: 'Virta' },
+  { id: 'virta.mentions',     name: 'Mentions',      description: 'Collects every message that names you across all channels.',                         built_in: true, state: 'enabled',  tags: ['chat'],           version: '1.0.0', publisher: 'Virta' },
+  { id: 'virta.celebrations', name: 'Celebrations',  description: 'Shoutout wall for subs, raids, gifts, and announcements.',                           built_in: true, state: 'enabled',  tags: ['events'],         version: '1.0.0', publisher: 'Virta' },
+  { id: 'virta.filters',      name: 'Filters',       description: 'Highlight, hide, or mask messages by keyword, author, regex, or platform.',          built_in: true, state: 'enabled',  tags: ['moderation'],     version: '1.0.0', publisher: 'Virta' },
+  { id: 'virta.mods',         name: 'Mod queue',     description: 'AutoMod hold queue — approve or deny held messages from the dock.',                  built_in: true, state: 'enabled',  tags: ['moderation'],     version: '1.0.0', publisher: 'Virta' },
+  { id: 'virta.search',       name: 'Search',        description: 'Full-text search over your chat history with channel and author filters.',            built_in: true, state: 'enabled',  tags: ['history'],        version: '1.0.0', publisher: 'Virta' },
+  { id: 'virta.ask-ai',       name: 'Ask AI',        description: 'Ask questions about chat history using an AI agent: top fans, user stats.',          built_in: true, state: 'enabled',  tags: ['ai'],             version: '1.0.0', publisher: 'Virta' },
+  { id: 'virta.stream',       name: 'Streams',       description: 'Grid of all joined channels with live thumbnails, viewer counts, and quick launch.', built_in: true, state: 'enabled',  tags: ['stream'],         version: '1.0.0', publisher: 'Virta' },
+  { id: 'com.virta.markets',  name: 'Markets',       description: 'Real-time crypto price ticker and board via free exchange WebSockets.',               built_in: true, state: 'enabled',  tags: ['data', 'crypto'], version: '1.0.0', publisher: 'Virta' },
+  { id: 'virta.stats',        name: 'Stats',         description: 'Live stats: messages per second, unique chatters, top emotes, activity timelines.',  built_in: true, state: 'disabled', tags: ['analytics'],      version: '0.0.0', publisher: 'Virta' },
+];
+
+const ICON_BY_ID: Record<string, IconName> = {
+  'virta.chat': 'chat', 'virta.mentions': 'mentions', 'virta.celebrations': 'gift',
+  'virta.filters': 'filter', 'virta.mods': 'mods', 'virta.search': 'search',
+  'virta.ask-ai': 'chat', 'virta.stream': 'stream', 'com.virta.markets': 'stats',
+  'virta.stats': 'stats',
 };
-const STATUS_TONE: Record<PluginStatus, 'ok' | 'neutral' | 'warn'> = {
-  installed: 'ok',
-  available: 'neutral',
-  'coming-soon': 'warn',
-};
+const pluginIcon = (id: string): IconName => ICON_BY_ID[id] ?? 'plugins';
 
 export default function PluginsPanel() {
   const [filter, setFilter] = useState<FilterTab>('all');
+  const [plugins, setPlugins] = useState<PluginInfo[]>(BUILT_IN_CATALOG);
+  const [busy, setBusy] = useState<Record<string, boolean>>({});
+  const [installUrl, setInstallUrl] = useState('');
+  const [installing, setInstalling] = useState(false);
+  const [installErr, setInstallErr] = useState('');
 
-  const counts: Record<FilterTab, number> = {
-    all: PLUGINS.length,
-    installed: PLUGINS.filter(p => p.status === 'installed').length,
-    available: PLUGINS.filter(p => p.status === 'available').length,
+  const reload = useCallback(() => {
+    listPlugins().then(live => {
+      const byId = new Map<string, PluginInfo>();
+      BUILT_IN_CATALOG.forEach(p => byId.set(p.id, p));
+      live.forEach(p => byId.set(p.id, p));
+      setPlugins([...byId.values()]);
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => { reload(); }, [reload]);
+
+  const toggle = useCallback(async (p: PluginInfo) => {
+    setBusy(b => ({ ...b, [p.id]: true }));
+    try {
+      await (p.state === 'enabled' ? disablePlugin(p.id) : enablePlugin(p.id));
+      reload();
+    } catch { /* keep state */ } finally {
+      setBusy(b => ({ ...b, [p.id]: false }));
+    }
+  }, [reload]);
+
+  const doInstall = useCallback(async () => {
+    const url = installUrl.trim();
+    if (!url) return;
+    setInstalling(true); setInstallErr('');
+    try {
+      await installPlugin(url);
+      setInstallUrl('');
+      reload();
+    } catch (e) {
+      setInstallErr(e instanceof Error ? e.message : 'Installation failed');
+    } finally {
+      setInstalling(false);
+    }
+  }, [installUrl, reload]);
+
+  const doUninstall = useCallback(async (id: string) => {
+    setBusy(b => ({ ...b, [id]: true }));
+    try { await uninstallPlugin(id); reload(); }
+    finally { setBusy(b => ({ ...b, [id]: false })); }
+  }, [reload]);
+
+  const counts = {
+    all: plugins.length,
+    installed: plugins.filter(p => p.state === 'enabled').length,
+    available: plugins.filter(p => p.state === 'disabled').length,
   };
 
-  const visible = PLUGINS.filter(p => {
-    if (filter === 'installed') return p.status === 'installed';
-    if (filter === 'available') return p.status === 'available';
-    return true;
-  });
+  const visible = plugins.filter(p =>
+    filter === 'installed' ? p.state === 'enabled' :
+    filter === 'available' ? p.state === 'disabled' : true,
+  );
 
   return (
     <div className={styles.panel}>
@@ -63,57 +98,82 @@ export default function PluginsPanel() {
         <div className={styles.headText}>
           <Text variant="title" as="h2" className={styles.title}>Plugins</Text>
           <Text variant="meta" tone="subtle" as="p" className={styles.lead}>
-            Extend Virta with panels, commands, and live data. Third-party installs planned for a future release.
+            Extend Virta with panels, commands, and live data.
           </Text>
         </div>
       </header>
 
+      <div className={styles.installBar}>
+        <Input
+          aria-label="Plugin Git URL"
+          placeholder="https://github.com/user/virta-plugin  (install from a Git URL)"
+          value={installUrl}
+          onChange={e => setInstallUrl(e.currentTarget.value)}
+          onKeyDown={e => e.key === 'Enter' && void doInstall()}
+        />
+        <Button variant="solid" size="sm" disabled={!installUrl.trim() || installing} onClick={() => void doInstall()}>
+          {installing ? 'Installing…' : 'Install'}
+        </Button>
+        {installErr && <p className={styles.installErr}>{installErr}</p>}
+      </div>
+
       <div className={styles.filterBar} role="tablist" aria-label="Filter plugins">
         {(['all', 'installed', 'available'] as FilterTab[]).map(tab => (
-          <button
-            key={tab}
-            type="button"
-            role="tab"
-            aria-selected={filter === tab}
+          <button key={tab} type="button" role="tab" aria-selected={filter === tab}
             className={`${styles.tab} ${filter === tab ? styles.tabOn : ''}`}
-            onClick={() => setFilter(tab)}
-          >
-            {tab === 'all' ? 'All' : tab === 'installed' ? 'Installed' : 'Available'}
+            onClick={() => setFilter(tab)}>
+            {tab === 'all' ? 'All' : tab === 'installed' ? 'Enabled' : 'Disabled'}
             <span className={styles.tabCount}>{counts[tab]}</span>
           </button>
         ))}
       </div>
 
       <ul className={styles.grid} role="list">
-        {visible.map(p => (
-          <li key={p.id} className={styles.item}>
-            <div
-              className={[
-                styles.card,
-                p.status === 'installed' ? styles.installed : '',
-                p.status === 'coming-soon' ? styles.soon : '',
-              ].filter(Boolean).join(' ')}
-            >
-              <div className={styles.cardTop}>
-                <span className={styles.cardIcon}>
-                  <Icon name={p.icon} size={16} />
-                </span>
-                <Badge tone={STATUS_TONE[p.status]}>{STATUS_LABEL[p.status]}</Badge>
-              </div>
-
-              <div className={styles.cardName}>{p.name}</div>
-
-              <p className={styles.cardDesc}>{p.description}</p>
-
-              <div className={styles.cardFooter}>
-                <span className={styles.cardAuthor}>{p.author}</span>
-                <div className={styles.cardTags}>
-                  {p.tags.map(t => <span key={t} className={styles.tag}>{t}</span>)}
+        {visible.map(p => {
+          const isBusy = !!busy[p.id];
+          const isEnabled = p.state === 'enabled';
+          const isError = p.state === 'error';
+          return (
+            <li key={p.id} className={styles.item}>
+              <div className={`${styles.card} ${isEnabled ? styles.installed : ''} ${isError ? styles.errored : ''}`}>
+                <div className={styles.cardTop}>
+                  <span className={styles.cardIcon}><Icon name={pluginIcon(p.id)} size={16} /></span>
+                  <div className={styles.cardBadges}>
+                    <Badge tone={isEnabled ? 'ok' : isError ? 'danger' : 'neutral'}>
+                      {isEnabled ? 'Enabled' : isError ? 'Error' : 'Disabled'}
+                    </Badge>
+                    {p.built_in && <Badge tone="neutral">Built-in</Badge>}
+                  </div>
                 </div>
+                <div className={styles.cardName}>{p.name}</div>
+                <p className={styles.cardDesc}>{p.description}</p>
+                {isError && p.error && <p className={styles.cardError}>{p.error}</p>}
+                <div className={styles.cardFooter}>
+                  <span className={styles.cardAuthor}>{p.publisher ?? 'Third-party'}</span>
+                  <div className={styles.cardActions}>
+                    {!p.built_in && isEnabled && (
+                      <button type="button" className={styles.uninstallBtn}
+                        disabled={isBusy} onClick={() => void doUninstall(p.id)}>
+                        Uninstall
+                      </button>
+                    )}
+                    <button type="button"
+                      className={`${styles.toggleBtn} ${isEnabled ? styles.toggleBtnOn : ''}`}
+                      disabled={isBusy}
+                      onClick={() => void toggle(p)}>
+                      {isBusy ? '…' : isEnabled ? 'Disable' : 'Enable'}
+                    </button>
+                  </div>
+                </div>
+                {(p.tags ?? []).length > 0 && (
+                  <div className={styles.cardTags}>
+                    {(p.tags ?? []).map(t => <span key={t} className={styles.tag}>{t}</span>)}
+                  </div>
+                )}
               </div>
-            </div>
-          </li>
-        ))}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

@@ -1,0 +1,246 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--virta-bg-0);
+  overflow: hidden;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+.header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--virta-space-12);
+  padding: var(--virta-space-8) var(--virta-space-12);
+  border-bottom: 1px solid var(--virta-line);
+  background: var(--virta-bg-1);
+}
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+}
+
+/* Connection status dot */
+.statusDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+.statusDotLive    { background: var(--virta-ok);     box-shadow: 0 0 0 3px color-mix(in srgb, var(--virta-ok) 22%, transparent); }
+.statusDotIdle    { background: var(--virta-warn); }
+.statusDotWarn    { background: var(--virta-warn);   animation: pulse 1.5s ease-in-out infinite; }
+.statusDotOff     { background: var(--virta-danger); }
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+@media (prefers-reduced-motion: reduce) { .statusDotWarn { animation: none; } }
+
+.statusLabel { font-variant-numeric: tabular-nums; }
+
+/* ── Empty state ─────────────────────────────────────────────────────── */
+.empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--virta-space-8);
+  color: var(--virta-text-2);
+}
+
+/* ── Board mode ──────────────────────────────────────────────────────── */
+.board {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.boardHead {
+  display: grid;
+  grid-template-columns: 1fr 60px 52px 64px auto;
+  gap: var(--virta-space-8);
+  padding: var(--virta-space-4) var(--virta-space-12);
+  background: var(--virta-bg-1);
+  border-bottom: 1px solid var(--virta-line);
+  font-family: var(--virta-font-ui);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--virta-text-2);
+}
+.boardPriceHead { text-align: right; }
+
+.boardRow {
+  display: grid;
+  grid-template-columns: 1fr 60px 52px 64px auto;
+  gap: var(--virta-space-8);
+  align-items: center;
+  padding: var(--virta-space-8) var(--virta-space-12);
+  border-bottom: 1px solid var(--virta-line);
+  transition: background var(--virta-motion-fast) ease;
+}
+.boardRow:last-child { border-bottom: 0; }
+.boardRow:hover { background: var(--virta-bg-1); }
+
+.boardSymbol {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+}
+.boardBase {
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  font-weight: 700;
+  color: var(--virta-text-0);
+  letter-spacing: -0.01em;
+}
+.boardQuote {
+  font-family: var(--virta-font-mono);
+  font-size: 10px;
+  color: var(--virta-text-2);
+}
+.delayedBadge {
+  font-family: var(--virta-font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--virta-warn);
+  background: color-mix(in srgb, var(--virta-warn) 12%, transparent);
+  padding: 1px 5px;
+  border-radius: 20px;
+}
+
+.boardChange, .boardChange1h {
+  font-family: var(--virta-font-mono);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.boardPrice {
+  font-family: var(--virta-font-mono);
+  font-size: var(--virta-type-ui-size);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--virta-text-0);
+  text-align: right;
+}
+.boardPriceQuote {
+  font-size: 10px;
+  color: var(--virta-text-2);
+}
+.sparkline {
+  display: block;
+  opacity: 0.85;
+}
+
+/* Up/down semantic colors — token-driven, never raw green/red */
+.up   { color: var(--virta-ok); }
+.down { color: var(--virta-danger); }
+
+/* ── Ticker mode (marquee) ───────────────────────────────────────────── */
+.tickerWrap {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  background: var(--virta-bg-0);
+}
+.tickerTrack {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-24);
+  white-space: nowrap;
+  animation: marquee 30s linear infinite;
+  will-change: transform;
+  padding: 0 var(--virta-space-16);
+}
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); } /* -50% = one full copy width */
+}
+@media (prefers-reduced-motion: reduce) {
+  .tickerTrack {
+    animation: none;
+    flex-wrap: wrap;
+    white-space: normal;
+    padding: var(--virta-space-12) var(--virta-space-16);
+    gap: var(--virta-space-16);
+  }
+}
+
+.tickerItem {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  flex: none;
+}
+.tickerSymbol {
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  font-weight: 700;
+  color: var(--virta-text-0);
+  letter-spacing: -0.01em;
+}
+.tickerPrice {
+  font-family: var(--virta-font-mono);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--virta-text-1);
+}
+.tickerChange {
+  font-family: var(--virta-font-mono);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Compact mode (dense pill grid) ─────────────────────────────────── */
+.compact {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: var(--virta-space-4);
+  padding: var(--virta-space-8) var(--virta-space-12);
+}
+.compactItem {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 3px var(--virta-space-8);
+  border: 1px solid var(--virta-line);
+  border-radius: 20px;
+  background: var(--virta-bg-1);
+}
+.compactSymbol {
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 700;
+  color: var(--virta-text-0);
+}
+.compactChange {
+  font-family: var(--virta-font-mono);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────── */
+.footer {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--virta-space-4) var(--virta-space-12);
+  border-top: 1px solid var(--virta-line);
+  background: var(--virta-bg-1);
+  gap: var(--virta-space-8);
+}

@@ -227,3 +227,79 @@
   background: var(--virta-bg-1);
   border: 1px solid var(--virta-line);
 }
+
+/* ── Install bar ──────────────────────────────────────────────────── */
+.installBar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  padding: var(--virta-space-12) var(--virta-space-16);
+  border-bottom: 1px solid var(--virta-line);
+  flex-wrap: wrap;
+}
+.installBar > :first-child { flex: 1; min-width: 0; }
+.installErr {
+  width: 100%;
+  margin: 0;
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  color: var(--virta-danger);
+}
+
+/* ── Card state variants ─────────────────────────────────────────── */
+.errored {
+  border-color: color-mix(in srgb, var(--virta-danger) 40%, var(--virta-line));
+}
+.cardBadges {
+  display: flex;
+  gap: var(--virta-space-4);
+  flex-wrap: wrap;
+}
+.cardError {
+  margin: 0;
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  color: var(--virta-danger);
+}
+
+/* ── Card actions ────────────────────────────────────────────────── */
+.cardActions {
+  display: flex;
+  gap: var(--virta-space-4);
+  align-items: center;
+}
+.toggleBtn {
+  padding: 3px var(--virta-space-8);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-sm);
+  background: none;
+  color: var(--virta-text-2);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color var(--virta-motion-fast) ease, color var(--virta-motion-fast) ease;
+}
+.toggleBtn:hover:not(:disabled) { border-color: var(--virta-text-2); color: var(--virta-text-0); }
+.toggleBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+.toggleBtnOn {
+  border-color: color-mix(in srgb, var(--virta-danger) 40%, var(--virta-line));
+  color: var(--virta-danger);
+}
+.toggleBtnOn:hover:not(:disabled) {
+  border-color: var(--virta-danger);
+  background: color-mix(in srgb, var(--virta-danger) 8%, transparent);
+}
+.uninstallBtn {
+  padding: 3px var(--virta-space-8);
+  border: 1px solid transparent;
+  border-radius: var(--virta-radius-sm);
+  background: none;
+  color: var(--virta-text-2);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  cursor: pointer;
+}
+.uninstallBtn:hover:not(:disabled) { color: var(--virta-danger); }
+.uninstallBtn:disabled { opacity: 0.4; cursor: not-allowed; }

@@ -32,6 +32,8 @@ export { listTokens, mintToken, revokeToken } from './tokens';
 export { listThemes, importTheme, exportTheme, deleteTheme } from './themes';
 export { listModels, getIntelConfig, setIntelConfig, askStream } from './intel';
 export { getHostedStatus, register, login, logout, getMe } from './account';
+export { listPlugins, enablePlugin, disablePlugin, installPlugin, uninstallPlugin } from './plugins';
+export type { PluginInfo } from './plugins';
 export { listConversations, getConversation, saveConversation, deleteConversation, generateTitleStream } from './conversations';
 export type { ConversationSummary, ConversationDetail, SaveConversationPayload } from './conversations';
 export type { VirtaUser, HostedStatus } from './account';
