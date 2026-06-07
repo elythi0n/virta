@@ -90,8 +90,8 @@ export default function AccountMenu() {
           }
         >
           <div className={styles.dropdownUser}>
-            <Text variant="ui" className={styles.dropName}>{user.display_name || 'Account'}</Text>
-            <Text variant="meta" tone="subtle">{user.email}</Text>
+            <Text variant="ui" as="p" className={styles.dropName}>{user.display_name || 'Account'}</Text>
+            <Text variant="meta" tone="subtle" as="p">{user.email}</Text>
           </div>
           <div className={styles.dropDivider} />
           <button type="button" className={styles.dropItem} onClick={() => { setMenuOpen(false); void doLogout(); }}>

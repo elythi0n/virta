@@ -437,6 +437,7 @@ func (s *Server) routes() []route {
 		{"DELETE", "/v1/channels", ScopeControl, s.handleLeaveChannel, "Leave a channel"},
 		{"POST", "/v1/profiles", ScopeControl, s.handleCreateProfile, "Create a workspace profile"},
 		{"POST", "/v1/profiles/{id}/activate", ScopeControl, s.handleActivateProfile, "Activate a profile"},
+		{"DELETE", "/v1/profiles/{id}", ScopeControl, s.handleDeleteProfile, "Delete a workspace profile"},
 
 		{"PUT", "/v1/auth/config", ScopeAdmin, s.handleSetAuthConfig, "Set OAuth app credentials"},
 		{"DELETE", "/v1/accounts/{id}", ScopeAdmin, s.handleDisconnectAccount, "Disconnect an account"},

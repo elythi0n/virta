@@ -148,36 +148,50 @@ function StreamCard({
   });
 
   return (
-    <li className={styles.item} data-live={live}>
+    <li
+      className={styles.item}
+      data-live={live}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = 'copy';
+        e.dataTransfer.setData('virta/panel', JSON.stringify({ kind: 'feed', channels: [primary.key], title: display }));
+      }}
+    >
       <ContextMenu items={menuItems} trigger={
         <div className={styles.card}>
-          {/* Thumbnail */}
-          <button
-            type="button"
-            className={styles.thumb}
-            onClick={() => live ? openStream(primary.key, display) : openUnifiedChat(allKeys, display)}
-            aria-label={live ? `Watch ${display}` : `Open chat for ${display}`}
-          >
-            {info?.thumbnail_url ? (
-              <img className={styles.thumbImg} src={info.thumbnail_url} alt="" loading="lazy" />
-            ) : (
-              <span className={styles.thumbFallback} aria-hidden />
-            )}
-            {live ? (
-              <>
-                <span className={styles.liveBadge}>LIVE</span>
-                {viewers > 0 && (
-                  <span className={styles.viewers} title={liveCount > 1 ? `${fmt(viewers)} across ${liveCount} platforms` : undefined}>
-                    <i className={styles.vdot} aria-hidden />
-                    {fmt(viewers)}
-                    {liveCount > 1 && <span className={styles.viewersAll} aria-hidden> all</span>}
-                  </span>
-                )}
-              </>
-            ) : (
+          {/* Thumbnail / offline placeholder */}
+          {live ? (
+            <button
+              type="button"
+              className={styles.thumb}
+              onClick={() => openStream(primary.key, display)}
+              aria-label={`Watch ${display}`}
+            >
+              {info?.thumbnail_url ? (
+                <img className={styles.thumbImg} src={info.thumbnail_url} alt="" loading="lazy" />
+              ) : (
+                <span className={styles.thumbFallback} aria-hidden />
+              )}
+              <span className={styles.liveBadge}>LIVE</span>
+              {viewers > 0 && (
+                <span className={styles.viewers} title={liveCount > 1 ? `${fmt(viewers)} across ${liveCount} platforms` : undefined}>
+                  <i className={styles.vdot} aria-hidden />
+                  {fmt(viewers)}
+                  {liveCount > 1 && <span className={styles.viewersAll} aria-hidden> all</span>}
+                </span>
+              )}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={styles.thumbOfflineBtn}
+              onClick={() => openUnifiedChat(allKeys, display)}
+              aria-label={`Open chat for ${display}`}
+            >
+              <span className={styles.thumbOfflinePattern} aria-hidden />
               <span className={styles.offlineBadge}>OFFLINE</span>
-            )}
-          </button>
+            </button>
+          )}
 
           {/* Info section */}
           <div className={styles.info}>

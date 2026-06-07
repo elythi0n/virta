@@ -32,6 +32,8 @@ func (f *fakeProfiles) Activate(_ context.Context, id string) error {
 	return nil
 }
 
+func (f *fakeProfiles) Delete(_ context.Context, _ string) error { return nil }
+
 func TestProfiles_List(t *testing.T) {
 	s := start(t)
 	s.SetProfiles(&fakeProfiles{list: []ProfileInfo{{ID: "1", Name: "default", Default: true, Active: true}}})

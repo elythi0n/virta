@@ -21,12 +21,21 @@
   border-radius: var(--virta-radius-md);
   background: var(--virta-bg-0);
   overflow: hidden;
+  cursor: grab;
   transition:
     border-color var(--virta-motion-base) ease,
-    box-shadow var(--virta-motion-base) ease;
+    box-shadow var(--virta-motion-base) ease,
+    opacity var(--virta-motion-base) ease;
 }
+.item:active { cursor: grabbing; }
 .item[data-live='true'] {
   border-color: color-mix(in srgb, var(--virta-line) 60%, var(--virta-accent));
+}
+.item[data-live='false'] {
+  opacity: 0.6;
+}
+.item[data-live='false']:hover {
+  opacity: 1;
 }
 .item:hover {
   border-color: color-mix(in srgb, var(--virta-line) 35%, var(--virta-accent));
@@ -63,6 +72,33 @@
   width: 100%;
   height: 100%;
   background: linear-gradient(135deg, var(--virta-bg-2), var(--virta-bg-1));
+}
+.thumbOffline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      color-mix(in srgb, var(--virta-line) 60%, transparent) 0,
+      color-mix(in srgb, var(--virta-line) 60%, transparent) 1px,
+      transparent 1px,
+      transparent 10px
+    ),
+    var(--virta-bg-0);
+}
+.offlineBadge {
+  padding: 2px 6px;
+  border-radius: var(--virta-radius-sm);
+  background: var(--virta-bg-1);
+  border: 1px solid var(--virta-line);
+  color: var(--virta-text-2);
+  font-family: var(--virta-font-ui);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
 }
 .liveBadge {
   position: absolute;
@@ -158,11 +194,7 @@
   white-space: nowrap;
   font-weight: 600;
 }
-.offline {
-  flex: none;
-  color: var(--virta-text-2);
-  font-size: var(--virta-type-meta-size);
-}
+/* .offline label removed; offline state is now shown via the thumbOffline placeholder */
 /* List layout: the live audience inline in the row (there's no thumbnail to carry it). */
 .inlineLive {
   flex: none;

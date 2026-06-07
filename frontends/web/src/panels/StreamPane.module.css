@@ -79,13 +79,18 @@
   border-radius: var(--virta-radius-md);
   background: var(--virta-bg-1);
   overflow: hidden;
+  cursor: grab;
   transition:
     border-color var(--virta-motion-base) ease,
-    box-shadow var(--virta-motion-base) ease;
+    box-shadow var(--virta-motion-base) ease,
+    opacity var(--virta-motion-base) ease;
 }
+.item:active { cursor: grabbing; }
 .item[data-live='true'] {
   border-color: color-mix(in srgb, var(--virta-line) 55%, var(--virta-accent));
 }
+.item[data-live='false'] { opacity: 0.6; }
+.item[data-live='false']:hover { opacity: 1; }
 .item:hover {
   border-color: color-mix(in srgb, var(--virta-line) 30%, var(--virta-accent));
   box-shadow: 0 2px 12px -4px color-mix(in srgb, var(--virta-accent) 40%, transparent);
@@ -119,6 +124,31 @@
   height: 100%;
   background: linear-gradient(135deg, var(--virta-bg-2), var(--virta-bg-1));
 }
+.thumbOfflineBtn {
+  display: flex;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  overflow: hidden;
+  background: var(--virta-bg-0);
+}
+.thumbOfflinePattern {
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      color-mix(in srgb, var(--virta-line) 70%, transparent) 0,
+      color-mix(in srgb, var(--virta-line) 70%, transparent) 1px,
+      transparent 1px,
+      transparent 10px
+    );
+}
 
 /* Overlay badges — literal px because 6px isn't a token */
 .liveBadge {
@@ -135,17 +165,17 @@
   letter-spacing: 0.06em;
 }
 .offlineBadge {
-  position: absolute;
-  top: 6px;
-  left: 6px;
+  position: relative;
+  z-index: 1;
   padding: 2px 6px;
   border-radius: var(--virta-radius-sm);
-  background: color-mix(in srgb, var(--virta-bg-0) 75%, transparent);
+  background: var(--virta-bg-1);
+  border: 1px solid var(--virta-line);
   color: var(--virta-text-2);
   font-family: var(--virta-font-ui);
   font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
 }
 .viewers {
   position: absolute;

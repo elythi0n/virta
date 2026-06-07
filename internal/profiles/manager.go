@@ -316,6 +316,24 @@ func (m *Manager) SetMethod(ctx context.Context, p platform.Platform, mode platf
 	return m.save(ctx)
 }
 
+// Delete removes a profile by id. The active profile and the default profile cannot be deleted.
+func (m *Manager) Delete(ctx context.Context, id string) error {
+	m.mu.Lock()
+	activeID := m.activeID
+	m.mu.Unlock()
+	if id == activeID {
+		return fmt.Errorf("profiles: cannot delete the active profile")
+	}
+	p, err := m.repo.Get(ctx, id)
+	if err != nil {
+		return fmt.Errorf("profiles: delete %s: %w", id, err)
+	}
+	if p.IsDefault {
+		return fmt.Errorf("profiles: cannot delete the default profile")
+	}
+	return m.repo.Delete(ctx, id)
+}
+
 // ActiveID returns the id of the active profile ("" if none activated yet).
 func (m *Manager) ActiveID() string {
 	m.mu.Lock()

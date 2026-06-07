@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { DaemonUnreachableError } from './api';
-import { activateProfile, createProfile, listProfiles } from './profiles';
+import { activateProfile, createProfile, deleteProfile, listProfiles } from './profiles';
 import type { ProfileInfo } from './wire.gen';
 
 export type ProfilesStatus = 'loading' | 'ready' | 'offline';
@@ -39,6 +39,14 @@ export function useProfiles() {
     [refresh],
   );
 
+  const remove = useCallback(
+    async (id: string) => {
+      await deleteProfile(id);
+      await refresh();
+    },
+    [refresh],
+  );
+
   const active = profiles.find((p) => p.active);
-  return { profiles, active, status, activate, create, refresh };
+  return { profiles, active, status, activate, create, remove, refresh };
 }

@@ -757,6 +757,10 @@ func (c profileControl) Activate(ctx context.Context, id string) error {
 	return c.mgr.Activate(ctx, id)
 }
 
+func (c profileControl) Delete(ctx context.Context, id string) error {
+	return c.mgr.Delete(ctx, id)
+}
+
 func (c channelControl) Capabilities() map[string]api.Capabilities {
 	out := map[string]api.Capabilities{}
 	for p, caps := range c.eng.Capabilities() {

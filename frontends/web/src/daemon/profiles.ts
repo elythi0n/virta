@@ -12,3 +12,7 @@ export function createProfile(name: string): Promise<ProfileInfo> {
 export function activateProfile(id: string): Promise<void> {
   return request(`/v1/profiles/${encodeURIComponent(id)}/activate`, { method: 'POST' });
 }
+
+export function deleteProfile(id: string): Promise<void> {
+  return request(`/v1/profiles/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}

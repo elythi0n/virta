@@ -42,10 +42,14 @@
 
 .dropdownUser {
   padding: var(--virta-space-12);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 .dropName {
   font-weight: 600;
   color: var(--virta-text-0);
+  line-height: 1.3;
 }
 .dropDivider {
   height: 1px;

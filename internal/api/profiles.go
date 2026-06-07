@@ -12,6 +12,7 @@ type Profiles interface {
 	List(ctx context.Context) ([]ProfileInfo, error)
 	Create(ctx context.Context, name string) (ProfileInfo, error)
 	Activate(ctx context.Context, id string) error
+	Delete(ctx context.Context, id string) error
 }
 
 // ProfileInfo is a profile's summary, as served by GET /v1/profiles.
@@ -74,6 +75,23 @@ func (s *Server) handleActivateProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.profiles.Activate(r.Context(), id); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) handleDeleteProfile(w http.ResponseWriter, r *http.Request) {
+	if s.profiles == nil {
+		http.Error(w, "profiles unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	id := r.PathValue("id")
+	if id == "" {
+		http.Error(w, "missing profile id", http.StatusBadRequest)
+		return
+	}
+	if err := s.profiles.Delete(r.Context(), id); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

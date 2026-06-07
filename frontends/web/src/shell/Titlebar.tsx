@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button, Popover, Text } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { useProfiles } from '../daemon';
@@ -10,8 +10,39 @@ type Props = {
 };
 
 export default function Titlebar({ onOpenPalette }: Props) {
-  const { profiles, active, status: profilesStatus, activate } = useProfiles();
+  const { profiles, active, status: profilesStatus, activate, create, remove } = useProfiles();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleCreate = async () => {
+    const name = newName.trim();
+    if (!name) return;
+    setCreating(true);
+    try {
+      await create(name);
+      setNewName('');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDeletingId(id);
+    try {
+      await remove(id);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleOpenMenu = (open: boolean) => {
+    setMenuOpen(open);
+    if (open) setNewName('');
+  };
 
   return (
     <header className={styles.bar}>
@@ -20,43 +51,88 @@ export default function Titlebar({ onOpenPalette }: Props) {
         <span className={styles.betaBadge} aria-label="Beta">Beta</span>
         <Popover
           open={menuOpen}
-          onOpenChange={setMenuOpen}
+          onOpenChange={handleOpenMenu}
           align="start"
           trigger={
             <Button variant="ghost" size="sm" className={styles.profileBtn} disabled={profilesStatus === 'offline'}>
-              {active?.name ?? 'Profile'}
+              {active?.name ?? 'Workspace'}
               <Icon name="chevron-down" size={14} />
             </Button>
           }
         >
-          <div className={styles.menu} role="menu" aria-label="Profiles">
+          <div className={styles.menu} role="menu" aria-label="Workspaces">
+            <div className={styles.menuHeader}>
+              <Text variant="meta" tone="subtle">Workspaces</Text>
+            </div>
+
             {profiles.length === 0 ? (
               <Text variant="meta" tone="subtle" as="p" className={styles.menuEmpty}>
-                No profiles
+                No workspaces
               </Text>
             ) : (
-              profiles.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  role="menuitemradio"
-                  aria-checked={p.active}
-                  className={styles.menuItem}
-                  onClick={() => {
-                    setMenuOpen(false);
-                    if (!p.active) void activate(p.id);
-                  }}
-                >
-                  <span className={styles.check}>{p.active ? '✓' : ''}</span>
-                  <span className={styles.menuName}>{p.name}</span>
-                  {p.default && (
-                    <Text variant="meta" tone="subtle">
-                      default
-                    </Text>
-                  )}
-                </button>
-              ))
+              <div className={styles.menuList}>
+                {profiles.map((p) => (
+                  <div key={p.id} className={styles.menuRow}>
+                    <button
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={p.active}
+                      className={styles.menuItem}
+                      data-active={p.active}
+                      onClick={() => {
+                        if (!p.active) void activate(p.id);
+                        setMenuOpen(false);
+                      }}
+                    >
+                      <span className={styles.activeIndicator} aria-hidden>
+                        {p.active && <Icon name="check" size={12} />}
+                      </span>
+                      <span className={styles.menuName}>{p.name}</span>
+                      {p.default && <span className={styles.defaultBadge}>default</span>}
+                    </button>
+                    {!p.default && !p.active && (
+                      <button
+                        type="button"
+                        className={styles.deleteBtn}
+                        aria-label={`Delete ${p.name}`}
+                        disabled={deletingId === p.id}
+                        onClick={(e) => void handleDelete(p.id, e)}
+                      >
+                        <Icon name="x" size={12} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
+
+            <div className={styles.menuDivider} />
+
+            <div className={styles.newProfile}>
+              <input
+                ref={inputRef}
+                className={styles.newProfileInput}
+                type="text"
+                placeholder="New workspace name"
+                value={newName}
+                onChange={(e) => setNewName(e.currentTarget.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void handleCreate();
+                  if (e.key === 'Escape') { setNewName(''); setMenuOpen(false); }
+                }}
+                disabled={creating}
+                maxLength={64}
+              />
+              <button
+                type="button"
+                className={styles.newProfileBtn}
+                disabled={!newName.trim() || creating}
+                onClick={() => void handleCreate()}
+                aria-label="Create workspace"
+              >
+                <Icon name="plus" size={13} />
+              </button>
+            </div>
           </div>
         </Popover>
       </div>
@@ -71,7 +147,6 @@ export default function Titlebar({ onOpenPalette }: Props) {
         </button>
       </div>
 
-      {/* Right: account menu (shown only in hosted mode; invisible in local/desktop mode). */}
       <div className={styles.right}>
         <AccountMenu />
       </div>
