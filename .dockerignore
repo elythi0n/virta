@@ -1,4 +1,5 @@
-# Keep the build context small and free of local artifacts.
+# Keep the build context lean. The multi-stage Dockerfile builds the UI inside Docker
+# so we don't need pre-built artefacts; only source files are needed.
 /dist/
 /bin/
 coverage.out
@@ -7,9 +8,27 @@ coverage.txt
 .git/
 docs/
 tracker.md
-frontends/*/node_modules/
+
+# node_modules are reinstalled inside Docker — never send them in the context.
+**/node_modules/
+
+# Pre-built frontend artefacts: the Docker ui stage rebuilds these from source.
+# Don't include them so Docker layer caching is not broken by local dirty state.
+frontends/web/dist/
+frontends/desktop/
+internal/webui/dist/
+
+# Ignore desktop + TUI build artefacts (server image doesn't need them).
+frontends/desktop/build/
+frontends/desktop/bin/
+frontends/desktop/assets/index.html
+
+# Database files, secrets, local overrides — never in the image.
 *.db
 *.db-wal
 *.db-shm
 .env
 .env.*
+
+# Test/bench output.
+*.pprof

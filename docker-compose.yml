@@ -33,10 +33,11 @@ services:
     volumes:
       - virta-data:/data
     healthcheck:
-      test:     ["CMD", "wget", "-qO-", "http://localhost:8344/v1/health"]
+      test:     ["CMD", "/usr/local/bin/virtad", "version"]
       interval: 15s
       timeout:  5s
       retries:  3
+      start_period: 10s
 
   # Postgres — required backend for hosted mode; also the recommended backend for single-user
   # server installs (more robust than SQLite for long-lived deployments).
