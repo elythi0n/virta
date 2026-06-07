@@ -39,12 +39,12 @@ func main() {
 		OnShutdown:       app.shutdown,
 		// Expose App methods so the frontend can call window controls.
 		Bind: []interface{}{app},
-		// Without an explicit Linux config Wails defaults WebviewGpuPolicy to
-		// Never, which disables hardware acceleration entirely. Twitch's Amazon IVS
-		// player requires GPU access (WebGPU or hardware video decoding); OnDemand
-		// lets the GPU be used when the page requests it.
+		// Keep GPU policy at Never (the Wails v2 safe default for Linux).
+		// OnDemand/Always causes webview crashes on many Linux GPU/driver configs
+		// (wailsapp/wails#2977). Twitch's IVS player needs WebGPU which won't work
+		// here anyway; the WatchPane opens streams in the system browser instead.
 		Linux: &linux.Options{
-			WebviewGpuPolicy: linux.WebviewGpuPolicyOnDemand,
+			WebviewGpuPolicy: linux.WebviewGpuPolicyNever,
 		},
 	})
 	if err != nil {
