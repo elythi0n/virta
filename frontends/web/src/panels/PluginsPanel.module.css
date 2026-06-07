@@ -71,15 +71,16 @@
   color: var(--virta-accent);
 }
 
-/* ---- Plugin list ---- */
-.list {
+/* ---- Plugin grid ---- */
+.grid {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: var(--virta-space-12) var(--virta-space-16);
-  display: flex;
-  flex-direction: column;
-  gap: var(--virta-space-8);
+  padding: var(--virta-space-16);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--virta-space-12);
+  align-content: start;
   list-style: none;
   margin: 0;
 }
@@ -88,12 +89,13 @@
 .card {
   position: relative;
   display: flex;
-  align-items: flex-start;
-  gap: var(--virta-space-12);
-  padding: var(--virta-space-12) var(--virta-space-16) var(--virta-space-12) var(--virta-space-12);
+  flex-direction: column;
+  gap: var(--virta-space-8);
+  padding: var(--virta-space-16) var(--virta-space-12) var(--virta-space-12);
   border: 1px solid var(--virta-line);
   border-radius: var(--virta-radius-md);
   background: var(--virta-bg-1);
+  height: 100%;
   transition:
     border-color var(--virta-motion-fast) ease,
     background var(--virta-motion-fast) ease;
@@ -103,16 +105,19 @@
   background: var(--virta-bg-2);
 }
 
-/* Installed cards get an accent border + top-right checkmark badge. */
 .cardInstalled {
-  border-color: color-mix(in srgb, var(--virta-ok) 45%, var(--virta-line));
+  border-color: color-mix(in srgb, var(--virta-ok) 40%, var(--virta-line));
   background: color-mix(in srgb, var(--virta-ok) 4%, var(--virta-bg-1));
 }
 .cardInstalled:hover {
-  border-color: color-mix(in srgb, var(--virta-ok) 70%, var(--virta-line));
+  border-color: color-mix(in srgb, var(--virta-ok) 65%, var(--virta-line));
 }
 
-/* Checkmark badge, top-right corner. */
+.cardSoon {
+  opacity: 0.65;
+}
+
+/* Checkmark badge, top-right corner */
 .checkmark {
   position: absolute;
   top: -1px;
@@ -120,60 +125,65 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border-radius: 0 var(--virta-radius-md) 0 var(--virta-radius-md);
   background: var(--virta-ok);
   color: var(--virta-bg-0);
 }
 
-/* Icon column */
+/* Icon */
 .cardIcon {
   flex: none;
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--virta-radius-md);
   background: var(--virta-bg-0);
   border: 1px solid var(--virta-line);
   color: var(--virta-text-1);
+  margin-bottom: var(--virta-space-4);
 }
 .cardInstalled .cardIcon {
   border-color: color-mix(in srgb, var(--virta-ok) 30%, var(--virta-line));
   color: var(--virta-text-0);
 }
 
-/* Body column */
-.cardBody {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--virta-space-4);
-}
-.cardHead {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--virta-space-8);
-}
+/* Name */
 .cardName {
   font-family: var(--virta-font-ui);
   font-size: var(--virta-type-ui-size);
   font-weight: 700;
   color: var(--virta-text-0);
   letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+/* Author + badge row */
+.cardMeta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--virta-space-6);
 }
 .cardAuthor {
   font-family: var(--virta-font-ui);
   font-size: var(--virta-type-meta-size);
   color: var(--virta-text-2);
 }
+
+/* Description */
 .cardDesc {
+  flex: 1;
   margin: 0;
-  color: var(--virta-text-1);
-  max-width: 60ch;
+  color: var(--virta-text-2);
+  font-size: var(--virta-type-meta-size);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* Tag pills */
@@ -181,7 +191,8 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--virta-space-4);
-  margin-top: var(--virta-space-2);
+  margin-top: auto;
+  padding-top: var(--virta-space-4);
 }
 .tag {
   font-family: var(--virta-font-mono);
@@ -189,7 +200,7 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   color: var(--virta-text-2);
-  padding: 1px var(--virta-space-8);
+  padding: 1px var(--virta-space-6);
   border-radius: var(--virta-radius-sm);
   background: var(--virta-bg-0);
   border: 1px solid var(--virta-line);

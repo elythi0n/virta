@@ -45,7 +45,6 @@ export const PANELS: PanelContribution[] = [
   { kind: 'mentions', title: 'Mentions', icon: 'mentions', render: () => <MentionInbox /> },
   { kind: 'celebrations', title: 'Celebrations', icon: 'gift', render: (p) => <CelebrationsPane panelId={p.panelId} /> },
   { kind: 'filters', title: 'Filters', icon: 'filter', render: () => <FiltersPanel /> },
-  { kind: 'x-chat', title: 'X chat', icon: 'x', render: (p) => <FeedPanel channels={p.channels} panelId={p.panelId} /> },
   { kind: 'stream', title: 'Stream', icon: 'stream', render: (p) => <StreamPane channel={p.channels?.[0]} /> },
   { kind: 'mods', title: 'Mod queue', icon: 'mods', render: () => <HeldQueuePanel /> },
   { kind: 'ask', title: 'Ask AI', icon: 'chat', render: () => <AskPanel /> },
