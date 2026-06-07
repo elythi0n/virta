@@ -336,7 +336,7 @@
 .modelGroupIcon[data-provider='ollama']     { color: var(--virta-brand-ollama); }
 .modelGroupIcon[data-provider='xai']        { color: var(--virta-brand-xai); }
 .modelGroupIcon[data-provider='openrouter'] { color: var(--virta-brand-openrouter); }
-}
+
 .modelItem {
   display: flex;
   align-items: center;
