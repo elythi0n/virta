@@ -440,7 +440,7 @@ const PROVIDERS = [
     id: 'ollama',
     name: 'Ollama',
     placeholder: 'http://localhost:11434',
-    hint: 'No key needed — just the base URL of your running Ollama instance',
+    hint: 'No key needed — just the base URL of your Ollama instance. Running via Docker? Use http://host.docker.internal:11434 instead.',
     isUrl: true,
     logo: (
       <svg viewBox="0 0 24 24" fill="currentColor" width={18} height={18} aria-hidden>
@@ -471,9 +471,12 @@ function ProviderKeys({ keys, onSave }: { keys: Record<string, string>; onSave: 
     <Field label="AI providers" hint="Keys are stored in the OS keychain; never in the database. Leave a field blank to keep the existing key.">
       <div className={styles.providerGrid}>
         {PROVIDERS.map(p => {
-          const masked = keys[p.id];
-          const draft = drafts[p.id] ?? '';
-          const connected = !!masked;
+          const saved = keys[p.id];
+          const isUrl = 'isUrl' in p;
+          // URLs come back unmasked so we can show them directly in the input.
+          // For API keys the saved value is a masked token; we show a placeholder instead.
+          const draft = drafts[p.id] ?? (isUrl && saved ? saved : '');
+          const connected = !!saved;
           return (
             <div key={p.id} className={`${styles.providerCard} ${connected ? styles.providerOn : ''}`}>
               <div className={styles.providerHead}>
@@ -497,15 +500,15 @@ function ProviderKeys({ keys, onSave }: { keys: Record<string, string>; onSave: 
               </div>
               <div className={styles.providerInputRow}>
                 <Input
-                  aria-label={`${p.name} ${'isUrl' in p ? 'base URL' : 'API key'}`}
-                  type={('isUrl' in p) || showKey[p.id] ? 'text' : 'password'}
-                  placeholder={connected ? '•••• (already set — paste to replace)' : p.placeholder}
+                  aria-label={`${p.name} ${isUrl ? 'base URL' : 'API key'}`}
+                  type={isUrl || showKey[p.id] ? 'text' : 'password'}
+                  placeholder={connected && !isUrl ? '•••• (already set — paste to replace)' : p.placeholder}
                   value={draft}
-                  onChange={e => setDrafts(d => ({ ...d, [p.id]: e.currentTarget.value }))}
+                  onChange={e => { const v = e.currentTarget.value; setDrafts(d => ({ ...d, [p.id]: v })); }}
                   onBlur={e => commit(p.id, e.currentTarget.value)}
-                  onKeyDown={e => e.key === 'Enter' && commit(p.id, (e.target as HTMLInputElement).value)}
+                  onKeyDown={e => e.key === 'Enter' && commit(p.id, (e.currentTarget as HTMLInputElement).value)}
                 />
-                {!('isUrl' in p) && (
+                {!isUrl && (
                   <button
                     type="button"
                     className={styles.showHideBtn}

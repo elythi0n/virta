@@ -119,14 +119,17 @@ func (c *intelControl) Ask(ctx context.Context, model, question string) (<-chan 
 	return out, nil
 }
 
-// Config returns a copy with provider keys masked.
+// Config returns a copy with API key values masked.
+// URL-type values (e.g. the Ollama base URL) are returned as-is — they are not secrets.
 func (c *intelControl) Config() api.IntelConfig {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	copy := c.cfg
 	masked := map[string]string{}
 	for k, v := range copy.ProviderKeys {
-		if len(v) > 8 {
+		if api.IsURLValue(v) {
+			masked[k] = v // URLs are not credentials — return plaintext
+		} else if len(v) > 8 {
 			masked[k] = v[:8] + "••••"
 		} else {
 			masked[k] = "••••"

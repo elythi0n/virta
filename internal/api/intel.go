@@ -4,7 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 )
+
+// IsURLValue reports whether a provider-key value is a URL rather than an API key secret.
+// URL values are not masked since they are not sensitive credentials.
+func IsURLValue(v string) bool {
+	return strings.HasPrefix(v, "http://") || strings.HasPrefix(v, "https://")
+}
 
 // Intel is the intelligence surface: Ask (agent loop), model listing, and LLM config.
 // Injected via SetIntel.
@@ -118,10 +125,11 @@ func (s *Server) handleGetIntelConfig(w http.ResponseWriter, _ *http.Request) {
 		return
 	}
 	cfg := s.intel.Config()
-	// Mask provider keys.
+	// Mask API key values so secrets never leave the daemon in plaintext.
+	// URL-type values (Ollama base URL) are not secrets and are returned as-is.
 	for k := range cfg.ProviderKeys {
 		v := cfg.ProviderKeys[k]
-		if len(v) > 8 {
+		if len(v) > 8 && !IsURLValue(v) {
 			cfg.ProviderKeys[k] = v[:8] + "••••"
 		}
 	}
