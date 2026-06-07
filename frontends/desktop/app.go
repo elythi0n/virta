@@ -14,7 +14,6 @@ import (
 	"github.com/elythi0n/virta/internal/api"
 	"github.com/elythi0n/virta/internal/config"
 	"github.com/elythi0n/virta/internal/desktop"
-	"github.com/wailsapp/wails/v3/internal/assetserver/bundledassets"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -132,12 +131,17 @@ const wailsRuntimeTag = `<script type="module" src="/wails/runtime.js"></script>
 // buildHandler returns the HTTP handler for the embedded UI. Serving over HTTP
 // (not the wails:// custom scheme) means location.origin is
 // http://localhost:PORT, which Twitch/Kick CSP frame-ancestors accepts.
+//
+// application.BundledAssetFileServer handles both the user assets AND
+// /wails/runtime.js (the compiled Wails v3 runtime) in one call, so
+// window.wails is set without importing the internal bundledassets package.
 func (a *App) buildHandler(embeds fs.FS) http.Handler {
 	sub, err := fs.Sub(embeds, "assets")
 	if err != nil {
 		sub = embeds
 	}
-	fileServer := http.FileServer(http.FS(sub))
+	// BundledAssetFileServer serves the FS and /wails/runtime.js.
+	bundled := application.BundledAssetFileServer(sub)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -153,12 +157,8 @@ func (a *App) buildHandler(embeds fs.FS) http.Handler {
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(a.integration)
 
-		case "/wails/runtime.js":
-			// Serve the compiled Wails v3 runtime so window.wails is set.
-			w.Header().Set("Content-Type", "application/javascript")
-			_, _ = w.Write(bundledassets.RuntimeJS)
-
 		case "/", "/index.html":
+			// Inject the Wails runtime script tag so window.wails is set.
 			data, readErr := fs.ReadFile(sub, "index.html")
 			if readErr != nil {
 				http.Error(w, "index.html not found", http.StatusNotFound)
@@ -169,24 +169,19 @@ func (a *App) buildHandler(embeds fs.FS) http.Handler {
 			_, _ = w.Write([]byte(html))
 
 		default:
-			fileServer.ServeHTTP(w, r)
+			// BundledAssetFileServer handles /wails/runtime.js and all asset paths.
+			bundled.ServeHTTP(w, r)
 		}
 	})
 }
 
-// assetHandler returns the same handler — used by Wails' AssetOptions so the
-// wails:// scheme still works as a fallback (e.g. for popout panels opened by
-// Wails itself). The main window loads from the HTTP server via StartURL().
-func (a *App) assetHandler() http.Handler {
-	// The HTTP server already has the correct handler; return a no-op that
-	// only handles Wails internal paths (/wails/...) so the AssetServer
-	// doesn't 404 on them.
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/wails/runtime.js" {
-			w.Header().Set("Content-Type", "application/javascript")
-			_, _ = w.Write(bundledassets.RuntimeJS)
-			return
-		}
-		http.NotFound(w, r)
-	})
+// assetHandler is used by Wails' AssetOptions for any wails:// internal navigation.
+// The main window loads from StartURL() (the HTTP server) so this path is rarely
+// hit; it just needs to not 404 on /wails/runtime.js.
+func (a *App) assetHandler(embeds fs.FS) http.Handler {
+	sub, err := fs.Sub(embeds, "assets")
+	if err != nil {
+		sub = embeds
+	}
+	return application.BundledAssetFileServer(sub)
 }

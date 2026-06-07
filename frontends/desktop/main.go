@@ -29,7 +29,7 @@ func main() {
 			application.NewService(svc),
 		},
 		Assets: application.AssetOptions{
-			Handler: svc.assetHandler(),
+			Handler: svc.assetHandler(assets),
 		},
 		OnShutdown: svc.shutdown,
 	})
