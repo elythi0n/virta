@@ -264,3 +264,9 @@
   color: var(--virta-text-2);
 }
 
+.createError {
+  padding: var(--virta-space-4) var(--virta-space-8);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  color: var(--virta-danger);
+}

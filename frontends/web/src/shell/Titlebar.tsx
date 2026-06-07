@@ -20,13 +20,18 @@ export default function Titlebar({ onOpenPalette }: Props) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const [createError, setCreateError] = useState('');
+
   const handleCreate = async () => {
     const name = newName.trim();
     if (!name) return;
     setCreating(true);
+    setCreateError('');
     try {
       await create(name);
       setNewName('');
+    } catch (e: unknown) {
+      setCreateError(e instanceof Error ? e.message : 'Failed to create workspace');
     } finally {
       setCreating(false);
     }
@@ -118,7 +123,7 @@ export default function Titlebar({ onOpenPalette }: Props) {
                 type="text"
                 placeholder="New workspace name"
                 value={newName}
-                onChange={(e) => setNewName(e.currentTarget.value)}
+                onChange={(e) => { setNewName(e.currentTarget.value); setCreateError(''); }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') void handleCreate();
                   if (e.key === 'Escape') { setNewName(''); setMenuOpen(false); }
@@ -136,6 +141,9 @@ export default function Titlebar({ onOpenPalette }: Props) {
                 <Icon name="plus" size={13} />
               </button>
             </div>
+            {createError && (
+              <div className={styles.createError}>{createError}</div>
+            )}
           </div>
         </Popover>
       </div>

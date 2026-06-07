@@ -38,8 +38,9 @@ export default function AddChannel() {
     try {
       await join(platform, name);
       close();
-    } catch {
-      setError(`Couldn't add ${cap(platform)}/${name}. Check the channel name and try again.`);
+    } catch (e: unknown) {
+      const detail = e instanceof Error ? e.message : '';
+      setError(detail || `Couldn't add ${cap(platform)}/${name}. Check the channel name and try again.`);
       setBusy(false);
     }
   };
