@@ -452,6 +452,7 @@ func (s *Server) routes() []route {
 		{"GET", "/v1/intel/config", ScopeRead, s.handleGetIntelConfig, "Get LLM configuration"},
 		{"PUT", "/v1/intel/config", ScopeControl, s.handleSetIntelConfig, "Update LLM configuration"},
 		{"GET", "/v1/intel/conversations", ScopeRead, s.handleListConversations, "List saved Ask AI conversations"},
+		{"GET", "/v1/intel/conversations/{id}", ScopeRead, s.handleGetConversation, "Get a single conversation with messages"},
 		{"POST", "/v1/intel/conversations", ScopeControl, s.handleSaveConversation, "Create or update a conversation"},
 		{"DELETE", "/v1/intel/conversations/{id}", ScopeControl, s.handleDeleteConversation, "Delete a conversation"},
 		{"GET", "/dev", ScopeRead, s.handleDev, "Developer event probe page"},

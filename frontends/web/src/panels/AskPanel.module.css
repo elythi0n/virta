@@ -185,13 +185,21 @@
   height: 24px;
   margin-top: 1px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--virta-accent) 15%, var(--virta-bg-2));
-  border: 1px solid color-mix(in srgb, var(--virta-accent) 25%, var(--virta-line));
-  color: var(--virta-accent);
+  background: var(--virta-bg-2);
+  border: 1px solid var(--virta-line);
+  color: var(--virta-text-2);
   display: grid;
   place-items: center;
   flex-shrink: 0;
+  cursor: default;
+  transition: border-color var(--virta-motion-fast) ease;
 }
+/* Provider-specific avatar tints */
+.assistantAvatar[data-provider='anthropic']  { color: var(--virta-brand-anthropic); border-color: color-mix(in srgb, var(--virta-brand-anthropic) 30%, var(--virta-line)); }
+.assistantAvatar[data-provider='openai']     { color: var(--virta-brand-openai);    border-color: color-mix(in srgb, var(--virta-brand-openai) 30%, var(--virta-line)); }
+.assistantAvatar[data-provider='xai']        { color: var(--virta-brand-xai);       border-color: color-mix(in srgb, var(--virta-accent) 20%, var(--virta-line)); }
+.assistantAvatar[data-provider='ollama']     { color: var(--virta-brand-ollama);    border-color: color-mix(in srgb, var(--virta-accent) 20%, var(--virta-line)); }
+.assistantAvatar[data-provider='openrouter'] { color: var(--virta-brand-openrouter); }
 .assistantBody {
   flex: 1;
   min-width: 0;

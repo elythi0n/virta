@@ -324,3 +324,24 @@ func (c *intelControl) DeleteConversation(ctx context.Context, id string) error 
 	}
 	return c.conversations.Delete(ctx, id)
 }
+
+func (c *intelControl) GetConversation(ctx context.Context, id string) (api.ConversationDetail, error) {
+	if c.conversations == nil {
+		return api.ConversationDetail{}, fmt.Errorf("conversations unavailable")
+	}
+	conv, err := c.conversations.Get(ctx, id)
+	if err != nil {
+		return api.ConversationDetail{}, err
+	}
+	msgs := conv.Messages
+	if msgs == nil {
+		msgs = json.RawMessage("[]")
+	}
+	return api.ConversationDetail{
+		ID:        conv.ID,
+		Title:     conv.Title,
+		Model:     conv.Model,
+		Messages:  msgs,
+		UpdatedAt: conv.UpdatedAt.Format(time.RFC3339),
+	}, nil
+}

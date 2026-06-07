@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Popover, Text } from '@virta/ui-kit';
 import Icon, { type IconName } from '../Icon';
 import { askStream, getIntelConfig, listModels } from '../daemon';
-import { listConversations, saveConversation, deleteConversation, generateTitleStream } from '../daemon/conversations';
+import { listConversations, getConversation, saveConversation, deleteConversation, generateTitleStream } from '../daemon/conversations';
 import type { ConversationSummary } from '../daemon/conversations';
 import type { AskEvent, IntelConfig, ModelGroup } from '../daemon/wire.gen';
 import ProviderIcon from '../ProviderIcon';
@@ -12,7 +12,7 @@ import styles from './AskPanel.module.css';
 // ── Types ──────────────────────────────────────────────────────────────────
 type TurnRole = 'user' | 'assistant';
 type TurnItem =
-  | { kind: 'text'; role: TurnRole; text: string }
+  | { kind: 'text'; role: TurnRole; text: string; model?: string }
   | { kind: 'tool_use'; name: string; args: string }
   | { kind: 'tool_result'; name: string; json: string }
   | { kind: 'error'; text: string };
@@ -24,6 +24,17 @@ type ToolGroup = { kind: 'tool_group'; tools: ToolPair[] };
 type RenderItem = Exclude<TurnItem, { kind: 'tool_use' } | { kind: 'tool_result' }> | ToolPair | ToolGroup;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+/** Map a model ID to its provider ID for the icon. Uses prefix heuristics. */
+function providerFromModel(modelId: string): string {
+  if (!modelId) return '';
+  const m = modelId.toLowerCase();
+  if (m.startsWith('claude') || m.includes('anthropic')) return 'anthropic';
+  if (m.startsWith('gpt') || m.startsWith('o1') || m.startsWith('o3') || m.startsWith('o4')) return 'openai';
+  if (m.startsWith('grok') || m.startsWith('xai')) return 'xai';
+  if (m.startsWith('openrouter') || m.includes('/')) return 'openrouter';
+  return 'ollama'; // default for locally-served models
+}
+
 function autoResize(el: HTMLTextAreaElement) {
   el.style.height = 'auto';
   el.style.height = Math.min(el.scrollHeight, 180) + 'px';
@@ -316,7 +327,7 @@ export default function AskPanel() {
         const last = prev[prev.length - 1];
         const next = last?.kind === 'text' && last.role === 'assistant'
           ? [...prev.slice(0, -1), { ...last, text: assistantBuf }]
-          : [...prev, { kind: 'text' as const, role: 'assistant' as const, text: assistantBuf }];
+          : [...prev, { kind: 'text' as const, role: 'assistant' as const, text: assistantBuf, model: m }];
         finalTurns = next;
         return next;
       });
@@ -352,10 +363,20 @@ export default function AskPanel() {
 
   const loadConversation = useCallback((_id: string, title: string, convModel: string) => {
     setConvOpen(false);
-    setConvId(_id); setConvTitle(title);
-    setTurns([]); setTokens({ in: 0, out: 0 });
+    setConvId(_id);
+    setConvTitle(title);
+    setTurns([]);
+    setTokens({ in: 0, out: 0 });
     if (convModel) setModel(convModel);
     titleStreamingRef.current = false;
+    // Fetch the full message history for this conversation.
+    getConversation(_id)
+      .then(detail => {
+        if (Array.isArray(detail.messages)) {
+          setTurns(detail.messages as TurnItem[]);
+        }
+      })
+      .catch(() => {}); // if fetch fails, start fresh
   }, []);
 
   const handleDeleteConv = useCallback((e: React.MouseEvent, id: string) => {
@@ -461,10 +482,20 @@ export default function AskPanel() {
             );
           }
           if (t.kind === 'text' && t.role === 'assistant') {
+            const prov = providerFromModel(t.model ?? '');
+            const modelLabel = t.model ?? 'AI';
             return (
               <div key={i} className={styles.assistantTurn}>
-                <div className={styles.assistantAvatar} aria-hidden>
-                  <Icon name="chat" size={12} />
+                <div
+                  className={styles.assistantAvatar}
+                  title={modelLabel}
+                  data-provider={prov}
+                >
+                  {prov ? (
+                    <ProviderIcon provider={prov} size={13} />
+                  ) : (
+                    <Icon name="chat" size={12} />
+                  )}
                 </div>
                 <div className={styles.assistantBody}>
                   <Markdown>{t.text}</Markdown>
@@ -499,8 +530,12 @@ export default function AskPanel() {
 
         {running && (
           <div className={styles.assistantTurn}>
-            <div className={styles.assistantAvatar} aria-hidden>
-              <Icon name="chat" size={12} />
+            <div className={styles.assistantAvatar} data-provider={providerFromModel(model)} aria-hidden>
+              {providerFromModel(model) ? (
+                <ProviderIcon provider={providerFromModel(model)} size={13} />
+              ) : (
+                <Icon name="chat" size={12} />
+              )}
             </div>
             <div className={styles.thinking}>
               <span /><span /><span />

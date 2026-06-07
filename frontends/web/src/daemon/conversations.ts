@@ -15,6 +15,18 @@ export interface SaveConversationPayload {
   messages: unknown[];
 }
 
+export interface ConversationDetail {
+  id: string;
+  title: string;
+  model: string;
+  messages: unknown[]; // TurnItem[] serialised as JSON
+  updated_at: string;
+}
+
+export function getConversation(id: string): Promise<ConversationDetail> {
+  return request<ConversationDetail>(`/v1/intel/conversations/${encodeURIComponent(id)}`);
+}
+
 export function listConversations(): Promise<ConversationSummary[]> {
   return request<{ conversations: ConversationSummary[] }>('/v1/intel/conversations')
     .then(r => r.conversations);

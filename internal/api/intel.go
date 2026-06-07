@@ -28,6 +28,8 @@ type Intel interface {
 	SetConfig(ctx context.Context, cfg IntelConfig) error
 	// ListConversations returns recent conversations newest-first.
 	ListConversations(ctx context.Context) ([]ConversationSummary, error)
+	// GetConversation returns a single conversation with its full message history.
+	GetConversation(ctx context.Context, id string) (ConversationDetail, error)
 	// SaveConversation creates or updates a conversation.
 	SaveConversation(ctx context.Context, id, title, model string, messages []byte) error
 	// DeleteConversation removes a conversation.
@@ -254,4 +256,31 @@ func (s *Server) handleGenerateTitle(w http.ResponseWriter, r *http.Request) {
 			flush.Flush()
 		}
 	}
+}
+
+// ConversationDetail includes the full message history (JSON array of turns).
+type ConversationDetail struct {
+	ID        string          `json:"id"`
+	Title     string          `json:"title"`
+	Model     string          `json:"model"`
+	Messages  json.RawMessage `json:"messages"`
+	UpdatedAt string          `json:"updated_at"`
+}
+
+func (s *Server) handleGetConversation(w http.ResponseWriter, r *http.Request) {
+	if s.intel == nil {
+		http.Error(w, "intelligence unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	id := r.PathValue("id")
+	if id == "" {
+		http.Error(w, "missing id", http.StatusBadRequest)
+		return
+	}
+	conv, err := s.intel.GetConversation(r.Context(), id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	writeJSON(w, conv)
 }
