@@ -448,6 +448,7 @@ func (s *Server) routes() []route {
 		{"GET", "/v1/themes/{id}/export", ScopeRead, s.handleExportTheme, "Export a theme as .vtheme JSON"},
 		{"DELETE", "/v1/themes/{id}", ScopeControl, s.handleDeleteTheme, "Delete a custom theme"},
 		{"GET", "/v1/plugins", ScopeRead, s.handleListPlugins, "List registered plugins and their state"},
+		{"GET", "/v1/plugins/{id}", ScopeRead, s.handleGetPlugin, "Get plugin detail including config schema"},
 		{"POST", "/v1/plugins/{id}/enable", ScopeAdmin, s.handleEnablePlugin, "Enable a plugin"},
 		{"POST", "/v1/plugins/{id}/disable", ScopeAdmin, s.handleDisablePlugin, "Disable a plugin"},
 		{"POST", "/v1/plugins/install", ScopeAdmin, s.handleInstallPlugin, "Install a plugin from a Git URL"},

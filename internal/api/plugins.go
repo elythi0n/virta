@@ -113,3 +113,44 @@ func (s *Server) handleUninstallPlugin(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
+
+// PluginDetail extends PluginInfo with the full config schema for the settings form.
+type PluginDetail struct {
+	PluginInfo
+	ConfigSchema interface{} `json:"config_schema,omitempty"`
+}
+
+// Plugins interface extension — GetDetail returns manifest+schema for a single plugin.
+// We use a type assertion so existing implementations don't break.
+type PluginDetailer interface {
+	GetDetail(id string) (PluginDetail, error)
+}
+
+func (s *Server) handleGetPlugin(w http.ResponseWriter, r *http.Request) {
+	if s.plugins == nil {
+		http.Error(w, "plugin host unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	id := r.PathValue("id")
+	if id == "" {
+		http.Error(w, "missing plugin id", http.StatusBadRequest)
+		return
+	}
+	if pd, ok := s.plugins.(PluginDetailer); ok {
+		detail, err := pd.GetDetail(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		writeJSON(w, detail)
+		return
+	}
+	// Fallback: return summary only.
+	for _, p := range s.plugins.List() {
+		if p.ID == id {
+			writeJSON(w, p)
+			return
+		}
+	}
+	http.Error(w, "plugin not found", http.StatusNotFound)
+}

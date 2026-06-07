@@ -2,13 +2,14 @@ package markets
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
 	"github.com/coder/websocket"
-	"github.com/coder/websocket/wsjson"
 )
 
 // BinanceProvider streams real-time price ticks from the Binance public WebSocket API.
@@ -28,8 +29,7 @@ func (b *BinanceProvider) Stream(ctx context.Context, symbols []string, quoteCur
 		return nil
 	}
 
-	// Build the combined stream URL: each symbol gets its own miniTicker stream.
-	// e.g. wss://stream.binance.com:9443/stream?streams=btcusdt@miniTicker/dogeusdts@miniTicker
+	// Build the combined stream URL.
 	quote := strings.ToLower(quoteCurrency)
 	streams := make([]string, 0, len(symbols))
 	for _, sym := range symbols {
@@ -38,7 +38,7 @@ func (b *BinanceProvider) Stream(ctx context.Context, symbols []string, quoteCur
 	rawURL := "wss://stream.binance.com:9443/stream?streams=" + strings.Join(streams, "/")
 
 	const maxRetries = 5
-	backoff := 2 * time.Second
+	backoff := 3 * time.Second
 
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		if attempt > 0 {
@@ -48,7 +48,7 @@ func (b *BinanceProvider) Stream(ctx context.Context, symbols []string, quoteCur
 				statusFn(Status{State: "disconnected"})
 				return ctx.Err()
 			case <-time.After(backoff):
-				backoff = min(backoff*2, 30*time.Second)
+				backoff = minDur(backoff*2, 30*time.Second)
 			}
 		}
 
@@ -62,33 +62,49 @@ func (b *BinanceProvider) Stream(ctx context.Context, symbols []string, quoteCur
 			statusFn(Status{State: "degraded", Message: err.Error()})
 			continue
 		}
-		// Clean disconnect (server closed): retry.
 	}
 	statusFn(Status{State: "disconnected", Message: "max retries reached"})
 	return fmt.Errorf("binance: max retries (%d) exhausted", maxRetries)
 }
 
-// streamOnce runs one WS session until the connection closes or ctx is done.
 func (b *BinanceProvider) streamOnce(ctx context.Context, rawURL, quoteCurrency string,
 	tickFn func(Tick), statusFn func(Status)) error {
 
-	conn, _, err := websocket.Dial(ctx, rawURL, nil)
+	// Force HTTP/1.1: WebSocket cannot run over HTTP/2.
+	// coder/websocket may advertise h2 in ALPN on some builds; this prevents that.
+	dialCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	conn, _, err := websocket.Dial(dialCtx, rawURL, &websocket.DialOptions{
+		HTTPClient: &http.Client{
+			Transport: &http.Transport{
+				// Disable HTTP/2: WebSocket upgrade only works over HTTP/1.1.
+				// Some coder/websocket builds advertise h2 in TLS ALPN; this prevents that.
+				TLSClientConfig:   &tls.Config{NextProtos: []string{"http/1.1"}},
+				ForceAttemptHTTP2: false,
+				TLSNextProto:      make(map[string]func(string, *tls.Conn) http.RoundTripper),
+			},
+		},
+		HTTPHeader: http.Header{
+			"User-Agent": []string{"Mozilla/5.0 (compatible; VirtaBot/1.0)"},
+		},
+	})
 	if err != nil {
 		return fmt.Errorf("dial: %w", err)
 	}
 	defer conn.CloseNow()
+	// Lift the read limit — Binance combined streams can have large payloads.
+	conn.SetReadLimit(256 * 1024)
 	statusFn(Status{State: "connected"})
 
-	// Combined stream envelope: {"stream":"btcusdt@miniTicker","data":{...}}
 	type miniTicker struct {
-		EventTime    int64  `json:"E"`
-		Symbol       string `json:"s"` // e.g. "BTCUSDT"
-		ClosePrice   string `json:"c"` // last price
-		OpenPrice    string `json:"o"` // 24h open
-		HighPrice    string `json:"h"` // 24h high
-		LowPrice     string `json:"l"` // 24h low
-		BaseVolume   string `json:"v"` // 24h base volume
-		QuoteVolume  string `json:"q"` // 24h quote volume
+		EventTime   int64  `json:"E"`
+		Symbol      string `json:"s"`
+		ClosePrice  string `json:"c"`
+		OpenPrice   string `json:"o"`
+		HighPrice   string `json:"h"`
+		LowPrice    string `json:"l"`
+		QuoteVolume string `json:"q"`
 	}
 	type envelope struct {
 		Stream string          `json:"stream"`
@@ -98,22 +114,25 @@ func (b *BinanceProvider) streamOnce(ctx context.Context, rawURL, quoteCurrency 
 	q := strings.ToUpper(quoteCurrency)
 
 	for {
-		var env envelope
-		if err := wsjson.Read(ctx, conn, &env); err != nil {
+		// Use raw Read to avoid wsjson's framing assumptions.
+		_, raw, err := conn.Read(ctx)
+		if err != nil {
 			if ctx.Err() != nil {
 				return nil
 			}
 			return fmt.Errorf("read: %w", err)
 		}
 
+		var env envelope
+		if err := json.Unmarshal(raw, &env); err != nil {
+			continue
+		}
 		var mt miniTicker
 		if err := json.Unmarshal(env.Data, &mt); err != nil {
-			continue // skip malformed frames
+			continue
 		}
 
-		// Strip the quote suffix to get the base symbol.
 		baseSym := strings.TrimSuffix(strings.ToUpper(mt.Symbol), q)
-
 		price := parseFloat(mt.ClosePrice)
 		open := parseFloat(mt.OpenPrice)
 		change24h := 0.0
@@ -136,7 +155,7 @@ func (b *BinanceProvider) streamOnce(ctx context.Context, rawURL, quoteCurrency 
 	}
 }
 
-func min(a, b time.Duration) time.Duration {
+func minDur(a, b time.Duration) time.Duration {
 	if a < b {
 		return a
 	}

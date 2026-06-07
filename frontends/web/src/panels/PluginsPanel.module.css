@@ -303,3 +303,17 @@
 }
 .uninstallBtn:hover:not(:disabled) { color: var(--virta-danger); }
 .uninstallBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+.settingsBtn {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid transparent;
+  border-radius: var(--virta-radius-sm);
+  background: none;
+  color: var(--virta-text-2);
+  cursor: pointer;
+  transition: color var(--virta-motion-fast) ease, border-color var(--virta-motion-fast) ease;
+}
+.settingsBtn:hover { color: var(--virta-text-0); border-color: var(--virta-line); }

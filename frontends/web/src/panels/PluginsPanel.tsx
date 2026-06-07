@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Badge, Button, Input, Text } from '@virta/ui-kit';
+import { Badge, Button, Dialog, Input, Text } from '@virta/ui-kit';
 import type { IconName } from '../Icon';
 import Icon from '../Icon';
-import { listPlugins, enablePlugin, disablePlugin, installPlugin, uninstallPlugin } from '../daemon/plugins';
-import type { PluginInfo } from '../daemon/plugins';
+import { listPlugins, getPlugin, enablePlugin, disablePlugin, installPlugin, uninstallPlugin } from '../daemon/plugins';
+import type { PluginInfo, PluginDetail } from '../daemon/plugins';
+import SchemaForm from './SchemaForm';
 import styles from './PluginsPanel.module.css';
 
 type FilterTab = 'all' | 'installed' | 'available';
@@ -37,6 +38,9 @@ export default function PluginsPanel() {
   const [installUrl, setInstallUrl] = useState('');
   const [installing, setInstalling] = useState(false);
   const [installErr, setInstallErr] = useState('');
+  // Plugin settings dialog
+  const [settingsPlugin, setSettingsPlugin] = useState<PluginDetail | null>(null);
+  const [settingsValues, setSettingsValues] = useState<Record<string, unknown>>({});
 
   const reload = useCallback(() => {
     listPlugins().then(live => {
@@ -79,6 +83,14 @@ export default function PluginsPanel() {
     try { await uninstallPlugin(id); reload(); }
     finally { setBusy(b => ({ ...b, [id]: false })); }
   }, [reload]);
+
+  const openSettings = useCallback(async (id: string) => {
+    try {
+      const detail = await getPlugin(id);
+      setSettingsPlugin(detail);
+      setSettingsValues({});
+    } catch { /* plugin may not have settings */ }
+  }, []);
 
   const counts = {
     all: plugins.length,
@@ -157,6 +169,11 @@ export default function PluginsPanel() {
                         Uninstall
                       </button>
                     )}
+                    <button type="button" className={styles.settingsBtn}
+                      aria-label={`Settings for ${p.name}`} title="Plugin settings"
+                      onClick={() => void openSettings(p.id)}>
+                      <Icon name="settings" size={13} />
+                    </button>
                     <button type="button"
                       className={`${styles.toggleBtn} ${isEnabled ? styles.toggleBtnOn : ''}`}
                       disabled={isBusy}
@@ -175,6 +192,31 @@ export default function PluginsPanel() {
           );
         })}
       </ul>
+
+      {/* Plugin settings dialog */}
+      <Dialog
+        open={settingsPlugin !== null}
+        onOpenChange={o => !o && setSettingsPlugin(null)}
+        title={settingsPlugin ? `${settingsPlugin.name} settings` : ''}
+        description={settingsPlugin?.description}
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" size="md" onClick={() => setSettingsPlugin(null)}>Close</Button>
+            <Button variant="solid" size="md" onClick={() => setSettingsPlugin(null)}>Save</Button>
+          </>
+        }
+      >
+        {settingsPlugin?.config_schema ? (
+          <SchemaForm
+            schema={settingsPlugin.config_schema as never}
+            value={settingsValues}
+            onChange={setSettingsValues}
+          />
+        ) : (
+          <Text variant="body" tone="subtle">This plugin has no configurable settings.</Text>
+        )}
+      </Dialog>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/json"
 	"context"
 	"fmt"
 
@@ -103,4 +104,35 @@ func (c *pluginControl) Uninstall(id string) error {
 		return c.installer.Uninstall(e.InstallDir)
 	}
 	return nil
+}
+
+// GetDetail returns the full plugin manifest including config schema.
+func (c *pluginControl) GetDetail(id string) (api.PluginDetail, error) {
+	e, err := c.reg.Get(id)
+	if err != nil {
+		return api.PluginDetail{}, err
+	}
+	scopes := make([]string, 0, len(e.Manifest.Scopes))
+	for _, s := range e.Manifest.Scopes {
+		scopes = append(scopes, string(s))
+	}
+	info := api.PluginInfo{
+		ID:          e.Manifest.ID,
+		Name:        e.Manifest.Name,
+		Version:     e.Manifest.Version,
+		Publisher:   e.Manifest.Publisher,
+		Description: e.Manifest.Description,
+		Tags:        e.Manifest.Tags,
+		State:       string(e.State),
+		Error:       e.Error,
+		BuiltIn:     e.Manifest.BuiltIn,
+		Scopes:      scopes,
+	}
+	var schema interface{}
+	if len(e.Manifest.Config) > 0 {
+		if err := json.Unmarshal(e.Manifest.Config, &schema); err == nil {
+			// Only set if valid JSON
+		}
+	}
+	return api.PluginDetail{PluginInfo: info, ConfigSchema: schema}, nil
 }

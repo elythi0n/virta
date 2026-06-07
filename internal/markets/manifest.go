@@ -62,7 +62,7 @@ var configSchemaJSON = map[string]any{
 			"title":       "Data provider",
 			"description": "Primary price source. Binance = real-time WS; CoinGecko = REST (delayed).",
 			"enum":        []string{"binance", "coingecko"},
-			"default":     "binance",
+			"default":     "coingecko",
 		},
 		"display_mode": map[string]any{
 			"type":        "string",

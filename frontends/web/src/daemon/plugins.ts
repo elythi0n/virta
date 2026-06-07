@@ -35,3 +35,11 @@ export function installPlugin(url: string): Promise<PluginInfo> {
 export function uninstallPlugin(id: string): Promise<void> {
   return request(`/v1/plugins/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
+
+export interface PluginDetail extends PluginInfo {
+  config_schema?: Record<string, unknown>;
+}
+
+export function getPlugin(id: string): Promise<PluginDetail> {
+  return request<PluginDetail>(`/v1/plugins/${encodeURIComponent(id)}`);
+}

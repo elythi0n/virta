@@ -31,7 +31,9 @@ func (c *Config) withDefaults() Config {
 		out.QuoteCurrency = "USDT"
 	}
 	if out.Provider == "" {
-		out.Provider = "binance"
+		// Default to CoinGecko (REST/HTTPS — works everywhere without WebSocket quirks).
+		// Switch to "binance" in config for real-time WS ticks.
+		out.Provider = "coingecko"
 	}
 	if out.RefreshSeconds <= 0 {
 		out.RefreshSeconds = 30
