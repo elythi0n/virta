@@ -543,8 +543,11 @@ function IntelligenceSettings() {
   const save = async (patch: Partial<IntelCfgState>) => {
     setSaving(true);
     setSaveErr('');
-    let next: IntelCfgState = {};
-    setCfg(c => { next = { ...c, ...patch }; return next; });
+    // Merge the patch into a stable snapshot before the async call so concurrent saves
+    // never silently overwrite each other. We read current cfg synchronously here rather
+    // than inside a setState updater so `next` is always the true merged value.
+    const next: IntelCfgState = { ...cfg, ...patch } as IntelCfgState;
+    setCfg(next);
     try {
       await setIntelConfig(next as never);
     } catch (e: unknown) {

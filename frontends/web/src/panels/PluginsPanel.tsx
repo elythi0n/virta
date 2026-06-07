@@ -37,16 +37,22 @@ const STATUS_TONE: Record<PluginStatus, 'ok' | 'neutral' | 'warn'> = { installed
 export default function PluginsPanel() {
   const [filter, setFilter] = useState<FilterTab>('all');
 
+  // PLUGINS is a module-level constant — derive static counts once.
+  const INSTALLED_COUNT = PLUGINS.filter(p => p.status === 'installed').length;
+  // "Available" means plugins that are not installed but could be (not coming-soon).
+  const AVAILABLE_COUNT = PLUGINS.filter(p => p.status === 'available').length;
+
   const visible = PLUGINS.filter(p => {
     if (filter === 'installed') return p.status === 'installed';
-    if (filter === 'available') return p.status !== 'installed';
+    // "available" tab shows installable plugins only, not coming-soon placeholders.
+    if (filter === 'available') return p.status === 'available';
     return true;
   });
 
   const counts = {
     all: PLUGINS.length,
-    installed: PLUGINS.filter(p => p.status === 'installed').length,
-    available: PLUGINS.filter(p => p.status !== 'installed').length,
+    installed: INSTALLED_COUNT,
+    available: AVAILABLE_COUNT,
   };
 
   return (

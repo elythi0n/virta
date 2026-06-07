@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Button, Dialog, Input, Text } from '@virta/ui-kit';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button, Dialog, Input, Popover, Text } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { getHostedStatus, getMe, login, logout, register } from '../daemon';
 import type { VirtaUser } from '../daemon';
@@ -20,13 +20,30 @@ export default function AccountMenu() {
   const [busy, setBusy] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // Retry loading hosted status a few times — the daemon may still be starting when the SPA loads.
+  const retryCount = useRef(0);
   useEffect(() => {
-    getHostedStatus().then(s => {
-      setHosted(s.hosted);
-      if (s.hosted) {
-        getMe().then(setUser).catch(() => setUser(null));
-      }
-    }).catch(() => {});
+    let cancelled = false;
+    const load = () => {
+      getHostedStatus()
+        .then(s => {
+          if (cancelled) return;
+          setHosted(s.hosted);
+          if (s.hosted) {
+            getMe().then(u => !cancelled && setUser(u)).catch(() => !cancelled && setUser(null));
+          }
+        })
+        .catch(() => {
+          if (cancelled) return;
+          // Retry up to 3 times with exponential backoff so a slow daemon start doesn't hide the UI.
+          if (retryCount.current < 3) {
+            retryCount.current++;
+            setTimeout(load, 1000 * retryCount.current);
+          }
+        });
+    };
+    load();
+    return () => { cancelled = true; };
   }, []);
 
   const doLogin = useCallback(async () => {
@@ -70,25 +87,32 @@ export default function AccountMenu() {
   return (
     <>
       {user ? (
-        <div className={styles.account}>
-          <button type="button" className={styles.avatarBtn} onClick={() => setMenuOpen(v => !v)} aria-label="Account menu">
-            <span className={styles.avatar}>{(user.display_name || user.email)[0].toUpperCase()}</span>
-            <span className={styles.displayName}>{user.display_name || user.email.split('@')[0]}</span>
-            <Icon name="chevron-down" size={12} />
-          </button>
-          {menuOpen && (
-            <div className={styles.dropdown}>
-              <div className={styles.dropdownUser}>
-                <Text variant="ui" className={styles.dropName}>{user.display_name || 'Account'}</Text>
-                <Text variant="meta" tone="subtle">{user.email}</Text>
-              </div>
-              <div className={styles.dropDivider} />
-              <button type="button" className={styles.dropItem} onClick={() => void doLogout()}>
-                <Icon name="x" size={14} /> Sign out
-              </button>
+        <Popover
+          open={menuOpen}
+          onOpenChange={setMenuOpen}
+          align="end"
+          side="bottom"
+          trigger={
+            <button type="button" className={styles.avatarBtn} aria-label="Account menu">
+              <span className={styles.avatar}>
+                {((user.display_name || user.email || '?')[0]).toUpperCase()}
+              </span>
+              <span className={styles.displayName}>{user.display_name || user.email.split('@')[0] || 'Account'}</span>
+              <Icon name="chevron-down" size={12} />
+            </button>
+          }
+        >
+          <div className={styles.dropdown}>
+            <div className={styles.dropdownUser}>
+              <Text variant="ui" className={styles.dropName}>{user.display_name || 'Account'}</Text>
+              <Text variant="meta" tone="subtle">{user.email}</Text>
             </div>
-          )}
-        </div>
+            <div className={styles.dropDivider} />
+            <button type="button" className={styles.dropItem} onClick={() => { setMenuOpen(false); void doLogout(); }}>
+              <Icon name="x" size={14} /> Sign out
+            </button>
+          </div>
+        </Popover>
       ) : (
         <button type="button" className={styles.signInBtn} onClick={() => setMode('login')}>
           Sign in

@@ -33,8 +33,13 @@ export default function Overlay() {
         const m = e.message;
         const isChat = !m.type || m.type === 'chat' || m.type === 'action';
         const isEvent = !isChat;
+        // Kind-based filtering: drop messages that don't match the overlay's purpose.
         if (cfg.kind === 'chat' && isEvent) return;
         if (cfg.kind === 'events' && isChat) return;
+        // 'mentions' kind: only include messages where the body contains at least one
+        // of the channel's mention names. Since the overlay has no access to user names,
+        // all chat is passed through — the user can use the FeedPanel's mention filter
+        // in the main app for name-specific filtering. Mentions overlay = events + chat.
         const fm = toFeedMessage(m);
         push(fm);
         scheduleFade(fm.id);

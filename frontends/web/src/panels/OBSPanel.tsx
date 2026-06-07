@@ -1,9 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, Button, Segmented, Select, Text, Tooltip } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { useChannels, discover } from '../daemon';
 import { buildOverlayUrl, type OverlayConfig, type OverlayKind, type OverlayTheme, type OverlayDensity, type OverlayAlign } from '../overlay/overlayConfig';
 import styles from './OBSPanel.module.css';
+
+// Map platform ids to the Icon names that exist in the icon set.
+const PLATFORM_ICON: Record<string, 'x' | 'chat' | 'stream' | 'stream'> = {
+  twitch: 'stream',
+  kick: 'stream',
+  x: 'x',
+};
 
 // Overlay presets — pre-configured bundles for common streaming use-cases.
 // Each maps to a partial OverlayConfig; the user can still customise after selecting one.
@@ -105,11 +112,41 @@ export default function OBSPanel() {
     });
   }, [effectiveCfg, token, baseUrl, selectedChannels]);
 
+  // Pre-compute all gallery URLs once per meaningful change so the gallery map never rebuilds URLs inline.
+  const galleryUrls = useMemo(() =>
+    PRESETS.map(p => baseUrl && token ? buildOverlayUrl(baseUrl, { ...p.cfg, token, channels: selectedChannels }) : ''),
+    [baseUrl, token, selectedChannels],
+  );
+
+  // Store the active copied-state reset timer so we can cancel it on unmount or rapid re-clicks.
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (copyTimer.current) clearTimeout(copyTimer.current); }, []);
+
   const copyUrl = useCallback((id: string, url: string) => {
-    navigator.clipboard?.writeText(url).then(() => {
+    const doCopy = () => {
       setCopied(id);
-      setTimeout(() => setCopied(null), 2000);
-    });
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+      copyTimer.current = setTimeout(() => setCopied(null), 2000);
+    };
+    // navigator.clipboard is only available in secure contexts (HTTPS or localhost).
+    // Provide a graceful fallback via execCommand for HTTP local-network access.
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(doCopy).catch(() => {
+        try { document.execCommand?.('copy'); doCopy(); } catch { /* no feedback available */ }
+      });
+    } else {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        doCopy();
+      } catch { /* clipboard unavailable */ }
+    }
   }, []);
 
   const openPreview = useCallback((url: string) => {
@@ -167,7 +204,7 @@ export default function OBSPanel() {
                       on ? prev.filter(k => k !== key) : [...prev, key]
                     )}
                   >
-                    <Icon name={c.platform as 'x' | 'chat' | 'stream'} size={12} />
+                    <Icon name={PLATFORM_ICON[c.platform] ?? 'stream'} size={12} />
                     {c.slug}
                   </button>
                 );
@@ -339,8 +376,8 @@ export default function OBSPanel() {
               One-click copy for every preset using your current channel selection.
             </Text>
             <div className={styles.gallery}>
-              {PRESETS.map(p => {
-                const url = buildOverlayUrl(baseUrl, { ...p.cfg, token, channels: selectedChannels });
+              {galleryUrls.map((url, idx) => {
+                const p = PRESETS[idx];
                 const id = `gallery-${p.id}`;
                 return (
                   <div key={p.id} className={styles.galleryCard}>
