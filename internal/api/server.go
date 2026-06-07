@@ -15,8 +15,10 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/elythi0n/virta/internal/buildinfo"
@@ -516,14 +518,15 @@ func crashDumps(runtimeDir string) []string {
 	return paths
 }
 
-// withCORS adds CORS headers for an opt-in allowlist of origins (local web tools), and answers
-// preflight requests. Off by default (empty allowlist): a same-origin SPA and the desktop webview
-// never need it, so cross-origin access is something the user deliberately enables (ADR-017). A
-// "*" entry allows any origin (credentials still ride the bearer token, not cookies).
+// withCORS adds CORS headers and answers preflight requests. Two tiers:
+//   - Loopback origins (localhost, 127.0.0.1, ::1) and the Wails desktop app custom
+//     scheme (wails://) are always permitted — they can only reach this loopback server
+//     from the same machine, so the usual CSRF risk does not apply. This lets the Wails
+//     embedded webview call the daemon without a reverse proxy.
+//   - An explicit allowlist (s.corsOrigins) covers developer tools and integrations. A
+//     "*" entry opens it to any origin (ADR-017 opt-in; credentials ride the bearer
+//     token, not cookies).
 func (s *Server) withCORS(next http.Handler) http.Handler {
-	if len(s.corsOrigins) == 0 {
-		return next
-	}
 	allowAll := false
 	allowed := map[string]bool{}
 	for _, o := range s.corsOrigins {
@@ -534,11 +537,14 @@ func (s *Server) withCORS(next http.Handler) http.Handler {
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
-		if origin != "" && (allowAll || allowed[origin]) {
-			w.Header().Set("Access-Control-Allow-Origin", origin)
-			w.Header().Set("Vary", "Origin")
-			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		if origin != "" {
+			permit := allowAll || allowed[origin] || isLoopbackCORSOrigin(origin)
+			if permit {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Set("Vary", "Origin")
+				w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
+				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			}
 		}
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
@@ -546,6 +552,20 @@ func (s *Server) withCORS(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// isLoopbackCORSOrigin reports whether origin is a trusted same-machine source that may
+// always bypass CORS — loopback HTTP/HTTPS addresses and the Wails desktop webview scheme.
+func isLoopbackCORSOrigin(origin string) bool {
+	if strings.HasPrefix(origin, "wails://") {
+		return true
+	}
+	u, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+	h := u.Hostname()
+	return h == "localhost" || h == "127.0.0.1" || h == "::1"
 }
 
 func writeJSON(w http.ResponseWriter, v any) {

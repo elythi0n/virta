@@ -4,11 +4,32 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
 	"github.com/coder/websocket"
 )
+
+// isLoopbackOrigin reports whether the given Origin header value is a trusted
+// same-machine origin. Allowed cases:
+//   - Exact match with the daemon's own http://host:port (standard same-origin)
+//   - Wails desktop app custom scheme (wails://) — process-local, always safe
+//   - Any loopback HTTP origin (localhost / 127.0.0.1 / ::1) — Wails internal asset server
+func isLoopbackOrigin(origin, daemonHost string) bool {
+	if origin == "http://"+daemonHost || origin == "https://"+daemonHost {
+		return true
+	}
+	if strings.HasPrefix(origin, "wails://") {
+		return true
+	}
+	u, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+	h := u.Hostname()
+	return h == "localhost" || h == "127.0.0.1" || h == "::1"
+}
 
 const writeTimeout = 10 * time.Second
 
@@ -26,16 +47,11 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Referrer-Policy", "no-referrer")
 	opts := &websocket.AcceptOptions{}
 	if origin := r.Header.Get("Origin"); origin != "" {
-		scheme := "http"
-		if r.TLS != nil {
-			scheme = "https"
-		}
-		expected := scheme + "://" + r.Host
-		if origin != expected {
+		if !isLoopbackOrigin(origin, r.Host) {
 			http.Error(w, "origin not allowed", http.StatusForbidden)
 			return
 		}
-		opts.OriginPatterns = []string{r.Host}
+		opts.OriginPatterns = []string{"*"}
 	}
 	conn, err := websocket.Accept(w, r, opts)
 	if err != nil {
