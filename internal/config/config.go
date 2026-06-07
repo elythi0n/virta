@@ -44,6 +44,11 @@ type Config struct {
 	// Hosted enables multi-user mode (VIRTA_HOSTED=1): user registration/login, per-user
 	// workspaces, and Postgres as the expected backend. False in local/desktop mode.
 	Hosted bool
+	// LoggingEnabled force-enables message logging on startup without requiring the user
+	// to toggle it in Settings. Useful for server deployments where logging should always
+	// be on. When true, the daemon enables logging on the active profile at start time;
+	// the user can still disable it from Settings if desired.
+	LoggingEnabled bool
 	// MCPRelayURL is the public base URL at which the Virta MCP server is reachable by
 	// external AI clients (Claude Desktop, Cursor, etc.). Empty in local/desktop mode.
 	// Set to e.g. "https://virta.example.com" in hosted deployments so the AI can tell
@@ -87,6 +92,7 @@ func Load() (Config, error) {
 		KickClientSecret: os.Getenv("VIRTA_KICK_CLIENT_SECRET"),
 		Token:            os.Getenv("VIRTA_TOKEN"),
 		Hosted:           os.Getenv("VIRTA_HOSTED") == "1" || os.Getenv("VIRTA_HOSTED") == "true",
+		LoggingEnabled:   os.Getenv("VIRTA_LOGGING_ENABLED") == "1" || os.Getenv("VIRTA_LOGGING_ENABLED") == "true",
 		MCPRelayURL:      os.Getenv("VIRTA_MCP_RELAY_URL"),
 	}
 	return c, nil

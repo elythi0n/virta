@@ -19,7 +19,9 @@ type TurnItem =
 
 // Paired tool turn: a tool_use + its matching tool_result combined for rendering.
 type ToolPair = { kind: 'tool'; name: string; args: string; result: string | null };
-type RenderItem = Exclude<TurnItem, { kind: 'tool_use' } | { kind: 'tool_result' }> | ToolPair;
+// Group of consecutive tool calls (shown as a collapsed stack by default).
+type ToolGroup = { kind: 'tool_group'; tools: ToolPair[] };
+type RenderItem = Exclude<TurnItem, { kind: 'tool_use' } | { kind: 'tool_result' }> | ToolPair | ToolGroup;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 function autoResize(el: HTMLTextAreaElement) {
@@ -44,31 +46,44 @@ function relativeDate(iso: string): string {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-/** Pair consecutive tool_use + tool_result items into a single ToolPair for rendering. */
+/** Pair + group tool turns: consecutive tool pairs become a single ToolGroup. */
 function pairTools(turns: TurnItem[]): RenderItem[] {
-  const out: RenderItem[] = [];
+  // Step 1: pair tool_use + tool_result
+  const paired: RenderItem[] = [];
   let i = 0;
   while (i < turns.length) {
     const t = turns[i];
     if (t.kind === 'tool_use') {
       const next = turns[i + 1];
       if (next?.kind === 'tool_result' && next.name === t.name) {
-        out.push({ kind: 'tool', name: t.name, args: t.args, result: next.json });
-        i += 2;
-        continue;
+        paired.push({ kind: 'tool', name: t.name, args: t.args, result: next.json });
+        i += 2; continue;
       }
-      // In-flight: no result yet
-      out.push({ kind: 'tool', name: t.name, args: t.args, result: null });
-      i++;
-      continue;
+      paired.push({ kind: 'tool', name: t.name, args: t.args, result: null });
+      i++; continue;
     }
-    if (t.kind === 'tool_result') {
-      // Orphaned result — skip (was already consumed above)
-      i++;
-      continue;
-    }
-    out.push(t as RenderItem);
+    if (t.kind === 'tool_result') { i++; continue; } // orphaned, skip
+    paired.push(t as RenderItem);
     i++;
+  }
+
+  // Step 2: group consecutive tool pairs into ToolGroup
+  const out: RenderItem[] = [];
+  let j = 0;
+  while (j < paired.length) {
+    const item = paired[j];
+    if (item.kind === 'tool') {
+      // Collect the run of consecutive tools
+      const group: ToolPair[] = [item as ToolPair];
+      while (j + group.length < paired.length && paired[j + group.length]?.kind === 'tool') {
+        group.push(paired[j + group.length] as ToolPair);
+      }
+      out.push(group.length === 1 ? group[0] : { kind: 'tool_group', tools: group });
+      j += group.length;
+      continue;
+    }
+    out.push(item);
+    j++;
   }
   return out;
 }
@@ -173,6 +188,45 @@ function ToolCard({ name, args, result }: { name: string; args: string; result: 
               {tryPretty(result)}
             </pre>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Groups ≥2 consecutive tool calls into a single collapsible stack.
+function ToolGroupCard({ tools }: { tools: ToolPair[] }) {
+  const [open, setOpen] = useState(false);
+  const doneCount  = tools.filter(t => t.result !== null && !isToolError(t.result)).length;
+  const errorCount = tools.filter(t => t.result !== null && isToolError(t.result)).length;
+  const pendingCount = tools.filter(t => t.result === null).length;
+
+  return (
+    <div className={styles.toolGroup}>
+      <button type="button" className={styles.toolGroupHeader} onClick={() => setOpen(o => !o)}>
+        <div className={styles.toolGroupIcons}>
+          {tools.map((t, i) => (
+            <span key={i} className={`${styles.toolGroupIcon} ${isToolError(t.result ?? '') ? styles.toolGroupIconError : t.result === null ? styles.toolGroupIconPending : styles.toolGroupIconDone}`}>
+              <Icon name={toolIcon(t.name)} size={12} />
+            </span>
+          ))}
+        </div>
+        <span className={styles.toolGroupLabel}>
+          {tools.length} tool{tools.length !== 1 ? 's' : ''}
+        </span>
+        <div className={styles.toolGroupBadges}>
+          {doneCount > 0    && <span className={styles.toolGroupDone}>{doneCount} ✓</span>}
+          {errorCount > 0   && <span className={styles.toolGroupError}>{errorCount} ✕</span>}
+          {pendingCount > 0 && <span className={styles.toolGroupPending}>{pendingCount} …</span>}
+        </div>
+        <Icon name="chevron-down" size={12} className={open ? styles.chevronOpen : styles.chevron} />
+      </button>
+
+      {open && (
+        <div className={styles.toolGroupBody}>
+          {tools.map((t, i) => (
+            <ToolCard key={i} name={t.name} args={t.args} result={t.result} />
+          ))}
         </div>
       )}
     </div>
@@ -422,6 +476,13 @@ export default function AskPanel() {
             return (
               <div key={i} className={styles.toolTurn}>
                 <ToolCard name={t.name} args={t.args} result={t.result} />
+              </div>
+            );
+          }
+          if (t.kind === 'tool_group') {
+            return (
+              <div key={i} className={styles.toolTurn}>
+                <ToolGroupCard tools={t.tools} />
               </div>
             );
           }

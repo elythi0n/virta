@@ -405,6 +405,95 @@
   border-color: color-mix(in srgb, var(--virta-danger) 25%, var(--virta-line));
 }
 
+/* ── Tool group (≥2 consecutive tool calls) ────────────────────────── */
+.toolGroup {
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-md);
+  background: var(--virta-bg-1);
+  overflow: hidden;
+}
+.toolGroupHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  width: 100%;
+  padding: var(--virta-space-8) var(--virta-space-12);
+  border: 0;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--virta-motion-fast) ease;
+}
+.toolGroupHeader:hover { background: var(--virta-bg-2); }
+.toolGroupIcons {
+  flex: none;
+  display: flex;
+  gap: 3px;
+}
+.toolGroupIcon {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--virta-radius-sm);
+  border: 1px solid var(--virta-line);
+}
+.toolGroupIconDone    { background: color-mix(in srgb, var(--virta-ok) 10%, var(--virta-bg-2)); color: var(--virta-ok); }
+.toolGroupIconError   { background: color-mix(in srgb, var(--virta-danger) 10%, var(--virta-bg-2)); color: var(--virta-danger); }
+.toolGroupIconPending { background: var(--virta-bg-2); color: var(--virta-text-2); }
+.toolGroupLabel {
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  font-weight: 600;
+  color: var(--virta-text-0);
+  flex: 1;
+}
+.toolGroupBadges {
+  display: flex;
+  gap: var(--virta-space-4);
+  align-items: center;
+}
+.toolGroupDone {
+  font-family: var(--virta-font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--virta-ok);
+  background: color-mix(in srgb, var(--virta-ok) 10%, transparent);
+  padding: 1px 6px;
+  border-radius: 20px;
+}
+.toolGroupError {
+  font-family: var(--virta-font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--virta-danger);
+  background: color-mix(in srgb, var(--virta-danger) 10%, transparent);
+  padding: 1px 6px;
+  border-radius: 20px;
+}
+.toolGroupPending {
+  font-family: var(--virta-font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--virta-text-2);
+  background: color-mix(in srgb, var(--virta-text-2) 10%, transparent);
+  padding: 1px 6px;
+  border-radius: 20px;
+}
+.toolGroupBody {
+  border-top: 1px solid var(--virta-line);
+  display: flex;
+  flex-direction: column;
+}
+/* Individual cards inside a group lose their outer radius and border */
+.toolGroupBody .toolCard {
+  border: 0;
+  border-bottom: 1px solid var(--virta-line);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--virta-bg-0) 50%, var(--virta-bg-1));
+}
+.toolGroupBody .toolCard:last-child { border-bottom: 0; }
+
 /* ── Error turn ────────────────────────────────────────────────────── */
 .errorTurn {
   display: inline-flex;

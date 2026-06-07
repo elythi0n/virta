@@ -1235,6 +1235,13 @@ func (d *Daemon) Start() error {
 		}
 	}
 
+	// If VIRTA_LOGGING_ENABLED=1, force logging on regardless of the stored profile setting.
+	// This is the easiest way to enable logging for server deployments without touching the UI.
+	if d.cfg.LoggingEnabled {
+		d.logSink.SetEnabled(true)
+		d.log.Info("message logging force-enabled via VIRTA_LOGGING_ENABLED")
+	}
+
 	if err := d.api.Start(); err != nil {
 		_ = d.runner.Close()
 		return err

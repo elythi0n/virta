@@ -45,6 +45,7 @@ func makeStore(t *testing.T) store.Store {
 
 func TestToolBelt_SearchMessages(t *testing.T) {
 	tb := New(makeStore(t))
+	tb.SetLogging(func() bool { return true })
 	rows, err := tb.SearchMessages(context.Background(), SearchArgs{Query: "hello", Limit: 10})
 	if err != nil {
 		t.Fatalf("SearchMessages: %v", err)
@@ -56,6 +57,7 @@ func TestToolBelt_SearchMessages(t *testing.T) {
 
 func TestToolBelt_GetUserHistory(t *testing.T) {
 	tb := New(makeStore(t))
+	tb.SetLogging(func() bool { return true })
 	rows, err := tb.GetUserHistory(context.Background(), UserHistoryArgs{Author: "Alice", Limit: 10})
 	if err != nil {
 		t.Fatalf("GetUserHistory: %v", err)
@@ -72,6 +74,7 @@ func TestToolBelt_GetUserHistory(t *testing.T) {
 
 func TestToolBelt_TopChatters(t *testing.T) {
 	tb := New(makeStore(t))
+	tb.SetLogging(func() bool { return true })
 	top, err := tb.TopChatters(context.Background(), TopChattersArgs{Limit: 5})
 	if err != nil {
 		t.Fatalf("TopChatters: %v", err)
@@ -90,6 +93,7 @@ func TestToolBelt_TopChatters(t *testing.T) {
 
 func TestToolBelt_ListChannels(t *testing.T) {
 	tb := New(makeStore(t))
+	tb.SetLogging(func() bool { return true })
 	channels, err := tb.ListChannels(context.Background())
 	if err != nil {
 		t.Fatalf("ListChannels: %v", err)
@@ -115,6 +119,7 @@ func TestToolBelt_Dispatch_SearchMessages(t *testing.T) {
 
 func TestToolBelt_Dispatch_UnknownTool(t *testing.T) {
 	tb := New(makeStore(t))
+	tb.SetLogging(func() bool { return true })
 	_, err := tb.Dispatch(context.Background(), "nonexistent_tool", []byte(`{}`))
 	if err == nil {
 		t.Error("expected error for unknown tool")

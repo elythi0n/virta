@@ -26,6 +26,8 @@ services:
       VIRTA_DB_DSN:    "postgres://virta:${POSTGRES_PASSWORD:-virta}@db:5432/virta?sslmode=disable"
       # Set to 1 to enable multi-user account registration/login:
       VIRTA_HOSTED:    "${VIRTA_HOSTED:-0}"
+      # Set to 1 to force-enable message logging (required for Ask AI history tools).
+      VIRTA_LOGGING_ENABLED: "${VIRTA_LOGGING_ENABLED:-0}"
       # Optional: OAuth app credentials (users can also set them in Settings).
       VIRTA_TWITCH_CLIENT_ID:   "${VIRTA_TWITCH_CLIENT_ID:-}"
       VIRTA_KICK_CLIENT_ID:     "${VIRTA_KICK_CLIENT_ID:-}"

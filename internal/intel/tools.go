@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,6 +24,29 @@ import (
 // MaxRows is the hard per-tool result cap — prevents tool responses from blowing up context windows.
 const MaxRows = 200
 
+// FlexInt accepts both JSON numbers and JSON strings from AI models that don't honour the schema
+// type strictly (e.g. sending "10" instead of 10 for a limit field).
+type FlexInt int
+
+func (f *FlexInt) UnmarshalJSON(b []byte) error {
+	// First try a plain number.
+	var n int
+	if err := json.Unmarshal(b, &n); err == nil {
+		*f = FlexInt(n)
+		return nil
+	}
+	// Fall back to a quoted string containing a number.
+	var s string
+	if err := json.Unmarshal(b, &s); err == nil {
+		n, err := strconv.Atoi(strings.TrimSpace(s))
+		if err == nil {
+			*f = FlexInt(n)
+			return nil
+		}
+	}
+	return fmt.Errorf("flexint: cannot parse %s as integer", string(b))
+}
+
 // --- Tool input/output types (also used as JSON Schema sources) ---
 
 // SearchArgs is the input to search_messages.
@@ -32,7 +56,7 @@ type SearchArgs struct {
 	Author   string `json:"author"   jsonschema:"description=Author name or uid to filter by"`
 	FromTime string `json:"from_time" jsonschema:"description=ISO-8601 start time; omit for no lower bound"`
 	ToTime   string `json:"to_time"   jsonschema:"description=ISO-8601 end time; omit for no upper bound"`
-	Limit    int    `json:"limit"    jsonschema:"description=Max results (capped at 200)"`
+	Limit    FlexInt `json:"limit"    jsonschema:"description=Max results (capped at 200)"`
 }
 
 // UserHistoryArgs is the input to get_user_history.
@@ -41,7 +65,7 @@ type UserHistoryArgs struct {
 	Channel  string `json:"channel"  jsonschema:"description=Optional channel key"`
 	FromTime string `json:"from_time" jsonschema:"description=ISO-8601 start"`
 	ToTime   string `json:"to_time"   jsonschema:"description=ISO-8601 end"`
-	Limit    int    `json:"limit"    jsonschema:"description=Max results (capped at 200)"`
+	Limit    FlexInt `json:"limit"    jsonschema:"description=Max results (capped at 200)"`
 }
 
 // TopChattersArgs is the input to top_chatters.
@@ -50,7 +74,7 @@ type TopChattersArgs struct {
 	FromTime string `json:"from_time" jsonschema:"description=ISO-8601 start"`
 	ToTime   string `json:"to_time"   jsonschema:"description=ISO-8601 end"`
 	Metric   string `json:"metric"    jsonschema:"description=messages|subs|gifts — defaults to messages"`
-	Limit    int    `json:"limit"     jsonschema:"description=Top-N count (capped at 50)"`
+	Limit    FlexInt `json:"limit"     jsonschema:"description=Top-N count (capped at 50)"`
 }
 
 // ChannelStatsArgs is the input to channel_stats.
@@ -65,7 +89,7 @@ type MessagesRangeArgs struct {
 	Channel  string `json:"channel"  jsonschema:"required,description=Channel key"`
 	FromTime string `json:"from_time" jsonschema:"description=ISO-8601 start"`
 	ToTime   string `json:"to_time"   jsonschema:"description=ISO-8601 end"`
-	Limit    int    `json:"limit"    jsonschema:"description=Max results (capped at 200)"`
+	Limit    FlexInt `json:"limit"    jsonschema:"description=Max results (capped at 200)"`
 }
 
 // MessageRow is a tool result row.
@@ -127,7 +151,7 @@ func (tb *ToolBelt) SearchMessages(ctx context.Context, args SearchArgs) ([]Mess
 	if strings.TrimSpace(args.Query) == "" {
 		return nil, fmt.Errorf("query is required")
 	}
-	limit := clamped(args.Limit, MaxRows)
+	limit := clamped(int(args.Limit), MaxRows)
 	q := store.SearchQuery{
 		Text:   args.Query,
 		Author: args.Author,
@@ -154,7 +178,7 @@ func (tb *ToolBelt) GetUserHistory(ctx context.Context, args UserHistoryArgs) ([
 	if args.Author == "" {
 		return nil, fmt.Errorf("author is required")
 	}
-	limit := clamped(args.Limit, MaxRows)
+	limit := clamped(int(args.Limit), MaxRows)
 	// Author-only queries: scan history across channels, filtering by author name.
 	// This avoids requiring a non-empty FTS text term while still working with both the
 	// in-memory fake and the real FTS backends.
@@ -188,7 +212,7 @@ func (tb *ToolBelt) TopChatters(ctx context.Context, args TopChattersArgs) ([]Ch
 	if !tb.loggingOn() {
 		return nil, errLoggingOff
 	}
-	limit := clamped(args.Limit, 50)
+	limit := clamped(int(args.Limit), 50)
 	if limit <= 0 {
 		limit = 10
 	}
@@ -274,7 +298,7 @@ func (tb *ToolBelt) GetMessagesRange(ctx context.Context, args MessagesRangeArgs
 	if err != nil {
 		return nil, err
 	}
-	limit := clamped(args.Limit, MaxRows)
+	limit := clamped(int(args.Limit), MaxRows)
 	msgs, err := tb.store.Messages().History(ctx, store.HistoryQuery{ChannelID: chID, Limit: limit})
 	if err != nil {
 		return nil, err
