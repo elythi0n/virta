@@ -1,12 +1,14 @@
 import { Text } from '@virta/ui-kit';
 import styles from './WatchPane.module.css';
 
-// In the Wails desktop app the page runs under wails://wails/ so
-// location.hostname is "wails" — not a valid parent for embed players.
-// Fall back to "localhost" for any non-HTTP-hostname.
+// Compute the parent domain for embed players. In a normal browser this is the
+// page hostname. In the Wails desktop app (wails://wails/) location.hostname is
+// "wails" — Twitch rejects this; "localhost" is the canonical allow-listed value
+// for local/desktop clients on both Twitch and Kick.
 function embedParent(): string {
   const h = location.hostname;
-  return h && h !== 'wails' ? h : 'localhost';
+  if (!h || h === 'wails') return 'localhost';
+  return h;
 }
 
 function embedUrl(platform: string, slug: string): string | null {
