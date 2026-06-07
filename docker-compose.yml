@@ -16,6 +16,10 @@ services:
     restart: unless-stopped
     ports:
       - "8344:8344"
+    # Lets the container resolve host.docker.internal → host IP on Linux.
+    # On Docker Desktop (Mac/Windows) this is automatic; on Linux it requires the entry below.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       db:
         condition: service_healthy
@@ -72,14 +76,16 @@ services:
   #     retries:  5
 
   # Ollama — optional. Runs local AI (Ask pane) without an external API key.
-  # ollama:
-  #   image: ollama/ollama:latest
-  #   restart: unless-stopped
-  #   volumes:
-  #     - virta-ollama:/root/.ollama
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:11434:11434"
+    volumes:
+      - virta-ollama:/root/.ollama
 
 volumes:
   virta-data:
   virta-db:
   # virta-search:
-  # virta-ollama:
+  virta-ollama:

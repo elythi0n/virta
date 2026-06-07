@@ -32,9 +32,15 @@ func NewXAI(apiKey string) *OpenAICompatProvider {
 }
 
 // NewOllama returns an Ollama provider (local, no key needed).
+// baseURL should be the root of the Ollama instance (e.g. http://localhost:11434 or
+// http://host.docker.internal:11434); /v1 is appended automatically if not already present.
 func NewOllama(baseURL string) *OpenAICompatProvider {
 	if baseURL == "" {
-		baseURL = "http://localhost:11434/v1"
+		baseURL = "http://localhost:11434"
+	}
+	baseURL = strings.TrimRight(baseURL, "/")
+	if !strings.HasSuffix(baseURL, "/v1") {
+		baseURL += "/v1"
 	}
 	return newCompat("ollama", "Ollama (local · free)", baseURL, "")
 }
