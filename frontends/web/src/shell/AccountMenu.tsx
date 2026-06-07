@@ -1,17 +1,20 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Button, Dialog, Input, Popover, Text } from '@virta/ui-kit';
 import Icon from '../Icon';
-import { getHostedStatus, getMe, login, logout, register } from '../daemon';
-import type { VirtaUser } from '../daemon';
+import { joinChannel } from '../daemon';
+import { login, logout, register } from '../daemon/account';
+import type { VirtaUser } from '../daemon/account';
+import { clearGuestChannels, loadGuestChannels } from '../daemon/localChannels';
+import { useHostedAuth } from '../daemon/hostedAuth';
 import styles from './AccountMenu.module.css';
 
 type Mode = 'idle' | 'login' | 'register';
 
-// AccountMenu is shown in the titlebar when the daemon is in hosted mode.
-// In local mode (hosted=false) it renders nothing.
+// AccountMenu is shown in the titlebar in hosted mode only. In local mode (hosted=false) it
+// renders nothing. In hosted mode with no session it shows a "Sign in" button; once the user
+// logs in it shows their avatar + display name with a sign-out option.
 export default function AccountMenu() {
-  const [hosted, setHosted] = useState(false);
-  const [user, setUser] = useState<VirtaUser | null>(null);
+  const { hosted, user, setUser } = useHostedAuth();
   const [mode, setMode] = useState<Mode>('idle');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
@@ -20,30 +23,13 @@ export default function AccountMenu() {
   const [busy, setBusy] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // Retry loading hosted status a few times — the daemon may still be starting when the SPA loads.
-  const retryCount = useRef(0);
-  useEffect(() => {
-    let cancelled = false;
-    const load = () => {
-      getHostedStatus()
-        .then(s => {
-          if (cancelled) return;
-          setHosted(s.hosted);
-          if (s.hosted) {
-            getMe().then(u => !cancelled && setUser(u)).catch(() => !cancelled && setUser(null));
-          }
-        })
-        .catch(() => {
-          if (cancelled) return;
-          // Retry up to 3 times with exponential backoff so a slow daemon start doesn't hide the UI.
-          if (retryCount.current < 3) {
-            retryCount.current++;
-            setTimeout(load, 1000 * retryCount.current);
-          }
-        });
-    };
-    load();
-    return () => { cancelled = true; };
+  // After a successful login/register, sync any guest channels to the server account
+  // then clear local storage so there's no stale state.
+  const syncGuestChannels = useCallback(async () => {
+    const guests = loadGuestChannels();
+    if (guests.length === 0) return;
+    await Promise.allSettled(guests.map(c => joinChannel(c.platform, c.slug)));
+    clearGuestChannels();
   }, []);
 
   const doLogin = useCallback(async () => {
@@ -51,36 +37,38 @@ export default function AccountMenu() {
     setBusy(true); setError('');
     try {
       const res = await login(email, password);
-      setUser((res as { user: VirtaUser }).user);
-      setMode('idle');
-      setEmail(''); setPassword('');
+      const loggedIn = (res as { user: VirtaUser }).user;
+      await syncGuestChannels();
+      setUser(loggedIn);
+      setMode('idle'); setEmail(''); setPassword('');
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Login failed');
     } finally {
       setBusy(false);
     }
-  }, [email, password]);
+  }, [email, password, setUser, syncGuestChannels]);
 
   const doRegister = useCallback(async () => {
     if (!email || !password) return;
     setBusy(true); setError('');
     try {
       const res = await register(email, name, password);
-      setUser((res as { user: VirtaUser }).user);
-      setMode('idle');
-      setEmail(''); setName(''); setPassword('');
+      const loggedIn = (res as { user: VirtaUser }).user;
+      await syncGuestChannels();
+      setUser(loggedIn);
+      setMode('idle'); setEmail(''); setName(''); setPassword('');
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Registration failed');
     } finally {
       setBusy(false);
     }
-  }, [email, name, password]);
+  }, [email, name, password, setUser, syncGuestChannels]);
 
   const doLogout = useCallback(async () => {
     await logout().catch(() => {});
     setUser(null);
     setMenuOpen(false);
-  }, []);
+  }, [setUser]);
 
   if (!hosted) return null;
 
@@ -119,12 +107,11 @@ export default function AccountMenu() {
         </button>
       )}
 
-      {/* Login dialog */}
       <Dialog
         open={mode === 'login'}
         onOpenChange={o => !o && setMode('idle')}
         title="Sign in to Virta"
-        description="Access your channels, profiles, and history from any device."
+        description="Your channels, profiles, and history — synced across devices."
         size="sm"
         footer={
           <>
@@ -153,7 +140,6 @@ export default function AccountMenu() {
         </div>
       </Dialog>
 
-      {/* Register dialog */}
       <Dialog
         open={mode === 'register'}
         onOpenChange={o => !o && setMode('idle')}
@@ -175,7 +161,7 @@ export default function AccountMenu() {
             <Input aria-label="Email" type="email" value={email} onChange={e => setEmail(e.currentTarget.value)} autoFocus />
           </label>
           <label className={styles.fieldLabel}>
-            Display name (optional)
+            Display name <span className={styles.hint}>(optional)</span>
             <Input aria-label="Display name" value={name} onChange={e => setName(e.currentTarget.value)} placeholder="How you appear to others" />
           </label>
           <label className={styles.fieldLabel}>

@@ -1,55 +1,93 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { DaemonUnreachableError, joinChannel, leaveChannel, listChannels } from './api';
+import { addGuestChannel, loadGuestChannelInfos, removeGuestChannel } from './localChannels';
+import { useIsGuest } from './hostedAuth';
 import type { ChannelInfo } from './wire.gen';
 
 export type ChannelsStatus = 'loading' | 'ready' | 'offline';
 
-// Loads the daemon's joined channels and exposes join/leave that refresh the list. `offline` means
-// no daemon is reachable (e.g. a bare web dev server); the UI shows a hint rather than an error.
 export function useChannels() {
-  const [channels, setChannels] = useState<ChannelInfo[]>([]);
-  const [status, setStatus] = useState<ChannelsStatus>('loading');
-  const [error, setError] = useState<string | null>(null);
+  const isGuest = useIsGuest();
+
+  // ── Server state ────────────────────────────────────────────────────────────
+  const [serverChannels, setServerChannels] = useState<ChannelInfo[]>([]);
+  const [serverStatus, setServerStatus] = useState<ChannelsStatus>('loading');
+  const [serverError, setServerError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
-      setChannels(await listChannels());
-      setStatus('ready');
-      setError(null);
+      setServerChannels(await listChannels());
+      setServerStatus('ready');
+      setServerError(null);
     } catch (e) {
-      if (e instanceof DaemonUnreachableError) {
-        setStatus('offline');
-        return;
-      }
-      setError(e instanceof Error ? e.message : String(e));
-      setStatus('ready');
+      if (e instanceof DaemonUnreachableError) { setServerStatus('offline'); return; }
+      setServerError(e instanceof Error ? e.message : String(e));
+      setServerStatus('ready');
     }
   }, []);
 
-  // Poll so the joined list and connection state stay current (channels join/leave elsewhere, and
-  // the daemon can come or go) — this is what lets the connection banner appear and clear on its
-  // own. Channel state changes rarely, so a slow interval is plenty.
   useEffect(() => {
+    if (isGuest) return; // skip server polling — would return 401 anyway
     void refresh();
     const id = setInterval(() => void refresh(), 5000);
     return () => clearInterval(id);
+  }, [refresh, isGuest]);
+
+  const serverJoin = useCallback(async (platform: string, slug: string) => {
+    await joinChannel(platform, slug);
+    await refresh();
   }, [refresh]);
 
-  const join = useCallback(
-    async (platform: string, slug: string) => {
-      await joinChannel(platform, slug);
-      await refresh();
-    },
-    [refresh],
-  );
+  const serverLeave = useCallback(async (platform: string, slug: string) => {
+    await leaveChannel(platform, slug);
+    await refresh();
+  }, [refresh]);
 
-  const leave = useCallback(
-    async (platform: string, slug: string) => {
-      await leaveChannel(platform, slug);
-      await refresh();
-    },
-    [refresh],
+  // ── Guest (localStorage) state ───────────────────────────────────────────────
+  const [guestChannels, setGuestChannels] = useState<ChannelInfo[]>(() =>
+    loadGuestChannelInfos(),
   );
+  // Keep a ref so we can reload without stale closures.
+  const reloadGuest = useCallback(() => setGuestChannels(loadGuestChannelInfos()), []);
 
-  return { channels, status, error, join, leave, refresh };
+  const guestJoin = useCallback((_platform: string, _slug: string) => {
+    addGuestChannel(_platform, _slug);
+    reloadGuest();
+    return Promise.resolve();
+  }, [reloadGuest]);
+
+  const guestLeave = useCallback((_platform: string, _slug: string) => {
+    removeGuestChannel(_platform, _slug);
+    reloadGuest();
+    return Promise.resolve();
+  }, [reloadGuest]);
+
+  // Keep guest list fresh if another tab changes localStorage.
+  const prevIsGuest = useRef(isGuest);
+  useEffect(() => {
+    // Reload when transitioning back to guest (e.g. after sign-out).
+    if (isGuest && !prevIsGuest.current) reloadGuest();
+    prevIsGuest.current = isGuest;
+  }, [isGuest, reloadGuest]);
+
+  // ── Return appropriate slice ─────────────────────────────────────────────────
+  if (isGuest) {
+    return {
+      channels: guestChannels,
+      status: 'ready' as ChannelsStatus,
+      error: null,
+      join: guestJoin,
+      leave: guestLeave,
+      refresh: reloadGuest,
+    };
+  }
+
+  return {
+    channels: serverChannels,
+    status: serverStatus,
+    error: serverError,
+    join: serverJoin,
+    leave: serverLeave,
+    refresh,
+  };
 }

@@ -14,6 +14,7 @@ import { loadLayout, saveLayoutDebounced } from './shell/layout';
 import { ActionsProvider } from './actions';
 import { OpenChannelProvider } from './openChannel';
 import { OpenStreamProvider } from './openStream';
+import { HostedAuthProvider } from './daemon/hostedAuth';
 import { DensityProvider } from './density';
 import { FeedDisplayProvider } from './feedDisplay';
 import { A11yProvider } from './a11y';
@@ -317,6 +318,7 @@ export default function App() {
   }, [actions]);
 
   return (
+    <HostedAuthProvider>
     <ThemeProvider value={{ mode, setMode, theme }}>
       <A11yProvider value={{ reduceMotion, setReduceMotion, dyslexicFont, setDyslexicFont }}>
       <DensityProvider value={{ density, setDensity }}>
@@ -365,5 +367,6 @@ export default function App() {
       </DensityProvider>
       </A11yProvider>
     </ThemeProvider>
+    </HostedAuthProvider>
   );
 }

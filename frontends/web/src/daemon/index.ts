@@ -33,3 +33,6 @@ export { listThemes, importTheme, exportTheme, deleteTheme } from './themes';
 export { listModels, getIntelConfig, setIntelConfig, askStream } from './intel';
 export { getHostedStatus, register, login, logout, getMe } from './account';
 export type { VirtaUser, HostedStatus } from './account';
+export { HostedAuthProvider, useHostedAuth, useIsGuest } from './hostedAuth';
+export type { HostedAuthState } from './hostedAuth';
+export { loadGuestChannels, clearGuestChannels } from './localChannels';

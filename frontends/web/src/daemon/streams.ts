@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { request } from './http';
 import { channelKey } from './normalize';
+import { useIsGuest } from './hostedAuth';
 import type { StreamInfo } from './wire.gen';
 
 // Live stream metadata (viewer count, title, category, thumbnail) per joined channel.
@@ -8,11 +9,14 @@ export function listStreams(): Promise<StreamInfo[]> {
   return request<{ streams: StreamInfo[] }>('/v1/streams').then((r) => r.streams);
 }
 
-// Polls /v1/streams while mounted (the daemon refreshes the underlying snapshots lazily), keyed by
-// "platform:slug". Stream metadata changes slowly, so a relaxed cadence is plenty.
+// Polls /v1/streams while mounted, keyed by "platform:slug". Returns an empty map in guest mode
+// (unauthenticated in hosted deployment) — no engine connection means no live data.
 export function useStreams(): Record<string, StreamInfo> {
+  const isGuest = useIsGuest();
   const [streams, setStreams] = useState<Record<string, StreamInfo>>({});
+
   useEffect(() => {
+    if (isGuest) return; // no live data without auth; skip polling to avoid 401 noise
     let cancelled = false;
     const poll = async () => {
       try {
@@ -27,10 +31,8 @@ export function useStreams(): Record<string, StreamInfo> {
     };
     void poll();
     const id = setInterval(poll, 20000);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, []);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [isGuest]);
+
   return streams;
 }
