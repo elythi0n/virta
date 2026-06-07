@@ -200,7 +200,7 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	if err != nil {
 		return nil, fmt.Errorf("build api: %w", err)
 	}
-	srv.SetWebUI(webui.Handler()) // serve the embedded SPA itself, if one was built in
+	srv.SetWebUI(webui.Handler(), webui.IndexHTML) // serve the embedded SPA itself, if one was built in
 	log := srv.Logger()
 
 	clk := clock.System{}

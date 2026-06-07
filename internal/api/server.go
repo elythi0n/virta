@@ -65,6 +65,7 @@ type Server struct {
 	intel             Intel             // intelligence controller, installed via SetIntel
 	hostedAuth        HostedAuth        // multi-user account surface (nil in local/desktop mode)
 	webui             http.Handler      // embedded web UI, installed via SetWebUI (nil = not served)
+	webuiIndexHTML    func() ([]byte, error) // reads index.html directly, bypassing the file server
 	corsOrigins       []string          // opt-in CORS allowlist for local web tools (empty = CORS off)
 	integrationReport any               // native-integration report forwarded from the desktop shell
 
@@ -174,7 +175,12 @@ func (s *Server) handleMCP(w http.ResponseWriter, r *http.Request) {
 
 // SetWebUI installs the embedded web UI handler so the daemon serves the app itself. Passing nil
 // (no UI compiled into the binary) leaves the SPA route answering "not built".
-func (s *Server) SetWebUI(h http.Handler) { s.webui = h }
+// indexHTML reads the raw index.html bytes directly so injection can bypass the file server
+// (http.FileServer redirects /index.html → / which would loop if used for injection).
+func (s *Server) SetWebUI(h http.Handler, indexHTML func() ([]byte, error)) {
+	s.webui = h
+	s.webuiIndexHTML = indexHTML
+}
 
 // handleDiscovery hands a loopback client the token (and an empty address meaning "this origin"),
 // so a browser on this machine can authenticate to a virtad-served SPA with no configuration.
@@ -199,54 +205,32 @@ func (s *Server) handleWebUI(w http.ResponseWriter, r *http.Request) {
 	// Inject the discovery bootstrap only into the main HTML entry point.
 	// Subresources (JS, CSS, images) are served verbatim.
 	if r.URL.Path == "/" || r.URL.Path == "/index.html" || r.URL.Path == "" {
-		s.serveInjectedHTML(w, r, "/index.html")
+		s.serveInjectedHTML(w)
 		return
 	}
 	s.webui.ServeHTTP(w, r)
 }
 
-// serveInjectedHTML reads the embedded HTML, injects the discovery bootstrap as the first
-// script in <head>, and writes it. The token is only injected when the SPA itself is being
-// served — never for any other resource — so the exposure is equivalent to the current
-// loopback-only /__discovery: anyone who can load the page already has network access to the
-// daemon and the token in the response is no more secret than the page itself.
-func (s *Server) serveInjectedHTML(w http.ResponseWriter, r *http.Request, path string) {
-	// Re-route the request to the correct file.
-	r2 := r.Clone(r.Context())
-	r2.URL.Path = path
-
-	// Capture the response from the file server.
-	rec := &responseRecorder{header: w.Header().Clone(), code: 200}
-	s.webui.ServeHTTP(rec, r2)
-
-	if rec.code != 200 || len(rec.body) == 0 {
-		w.WriteHeader(rec.code)
-		_, _ = w.Write(rec.body)
+// serveInjectedHTML reads the embedded index.html directly, injects the discovery bootstrap
+// as the first script in <head>, and writes it. Reading directly (not via the file server)
+// avoids the http.FileServer redirect of /index.html → / that would otherwise loop.
+// The token is injected only when the SPA entry point is served, so exposure is equivalent
+// to /__discovery: anyone who can load the page already has network access to the daemon.
+func (s *Server) serveInjectedHTML(w http.ResponseWriter) {
+	if s.webuiIndexHTML == nil {
+		http.Error(w, "web UI not built", http.StatusNotFound)
 		return
 	}
-
-	// Inject the bootstrap script right before </head> (or at the start of <body>).
+	html, err := s.webuiIndexHTML()
+	if err != nil {
+		http.Error(w, "index.html not found", http.StatusNotFound)
+		return
+	}
 	bootstrap := "<script>window.__VIRTA_DISCOVERY__={addr:\"\",token:" + jsonQuote(s.token) + "};</script>"
-	body := injectBeforeHead(rec.body, bootstrap)
-
+	body := injectBeforeHead(html, bootstrap)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store") // token is in the page; don't cache
-	w.WriteHeader(200)
 	_, _ = w.Write(body)
-}
-
-// responseRecorder buffers an http.ResponseWriter's output.
-type responseRecorder struct {
-	header http.Header
-	code   int
-	body   []byte
-}
-
-func (rec *responseRecorder) Header() http.Header        { return rec.header }
-func (rec *responseRecorder) WriteHeader(code int)       { rec.code = code }
-func (rec *responseRecorder) Write(b []byte) (int, error) {
-	rec.body = append(rec.body, b...)
-	return len(b), nil
 }
 
 // injectBeforeHead inserts snippet just before </head> or, if absent, at the start of the body.

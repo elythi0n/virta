@@ -28,6 +28,13 @@ func Built() bool {
 	return err == nil
 }
 
+// IndexHTML returns the raw bytes of the embedded index.html.
+// Callers that need to inject a script tag should use this instead of going through
+// the file server, which redirects /index.html → / and would create an infinite loop.
+func IndexHTML() ([]byte, error) {
+	return fs.ReadFile(dist(), "index.html")
+}
+
 // Handler serves the embedded UI with SPA fallback: a missing path resolves to index.html so
 // client-side routes load. Returns nil if no UI was built in (the daemon then skips the route).
 func Handler() http.Handler {
