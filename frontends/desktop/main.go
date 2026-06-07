@@ -1,9 +1,5 @@
-// Command virta-desktop is the Virta desktop shell: a native window hosting the web UI that
-// supervises or attaches to a local virtad daemon.
-//
-// The UI is served from an embedded HTTP server at http://localhost:PORT/ so that
-// location.origin is a real HTTP origin. This allows iframe embeds from Twitch and Kick
-// to pass their CSP frame-ancestors checks (which allow localhost but not wails://).
+// Command virta-desktop is the Virta desktop shell: a native window hosting the web UI.
+// Wails v3 is used for multi-window support (stream player windows) and proper DevTools.
 package main
 
 import (
@@ -13,14 +9,11 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-// assets holds the built web UI (frontends/web/dist), copied in by `make app` before the build.
-// The `all:` prefix keeps the embed valid via the committed .gitkeep before the first build.
-//
 //go:embed all:assets
 var assets embed.FS
 
 func main() {
-	svc := newApp(assets)
+	svc := newApp()
 
 	app := application.New(application.Options{
 		Name:        "Virta",
@@ -43,7 +36,7 @@ func main() {
 		MinWidth:         960,
 		MinHeight:        600,
 		Frameless:        true,
-		URL:              svc.StartURL(), // http://localhost:PORT/ — real HTTP origin
+		URL:              "/",
 		BackgroundColour: application.NewRGBA(14, 15, 18, 255),
 		DevToolsEnabled:  devToolsEnabled,
 	})
