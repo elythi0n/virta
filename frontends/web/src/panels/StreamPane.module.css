@@ -6,7 +6,7 @@
   overflow: hidden;
 }
 
-/* ---- Toolbar / search ---- */
+/* ── Toolbar / search ─────────────────────────────────────────────── */
 .toolbar {
   flex: none;
   padding: var(--virta-space-12) var(--virta-space-16);
@@ -20,28 +20,30 @@
 }
 .searchIcon {
   position: absolute;
-  left: var(--virta-space-10);
+  left: 10px;
   color: var(--virta-text-2);
   pointer-events: none;
   flex: none;
 }
 .searchInput {
   width: 100%;
-  padding: var(--virta-space-6) var(--virta-space-32) var(--virta-space-6) var(--virta-space-32);
+  /* 8px top/bottom so the field has breathing room; 34px left clears the icon, 32px right clears the clear button */
+  padding: 8px 32px 8px 34px;
   border: 1px solid var(--virta-line);
   border-radius: var(--virta-radius-md);
   background: var(--virta-bg-0);
   color: var(--virta-text-0);
   font-family: var(--virta-font-ui);
   font-size: var(--virta-type-ui-size);
+  line-height: var(--virta-type-ui-line);
   outline: none;
   transition: border-color var(--virta-motion-fast) ease;
-  /* remove browser default search cancel button */
   appearance: none;
 }
 .searchInput::-webkit-search-cancel-button { display: none; }
 .searchInput::placeholder { color: var(--virta-text-2); }
 .searchInput:focus { border-color: var(--virta-accent); }
+
 .searchClear {
   position: absolute;
   right: var(--virta-space-8);
@@ -57,7 +59,7 @@
 }
 .searchClear:hover { color: var(--virta-text-0); background: var(--virta-bg-2); }
 
-/* ---- Grid ---- */
+/* ── Grid ─────────────────────────────────────────────────────────── */
 .grid {
   flex: 1 1 auto;
   min-height: 0;
@@ -71,7 +73,7 @@
   margin: 0;
 }
 
-/* ---- Stream card ---- */
+/* ── Stream card ──────────────────────────────────────────────────── */
 .item {
   border: 1px solid var(--virta-line);
   border-radius: var(--virta-radius-md);
@@ -89,10 +91,7 @@
   box-shadow: 0 2px 12px -4px color-mix(in srgb, var(--virta-accent) 40%, transparent);
 }
 
-.card {
-  display: flex;
-  flex-direction: column;
-}
+.card { display: flex; flex-direction: column; }
 
 /* 16:9 thumbnail */
 .thumb {
@@ -121,11 +120,12 @@
   background: linear-gradient(135deg, var(--virta-bg-2), var(--virta-bg-1));
 }
 
+/* Overlay badges — literal px because 6px isn't a token */
 .liveBadge {
   position: absolute;
-  top: var(--virta-space-6);
-  left: var(--virta-space-6);
-  padding: 1px var(--virta-space-6);
+  top: 6px;
+  left: 6px;
+  padding: 2px 6px;
   border-radius: var(--virta-radius-sm);
   background: var(--virta-danger);
   color: #fff;
@@ -136,11 +136,11 @@
 }
 .offlineBadge {
   position: absolute;
-  top: var(--virta-space-6);
-  left: var(--virta-space-6);
-  padding: 1px var(--virta-space-6);
+  top: 6px;
+  left: 6px;
+  padding: 2px 6px;
   border-radius: var(--virta-radius-sm);
-  background: color-mix(in srgb, var(--virta-bg-0) 70%, transparent);
+  background: color-mix(in srgb, var(--virta-bg-0) 75%, transparent);
   color: var(--virta-text-2);
   font-family: var(--virta-font-ui);
   font-size: 9px;
@@ -149,14 +149,14 @@
 }
 .viewers {
   position: absolute;
-  bottom: var(--virta-space-6);
-  left: var(--virta-space-6);
+  bottom: 6px;
+  left: 6px;
   display: inline-flex;
   align-items: center;
   gap: var(--virta-space-4);
-  padding: 1px var(--virta-space-6);
+  padding: 2px 6px;
   border-radius: var(--virta-radius-sm);
-  background: color-mix(in srgb, var(--virta-bg-0) 75%, transparent);
+  background: color-mix(in srgb, var(--virta-bg-0) 78%, transparent);
   color: var(--virta-text-0);
   font-family: var(--virta-font-ui);
   font-size: var(--virta-type-meta-size);
@@ -178,18 +178,18 @@
   text-transform: uppercase;
 }
 
-/* ---- Info section below thumbnail ---- */
+/* ── Info section below thumbnail ─────────────────────────────────── */
 .info {
   display: flex;
   flex-direction: column;
   gap: var(--virta-space-4);
-  padding: var(--virta-space-8) var(--virta-space-10);
+  padding: var(--virta-space-8) var(--virta-space-12);
 }
 
 .row {
   display: flex;
   align-items: center;
-  gap: var(--virta-space-6);
+  gap: var(--virta-space-8);
 }
 .glyphs {
   flex: none;
@@ -197,17 +197,9 @@
   align-items: center;
   gap: 3px;
 }
-.glyph {
-  width: 14px;
-  height: 14px;
-  flex: none;
-}
-.glyphMuted {
-  width: 12px;
-  height: 12px;
-  flex: none;
-  opacity: 0.35;
-}
+.glyph  { width: 14px; height: 14px; flex: none; }
+.glyphMuted { width: 12px; height: 12px; flex: none; opacity: 0.35; }
+
 .nameBtn {
   flex: 1 1 auto;
   min-width: 0;
@@ -231,8 +223,8 @@
   flex: none;
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border: 1px solid var(--virta-line);
   border-radius: var(--virta-radius-sm);
   background: none;
@@ -252,7 +244,7 @@
 .meta {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
 }
 .category {
   color: var(--virta-accent);
@@ -286,7 +278,7 @@
   color: var(--virta-text-1);
 }
 
-/* ---- Empty state ---- */
+/* ── Empty state ──────────────────────────────────────────────────── */
 .empty {
   flex: 1;
   display: flex;

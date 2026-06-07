@@ -37,7 +37,8 @@
 }
 .lead {
   margin: var(--virta-space-4) 0 0;
-  line-height: 1.5;
+  font-size: var(--virta-type-body-size);
+  line-height: var(--virta-type-body-line);
 }
 
 /* ── Filter bar ─────────────────────────────────────────────────────── */
@@ -45,7 +46,7 @@
   flex: none;
   display: flex;
   gap: var(--virta-space-4);
-  padding: var(--virta-space-8) var(--virta-space-16);
+  padding: var(--virta-space-12) var(--virta-space-16);
   border-bottom: 1px solid var(--virta-line);
   background: var(--virta-bg-1);
 }
@@ -53,13 +54,14 @@
   display: inline-flex;
   align-items: center;
   gap: var(--virta-space-4);
-  padding: 3px var(--virta-space-8);
+  padding: var(--virta-space-4) var(--virta-space-12);
   border: 1px solid transparent;
   border-radius: var(--virta-radius-sm);
   background: none;
   color: var(--virta-text-2);
   font-family: var(--virta-font-ui);
-  font-size: var(--virta-type-meta-size);
+  font-size: var(--virta-type-ui-size);
+  line-height: var(--virta-type-ui-line);
   font-weight: 600;
   letter-spacing: 0.01em;
   cursor: pointer;
@@ -83,10 +85,10 @@
 }
 .tabCount {
   font-family: var(--virta-font-mono);
-  font-size: 10px;
+  font-size: var(--virta-type-meta-size);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  opacity: 0.7;
+  opacity: 0.65;
 }
 
 /* ── Grid ───────────────────────────────────────────────────────────── */
