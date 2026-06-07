@@ -8,6 +8,7 @@ import { useFeedDisplay } from '../feedDisplay';
 import { useIntegration, listTokens, mintToken, revokeToken, getIntelConfig, setIntelConfig, listModels } from '../daemon';
 import type { TokenInfo } from '../daemon/wire.gen';
 import { useTheme, type ThemeMode } from '../theme';
+import { useHostedAuth } from '../daemon/hostedAuth';
 import Icon from '../Icon';
 import { DENSITIES } from './DensityControl';
 import Connections from './Connections';
@@ -229,15 +230,37 @@ function Shortcuts() {
 }
 
 function About() {
+  const [version, setVersion] = useState<string | null>(null);
+  useEffect(() => {
+    fetch('/v1/health')
+      .then(r => r.json())
+      .then((d: { version?: string }) => setVersion(d.version ?? null))
+      .catch(() => {});
+  }, []);
+
   return (
-    <>
-      <Text variant="title" as="p">
-        Virta
+    <div className={styles.aboutBlock}>
+      <div className={styles.aboutHeader}>
+        <span className={styles.aboutLogo}>V</span>
+        <div>
+          <Text variant="title" as="p" className={styles.aboutName}>Virta</Text>
+          {version && <Text variant="meta" tone="subtle" className={styles.aboutVersion}>{version}</Text>}
+        </div>
+      </div>
+      <Text variant="body" tone="subtle" as="p" className={styles.aboutDesc}>
+        Virta is a unified live chat dashboard for streamers — Twitch, Kick, and X in one feed.
+        Mentions inbox, filter rules, AutoMod queue, OBS overlays, search over chat history,
+        and an AI assistant that can answer questions about your community.
       </Text>
-      <Placeholder>
-        Unified live chat for Twitch, Kick, and X.
-      </Placeholder>
-    </>
+      <div className={styles.aboutLinks}>
+        <a className={styles.aboutLink} href="https://virta.lol" target="_blank" rel="noopener noreferrer">virta.lol</a>
+        <span className={styles.aboutSep}>·</span>
+        <a className={styles.aboutLink} href="https://github.com/elythi0n/virta" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </div>
+      <Text variant="meta" tone="subtle" as="p" className={styles.aboutLicense}>
+        MIT License. Third-party licenses are listed in the binary's embedded LICENSES file.
+      </Text>
+    </div>
   );
 }
 
@@ -688,15 +711,20 @@ function CategoryBody({ id }: { id: CategoryId }) {
   }
 }
 
+// Categories hidden in hosted mode: the server manages storage; users cannot configure it.
+const HOSTED_HIDDEN: Set<CategoryId> = new Set(['storage']);
+
 export default function Settings() {
   const [query, setQuery] = useState('');
   const [active, setActive] = useState<CategoryId>('appearance');
+  const { hosted } = useHostedAuth();
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return CATEGORIES;
-    return CATEGORIES.filter((c) => c.label.toLowerCase().includes(q) || c.keywords.includes(q));
-  }, [query]);
+    const base = hosted ? CATEGORIES.filter(c => !HOSTED_HIDDEN.has(c.id)) : CATEGORIES;
+    if (!q) return base;
+    return base.filter((c) => c.label.toLowerCase().includes(q) || c.keywords.includes(q));
+  }, [query, hosted]);
 
   // Keep a valid selection: if the active category is filtered out, show the first match.
   const shown = filtered.some((c) => c.id === active) ? active : filtered[0]?.id;

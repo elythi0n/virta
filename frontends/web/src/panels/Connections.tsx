@@ -3,6 +3,7 @@ import { Button, Input, Segmented, Text } from '@virta/ui-kit';
 import { PlatformGlyph, type Platform } from '@virta/feed-core';
 import { disconnectAccount, getAuthConfig, listAccounts, listMethods, setAuthConfig, setMethod, useCapabilities } from '../daemon';
 import type { AccountInfo, AuthConfig } from '../daemon/wire.gen';
+import { useHostedAuth } from '../daemon/hostedAuth';
 import SignInDialog, { type SignInPlatform } from '../shell/SignInDialog';
 import styles from './Connections.module.css';
 
@@ -29,6 +30,7 @@ const STABILITY: Record<string, string> = {
 // tags), how stable that access is, and the account state — sign in to unlock send/moderation.
 // Reading needs no account, so a platform is useful before you ever sign in.
 export default function Connections() {
+  const { hosted } = useHostedAuth();
   const { caps, status, refresh } = useCapabilities();
   const [signIn, setSignIn] = useState<SignInPlatform | null>(null);
   const [methods, setMethods] = useState<Record<string, string>>({});
@@ -175,7 +177,8 @@ export default function Connections() {
               </div>
             )}
 
-            {p.signable && (
+            {/* In hosted mode the server holds the OAuth credentials; users don't configure their own app. */}
+            {p.signable && !hosted && (
               <div className={styles.creds}>
                 {editing === p.id ? (
                   <div className={styles.credForm}>

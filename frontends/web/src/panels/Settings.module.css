@@ -429,3 +429,59 @@
 .providerLogo[data-provider='openai']    { color: var(--virta-brand-openai); }
 .providerLogo[data-provider='xai']       { color: var(--virta-text-1); }
 .providerLogo[data-provider='ollama']    { color: var(--virta-accent); }
+
+/* ── About page ──────────────────────────────────────────────────── */
+.aboutBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-16);
+  max-width: 520px;
+}
+.aboutHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-16);
+}
+.aboutLogo {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--virta-radius-md);
+  background: var(--virta-accent);
+  color: var(--virta-bg-0);
+  font-family: var(--virta-font-ui);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  display: grid;
+  place-items: center;
+}
+.aboutName { margin: 0; font-weight: 700; color: var(--virta-text-0); }
+.aboutVersion {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--virta-font-mono);
+  font-size: var(--virta-type-meta-size);
+}
+.aboutDesc {
+  margin: 0;
+  line-height: 1.65;
+  max-width: 480px;
+}
+.aboutLinks {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+}
+.aboutLink {
+  color: var(--virta-accent);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  text-decoration: none;
+}
+.aboutLink:hover { text-decoration: underline; }
+.aboutSep { color: var(--virta-text-2); }
+.aboutLicense {
+  margin: 0;
+  line-height: 1.5;
+}
