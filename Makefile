@@ -109,8 +109,11 @@ serve: web daemon
 ## app: the one-click desktop bundle (ADR-022): the web UI + an embedded virtad in one native
 ## artifact. Requires the Wails CLI and the WebKit dev libraries for this OS (not part of make ci).
 ## Builds the web UI, stages it and a host virtad for embedding, then runs the Wails build.
+## WAILS resolves the wails CLI: checks PATH first, then the standard Go bin dir.
+WAILS := $(shell command -v wails 2>/dev/null || echo "$$(go env GOPATH)/bin/wails")
+
 app:
-	@command -v wails >/dev/null 2>&1 || { echo "wails CLI not found: go install github.com/wailsapp/wails/v2/cmd/wails@latest (and install your OS's WebKit dev libraries)"; exit 1; }
+	@test -x "$(WAILS)" || { echo "wails CLI not found: run 'go install github.com/wailsapp/wails/v2/cmd/wails@latest' and install your OS's WebKit dev libraries"; exit 1; }
 	cd frontends/web && npm install && npm run build
 	@find frontends/desktop/assets -mindepth 1 ! -name .gitkeep -delete
 	cp -r frontends/web/dist/. frontends/desktop/assets/
@@ -122,8 +125,8 @@ app:
 	@cd frontends/desktop && go mod tidy && { \
 		tags=""; \
 		if pkg-config --modversion webkit2gtk-4.1 >/dev/null 2>&1 && ! pkg-config --modversion webkit2gtk-4.0 >/dev/null 2>&1; then tags="-tags webkit2_41"; fi; \
-		echo "+ wails build -s $$tags"; \
-		wails build -s $$tags; \
+		echo "+ $(WAILS) build -s $$tags"; \
+		$(WAILS) build -s $$tags; \
 	}
 	@echo "✓ desktop bundle: frontends/desktop/build/bin"
 
