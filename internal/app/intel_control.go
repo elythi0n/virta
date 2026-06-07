@@ -93,10 +93,11 @@ func (c *intelControl) Ask(ctx context.Context, model, question string) (<-chan 
 	if model == "" {
 		model = c.registry.SelectedModel()
 	}
-	// Build per-request context so the AI knows the current daemon state.
+	// Build per-request context so the AI knows the current daemon state and date.
 	ac := intel.AskContext{
 		LoggingEnabled: c.loggingActive != nil && c.loggingActive(),
 		MCPRelayURL:    c.mcpRelayURL,
+		Now:            time.Now().UTC(),
 	}
 	if c.channels != nil {
 		if list, err := c.channels.List(ctx); err == nil {

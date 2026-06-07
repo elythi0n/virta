@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/elythi0n/virta/internal/llm"
 )
@@ -55,7 +56,8 @@ const maxToolRounds = 4 // 4 back-and-forth cycles is enough for any reasonable 
 type AskContext struct {
 	LoggingEnabled bool
 	ChannelCount   int
-	MCPRelayURL    string // public URL for the MCP server (empty = not configured)
+	MCPRelayURL    string    // public URL for the MCP server (empty = not configured)
+	Now            time.Time // current wall-clock time so the AI knows "today"
 }
 
 // buildSystemPrompt assembles a rich system prompt from the stable base and the per-request
@@ -74,7 +76,17 @@ When a tool returns {"error": "..."}, read the error message and explain it to t
 language. Always suggest the specific fix (e.g. "enable logging in Settings → Chat").
 Never silently ignore a tool error or pretend it succeeded.`)
 
-	b.WriteString("\n\nCurrent daemon state:\n")
+	// Always inject the current date so the AI can correctly interpret "today", "this week", etc.
+	now := ac.Now
+	if now.IsZero() {
+		now = time.Now().UTC()
+	}
+	b.WriteString(fmt.Sprintf("\n\nCurrent date/time: %s (UTC)\n", now.Format("2006-01-02 15:04 MST")))
+	b.WriteString("When the user says 'today', use " + now.Format("2006-01-02") + " as the date.\n")
+	b.WriteString("When the user says 'this week', use " + now.AddDate(0, 0, -int(now.Weekday())).Format("2006-01-02") + " as the week start.\n")
+	b.WriteString("Always call list_channels first to learn the correct platform:slug channel keys before querying messages.\n\n")
+
+	b.WriteString("Current daemon state:\n")
 
 	if ac.LoggingEnabled {
 		b.WriteString("- Message logging: ENABLED — chat history is available for queries.\n")
