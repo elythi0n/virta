@@ -17,6 +17,7 @@
   gap: var(--virta-space-8);
   flex: 1 1 0;
   min-width: 0;
+  -webkit-app-region: drag;
 }
 .right {
   justify-content: flex-end;
@@ -25,6 +26,7 @@
   flex: none;
   display: flex;
   justify-content: center;
+  -webkit-app-region: drag;
 }
 
 .brand {
