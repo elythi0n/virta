@@ -169,18 +169,39 @@ func (p *OpenAICompatProvider) Complete(ctx context.Context, req CompletionReque
 	return &openaiStream{body: resp.Body}, nil
 }
 
-// openaiStream reads OpenAI-style `data: {...}` SSE lines.
+// openaiStream reads OpenAI-style `data: {...}` SSE lines, accumulating tool-call
+// fragments until finish_reason arrives, then emitting them as EventToolCall events.
 type openaiStream struct {
-	body io.ReadCloser
-	sc   *bufio.Scanner
+	body     io.ReadCloser
+	sc       *bufio.Scanner
+	// in-progress tool calls, keyed by their stream index
+	pending  map[int]*partialToolCall
+	// fully-assembled events ready to emit before reading more lines
+	ready    []Event
+}
+
+type partialToolCall struct {
+	id   string
+	name string
+	args strings.Builder
 }
 
 func (s *openaiStream) Close() error { return s.body.Close() }
 
 func (s *openaiStream) Next() (Event, error) {
+	// Drain any events assembled from a previous chunk before reading more lines.
+	if len(s.ready) > 0 {
+		ev := s.ready[0]
+		s.ready = s.ready[1:]
+		return ev, nil
+	}
+
 	if s.sc == nil {
 		s.sc = bufio.NewScanner(s.body)
+		// Default max token size is 64 KB; some providers send large tool-call chunks.
+		s.sc.Buffer(make([]byte, 256*1024), 256*1024)
 	}
+
 	for s.sc.Scan() {
 		line := s.sc.Text()
 		if !strings.HasPrefix(line, "data: ") {
@@ -190,23 +211,100 @@ func (s *openaiStream) Next() (Event, error) {
 		if payload == "[DONE]" {
 			return Event{Kind: EventDone}, io.EOF
 		}
+
 		var chunk struct {
 			Choices []struct {
 				Delta struct {
-					Content string `json:"content"`
+					Content   string `json:"content"`
+					ToolCalls []struct {
+						Index    int    `json:"index"`
+						ID       string `json:"id"`
+						Type     string `json:"type"`
+						Function struct {
+							Name      string `json:"name"`
+							Arguments string `json:"arguments"`
+						} `json:"function"`
+					} `json:"tool_calls"`
 				} `json:"delta"`
-				FinishReason string `json:"finish_reason"`
+				FinishReason *string `json:"finish_reason"`
 			} `json:"choices"`
+			Usage *struct {
+				PromptTokens     int `json:"prompt_tokens"`
+				CompletionTokens int `json:"completion_tokens"`
+			} `json:"usage"`
 		}
 		if err := json.Unmarshal([]byte(payload), &chunk); err != nil {
 			continue
 		}
-		if len(chunk.Choices) > 0 {
-			if chunk.Choices[0].FinishReason == "stop" {
-				return Event{Kind: EventDone}, io.EOF
+
+		// Token usage — some providers send this in the final data line.
+		if chunk.Usage != nil && (chunk.Usage.PromptTokens > 0 || chunk.Usage.CompletionTokens > 0) {
+			s.ready = append(s.ready, Event{
+				Kind:  EventDone,
+				Usage: &Usage{InputTokens: chunk.Usage.PromptTokens, OutputTokens: chunk.Usage.CompletionTokens},
+			})
+		}
+
+		if len(chunk.Choices) == 0 {
+			// Token-only chunks with no choices — yield buffered done event if any.
+			if len(s.ready) > 0 {
+				ev := s.ready[0]
+				s.ready = s.ready[1:]
+				return ev, nil
 			}
-			if t := chunk.Choices[0].Delta.Content; t != "" {
-				return Event{Kind: EventText, Text: t}, nil
+			continue
+		}
+
+		choice := chunk.Choices[0]
+
+		// Text delta.
+		if t := choice.Delta.Content; t != "" {
+			return Event{Kind: EventText, Text: t}, nil
+		}
+
+		// Tool-call deltas — accumulate fragments keyed by their stream index.
+		for _, tc := range choice.Delta.ToolCalls {
+			if s.pending == nil {
+				s.pending = map[int]*partialToolCall{}
+			}
+			p := s.pending[tc.Index]
+			if p == nil {
+				p = &partialToolCall{}
+				s.pending[tc.Index] = p
+			}
+			if tc.ID != "" {
+				p.id = tc.ID
+			}
+			if tc.Function.Name != "" {
+				p.name = tc.Function.Name
+			}
+			p.args.WriteString(tc.Function.Arguments)
+		}
+
+		// Terminal reasons.
+		if choice.FinishReason != nil {
+			switch *choice.FinishReason {
+			case "tool_calls":
+				// Emit all accumulated tool calls in index order.
+				for i := 0; i < len(s.pending); i++ {
+					tc := s.pending[i]
+					s.ready = append(s.ready, Event{
+						Kind: EventToolCall,
+						ToolCall: &ToolCall{
+							ID:      tc.id,
+							Name:    tc.name,
+							ArgJSON: tc.args.String(),
+						},
+					})
+				}
+				s.pending = nil
+				if len(s.ready) > 0 {
+					ev := s.ready[0]
+					s.ready = s.ready[1:]
+					return ev, nil
+				}
+			case "stop", "length", "end_turn", "content_filter":
+				return Event{Kind: EventDone}, io.EOF
 			}
 		}
 	}
