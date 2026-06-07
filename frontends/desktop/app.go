@@ -57,6 +57,22 @@ func (a *App) WindowToggleMaximise() { wailsruntime.WindowToggleMaximise(a.ctx) 
 // WindowClose quits the application cleanly.
 func (a *App) WindowClose() { wailsruntime.Quit(a.ctx) }
 
+// OpenInspector opens the WebKit developer tools inspector. This only works in a
+// debug build produced by `make app-debug` (which compiles with -tags devtools,
+// enabling WebKit's developer extras). In a standard build the JS executes but
+// window.WebInspector is undefined so nothing happens.
+func (a *App) OpenInspector() {
+	wailsruntime.WindowExecJS(a.ctx, `
+		if (typeof window.WebInspector !== 'undefined') {
+			window.WebInspector.show();
+		} else if (typeof window.inspector !== 'undefined') {
+			window.inspector.show();
+		} else {
+			console.warn('[Virta] WebKit Inspector not available. Rebuild with: make app-debug');
+		}
+	`)
+}
+
 // assetHandler serves requests the embedded UI doesn't satisfy. It exposes the daemon
 // address and token at /__discovery so the in-webview SPA can find and authenticate to
 // the daemon. Returns 503 until the daemon is ready so the frontend retries.

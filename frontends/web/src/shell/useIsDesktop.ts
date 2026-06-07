@@ -10,6 +10,7 @@ declare global {
           WindowMinimise?(): Promise<void>;
           WindowToggleMaximise?(): Promise<void>;
           WindowClose?(): Promise<void>;
+          OpenInspector?(): Promise<void>;
         };
       };
     };

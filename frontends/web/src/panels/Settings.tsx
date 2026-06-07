@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useIsDesktop } from '../shell/useIsDesktop';
 import { Badge, Input, Segmented, Select, Text, formatShortcut } from '@virta/ui-kit';
 import type { Density } from '@virta/feed-core';
 import { useA11y } from '../a11y';
@@ -232,12 +233,25 @@ function Shortcuts() {
 
 function About() {
   const [version, setVersion] = useState<string | null>(null);
+  const [inspecting, setInspecting] = useState(false);
+  const isDesktop = useIsDesktop();
+
   useEffect(() => {
     fetch('/v1/health')
       .then(r => r.json())
       .then((d: { version?: string }) => setVersion(d.version ?? null))
       .catch(() => {});
   }, []);
+
+  const openInspector = () => {
+    setInspecting(true);
+    // Wails devtools build: try to open the WebKit inspector window.
+    // If developer extras are enabled (make app-debug build), calling ShowInspector
+    // via the bound Go method works; otherwise fall back to the remote inspector hint.
+    void window.go?.main?.App?.OpenInspector?.()
+      .catch(() => {})
+      .finally(() => setInspecting(false));
+  };
 
   return (
     <div className={styles.aboutBlock}>
@@ -258,6 +272,24 @@ function About() {
         <span className={styles.aboutSep}>·</span>
         <a className={styles.aboutLink} href="https://github.com/elythi0n/virta" target="_blank" rel="noopener noreferrer">GitHub</a>
       </div>
+      {isDesktop && (
+        <div className={styles.aboutDev}>
+          <Text variant="meta" tone="subtle" as="p">
+            Developer tools
+          </Text>
+          <button
+            type="button"
+            className={styles.aboutDevBtn}
+            onClick={openInspector}
+            disabled={inspecting}
+          >
+            {inspecting ? 'Opening…' : 'Open WebKit Inspector'}
+          </button>
+          <Text variant="meta" tone="subtle" as="p" className={styles.aboutDevHint}>
+            Requires a debug build: <code>make app-debug</code>
+          </Text>
+        </div>
+      )}
     </div>
   );
 }
