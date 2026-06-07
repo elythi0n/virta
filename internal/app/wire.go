@@ -340,7 +340,7 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	toolBelt := intel.New(st)
 	srv.SetMCPHandler(toolBelt.MCPHandler())
 	// Intelligence controller: LLM registry, meter, Ask streaming, config persistence.
-	intelCtl := newIntelControl(toolBelt, st.Settings(), st.Conversations())
+	intelCtl := newIntelControl(toolBelt, st.Settings(), st.Conversations(), st.Channels(), logSink.Enabled, cfg.MCPRelayURL)
 	srv.SetIntel(intelCtl)
 
 	// OAuth app credentials are read through providers so they can be set at runtime via the UI

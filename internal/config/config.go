@@ -44,6 +44,11 @@ type Config struct {
 	// Hosted enables multi-user mode (VIRTA_HOSTED=1): user registration/login, per-user
 	// workspaces, and Postgres as the expected backend. False in local/desktop mode.
 	Hosted bool
+	// MCPRelayURL is the public base URL at which the Virta MCP server is reachable by
+	// external AI clients (Claude Desktop, Cursor, etc.). Empty in local/desktop mode.
+	// Set to e.g. "https://virta.example.com" in hosted deployments so the AI can tell
+	// users the endpoint they need to connect their AI client to the MCP server.
+	MCPRelayURL string
 }
 
 const appName = "virta"
@@ -82,6 +87,7 @@ func Load() (Config, error) {
 		KickClientSecret: os.Getenv("VIRTA_KICK_CLIENT_SECRET"),
 		Token:            os.Getenv("VIRTA_TOKEN"),
 		Hosted:           os.Getenv("VIRTA_HOSTED") == "1" || os.Getenv("VIRTA_HOSTED") == "true",
+		MCPRelayURL:      os.Getenv("VIRTA_MCP_RELAY_URL"),
 	}
 	return c, nil
 }

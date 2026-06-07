@@ -95,16 +95,35 @@ type ChannelInfo struct {
 
 // ToolBelt holds all tool implementations bound to a store.
 type ToolBelt struct {
-	store store.Store
+	store         store.Store
+	loggingActive func() bool // nil means unknown/off
 }
 
 // New builds a ToolBelt over the given store.
 func New(s store.Store) *ToolBelt { return &ToolBelt{store: s} }
 
+// SetLogging injects a function the tools call to check whether message logging is enabled.
+// When logging is off, tools that query message history return a clear instructional error
+// instead of silently returning empty results.
+func (tb *ToolBelt) SetLogging(fn func() bool) { tb.loggingActive = fn }
+
+// loggingOn returns true only when the injected function confirms logging is enabled.
+func (tb *ToolBelt) loggingOn() bool {
+	return tb.loggingActive != nil && tb.loggingActive()
+}
+
+// errLoggingOff is returned by history tools when logging is disabled.
+var errLoggingOff = fmt.Errorf(
+	"message logging is disabled — no chat history is available to query. " +
+		"To use this tool, enable logging in Settings → Chat (or Settings → Storage) and give it time to accumulate messages.")
+
 // --- Tool implementations ---
 
 // SearchMessages runs a full-text search over the logged message store.
 func (tb *ToolBelt) SearchMessages(ctx context.Context, args SearchArgs) ([]MessageRow, error) {
+	if !tb.loggingOn() {
+		return nil, errLoggingOff
+	}
 	if strings.TrimSpace(args.Query) == "" {
 		return nil, fmt.Errorf("query is required")
 	}
@@ -129,6 +148,9 @@ func (tb *ToolBelt) SearchMessages(ctx context.Context, args SearchArgs) ([]Mess
 
 // GetUserHistory retrieves logged messages for a specific author.
 func (tb *ToolBelt) GetUserHistory(ctx context.Context, args UserHistoryArgs) ([]MessageRow, error) {
+	if !tb.loggingOn() {
+		return nil, errLoggingOff
+	}
 	if args.Author == "" {
 		return nil, fmt.Errorf("author is required")
 	}
@@ -163,6 +185,9 @@ func (tb *ToolBelt) GetUserHistory(ctx context.Context, args UserHistoryArgs) ([
 
 // TopChatters aggregates message counts per author over a time range and returns the top-N.
 func (tb *ToolBelt) TopChatters(ctx context.Context, args TopChattersArgs) ([]ChatterCount, error) {
+	if !tb.loggingOn() {
+		return nil, errLoggingOff
+	}
 	limit := clamped(args.Limit, 50)
 	if limit <= 0 {
 		limit = 10
@@ -207,6 +232,9 @@ func (tb *ToolBelt) TopChatters(ctx context.Context, args TopChattersArgs) ([]Ch
 
 // ChannelStats returns aggregate message statistics for a channel.
 func (tb *ToolBelt) ChannelStats(ctx context.Context, args ChannelStatsArgs) (map[string]any, error) {
+	if !tb.loggingOn() {
+		return nil, errLoggingOff
+	}
 	if args.Channel == "" {
 		return nil, fmt.Errorf("channel is required")
 	}
@@ -236,6 +264,9 @@ func (tb *ToolBelt) ChannelStats(ctx context.Context, args ChannelStatsArgs) (ma
 
 // GetMessagesRange returns a raw slice of messages for summarization.
 func (tb *ToolBelt) GetMessagesRange(ctx context.Context, args MessagesRangeArgs) ([]MessageRow, error) {
+	if !tb.loggingOn() {
+		return nil, errLoggingOff
+	}
 	if args.Channel == "" {
 		return nil, fmt.Errorf("channel is required")
 	}

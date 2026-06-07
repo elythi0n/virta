@@ -101,6 +101,7 @@ func TestToolBelt_ListChannels(t *testing.T) {
 
 func TestToolBelt_Dispatch_SearchMessages(t *testing.T) {
 	tb := New(makeStore(t))
+	tb.SetLogging(func() bool { return true }) // enable so history tools work in test
 	args, _ := json.Marshal(SearchArgs{Query: "hello", Limit: 10})
 	result, err := tb.Dispatch(context.Background(), "search_messages", args)
 	if err != nil {

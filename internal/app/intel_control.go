@@ -27,13 +27,16 @@ type intelControl struct {
 	meter         *llm.Meter
 	settings      store.SettingsRepo
 	conversations store.ConversationRepo
+	channels      store.ChannelRepo // for context: how many channels are joined
+	loggingActive func() bool       // injected from the logbook sink
+	mcpRelayURL   string            // public relay URL for external AI clients
 	mu            sync.RWMutex
 	cfg           api.IntelConfig
 }
 
 // newIntelControl constructs the intelligence controller and reloads any previously-persisted
 // configuration (so provider keys and model selection survive daemon restarts).
-func newIntelControl(tb *intel.ToolBelt, settings store.SettingsRepo, conversations store.ConversationRepo) *intelControl {
+func newIntelControl(tb *intel.ToolBelt, settings store.SettingsRepo, conversations store.ConversationRepo, channels store.ChannelRepo, loggingActive func() bool, mcpRelayURL string) *intelControl {
 	reg := llm.NewRegistry()
 	cfg := api.IntelConfig{
 		Enabled:        false,
@@ -44,7 +47,9 @@ func newIntelControl(tb *intel.ToolBelt, settings store.SettingsRepo, conversati
 		_ = json.Unmarshal(raw.Data, &cfg)
 	}
 	meter := llm.NewMeter(reg, apiCfgToMeterCfg(cfg))
-	c := &intelControl{tb: tb, registry: reg, meter: meter, settings: settings, conversations: conversations, cfg: cfg}
+	c := &intelControl{tb: tb, registry: reg, meter: meter, settings: settings, conversations: conversations, channels: channels, loggingActive: loggingActive, mcpRelayURL: mcpRelayURL, cfg: cfg}
+	// Share logging state with the tool belt so it can return actionable errors when logging is off.
+	tb.SetLogging(loggingActive)
 	// Re-register any previously-saved providers.
 	c.applyProviders(cfg)
 	return c
@@ -88,7 +93,17 @@ func (c *intelControl) Ask(ctx context.Context, model, question string) (<-chan 
 	if model == "" {
 		model = c.registry.SelectedModel()
 	}
-	agentCh := c.tb.Ask(ctx, c.meter, model, question)
+	// Build per-request context so the AI knows the current daemon state.
+	ac := intel.AskContext{
+		LoggingEnabled: c.loggingActive != nil && c.loggingActive(),
+		MCPRelayURL:    c.mcpRelayURL,
+	}
+	if c.channels != nil {
+		if list, err := c.channels.List(ctx); err == nil {
+			ac.ChannelCount = len(list)
+		}
+	}
+	agentCh := c.tb.AskWithContext(ctx, c.meter, model, question, ac)
 	out := make(chan api.AskEvent, 32)
 	go func() {
 		defer close(out)

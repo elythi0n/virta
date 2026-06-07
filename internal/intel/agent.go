@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/elythi0n/virta/internal/llm"
 )
@@ -49,22 +50,77 @@ type ToolResult struct {
 
 const maxToolRounds = 10 // prevent runaway loops
 
-// SystemPrompt is the stable part of the agent's system prompt. Marked for prompt-cache reuse.
-const SystemPrompt = `You are an assistant for a live chat aggregation app called Virta.
+// AskContext carries per-request context injected into the system prompt so the AI knows
+// the current state of the daemon and can give actionable guidance when tools fail.
+type AskContext struct {
+	LoggingEnabled bool
+	ChannelCount   int
+	MCPRelayURL    string // public URL for the MCP server (empty = not configured)
+}
+
+// buildSystemPrompt assembles a rich system prompt from the stable base and the per-request
+// context. The context section is never empty — even "logging off, 0 channels" is useful
+// because it lets the AI explain what the user needs to do.
+func buildSystemPrompt(ac AskContext) string {
+	var b strings.Builder
+	b.WriteString(`You are an assistant for a live chat aggregation app called Virta.
 You have access to tools that query the user's logged chat history (messages, top chatters, stats).
 Always answer based on the data your tools return — do not invent numbers or quotes.
 For every factual claim, cite the tool call that produced it.
-Be concise. If a question can't be answered from the available data, say so clearly.`
+Be concise.
+
+IMPORTANT — tool failure guidance:
+When a tool returns {"error": "..."}, read the error message and explain it to the user in plain
+language. Always suggest the specific fix (e.g. "enable logging in Settings → Chat").
+Never silently ignore a tool error or pretend it succeeded.`)
+
+	b.WriteString("\n\nCurrent daemon state:\n")
+
+	if ac.LoggingEnabled {
+		b.WriteString("- Message logging: ENABLED — chat history is available for queries.\n")
+	} else {
+		b.WriteString("- Message logging: DISABLED — history tools will return an error.\n")
+		b.WriteString("  To fix: go to Settings → Chat, turn on \"Log messages\". History accumulates from that point.\n")
+	}
+
+	if ac.ChannelCount == 0 {
+		b.WriteString("- Channels: none joined yet — add streams in the Streams panel first.\n")
+	} else {
+		b.WriteString(fmt.Sprintf("- Channels: %d joined.\n", ac.ChannelCount))
+	}
+
+	if ac.MCPRelayURL != "" {
+		b.WriteString(fmt.Sprintf(
+			"\nExternal AI client integration (MCP):\n"+
+				"- MCP server endpoint: %s/mcp\n"+
+				"- External AI clients (Claude Desktop, Cursor, etc.) can connect to this URL.\n"+
+				"- They need the API bearer token, which the user can find in Settings → Integrations → API tokens.\n",
+			ac.MCPRelayURL))
+	} else {
+		b.WriteString("\nExternal AI client integration (MCP):\n" +
+			"- No public relay URL is configured (VIRTA_MCP_RELAY_URL).\n" +
+			"- Cloud AI providers cannot reach the local MCP server directly.\n" +
+			"- For hosted deployments, the operator sets VIRTA_MCP_RELAY_URL to the public base URL.\n" +
+			"- For local use, tools run inside Virta — cloud AI (Grok, Claude) does NOT need to reach your machine.\n")
+	}
+
+	return b.String()
+}
 
 // Agent runs the tool-calling loop and sends events to the returned channel.
 // The channel is closed when the agent finishes or errors.
 func (tb *ToolBelt) Ask(ctx context.Context, meter *llm.Meter, model, question string) <-chan AgentEvent {
+	return tb.AskWithContext(ctx, meter, model, question, AskContext{})
+}
+
+// AskWithContext is Ask with an explicit AskContext that shapes the system prompt.
+func (tb *ToolBelt) AskWithContext(ctx context.Context, meter *llm.Meter, model, question string, ac AskContext) <-chan AgentEvent {
 	ch := make(chan AgentEvent, 32)
-	go tb.runAgent(ctx, meter, model, question, ch)
+	go tb.runAgent(ctx, meter, model, question, buildSystemPrompt(ac), ch)
 	return ch
 }
 
-func (tb *ToolBelt) runAgent(ctx context.Context, meter *llm.Meter, model, question string, out chan<- AgentEvent) {
+func (tb *ToolBelt) runAgent(ctx context.Context, meter *llm.Meter, model, question, systemPrompt string, out chan<- AgentEvent) {
 	defer close(out)
 
 	tools := Descriptions()
@@ -80,7 +136,7 @@ func (tb *ToolBelt) runAgent(ctx context.Context, meter *llm.Meter, model, quest
 	for round := 0; round < maxToolRounds; round++ {
 		stream, err := meter.Complete(ctx, llm.FeatureAsk, llm.CompletionRequest{
 			Model:    model,
-			System:   SystemPrompt,
+			System:   systemPrompt,
 			Messages: messages,
 			Tools:    llmTools,
 		})

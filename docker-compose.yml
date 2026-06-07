@@ -30,6 +30,10 @@ services:
       VIRTA_TWITCH_CLIENT_ID:   "${VIRTA_TWITCH_CLIENT_ID:-}"
       VIRTA_KICK_CLIENT_ID:     "${VIRTA_KICK_CLIENT_ID:-}"
       VIRTA_KICK_CLIENT_SECRET: "${VIRTA_KICK_CLIENT_SECRET:-}"
+      # Optional: public base URL at which the MCP server is reachable by external AI clients.
+      # Set to e.g. "https://virta.example.com" in hosted deployments.
+      # The Ask AI assistant will include this URL in responses about external client setup.
+      VIRTA_MCP_RELAY_URL:      "${VIRTA_MCP_RELAY_URL:-}"
     volumes:
       - virta-data:/data
     healthcheck:
