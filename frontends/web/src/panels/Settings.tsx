@@ -583,16 +583,25 @@ function IntelligenceSettings() {
       {cfg?.enabled && (
         <>
           <ProviderKeys keys={cfg?.provider_keys ?? {}} onSave={keys => void save({ provider_keys: keys })} />
-          {models.length > 0 && (
-            <Field label="Default model" hint="Saved per-profile. Tool-incapable models are disabled.">
+          {/* Default model — always shown when AI is enabled; placeholder until models load. */}
+          <Field label="Default model" hint="Used when no model is explicitly chosen. Add a provider above to populate this list.">
+            {models.length > 0 ? (
               <Select
                 ariaLabel="Default model"
-                value={cfg?.selected_model || (models[0]?.models[0]?.id ?? '')}
+                value={cfg?.selected_model || ''}
                 onValueChange={v => void save({ selected_model: v })}
-                options={models.flatMap(g => (g.models ?? []).map(m => ({ value: m.id, label: `${g.display_name} — ${m.display_name}` })))}
+                options={[
+                  { value: '', label: 'Auto (first available)' },
+                  ...models.flatMap(g => (g.models ?? []).map(m => ({
+                    value: m.id,
+                    label: `${g.display_name} — ${m.display_name}`,
+                  }))),
+                ]}
               />
-            </Field>
-          )}
+            ) : (
+              <Text variant="meta" tone="subtle">No models available — configure a provider above.</Text>
+            )}
+          </Field>
           <Field label="Daily budget (USD)" hint="0 = no limit. Stops new calls when the day's spend reaches this amount." stack>
             <Input
               aria-label="Daily budget"

@@ -88,7 +88,7 @@ func (p *OpenAICompatProvider) ListModels(ctx context.Context) ([]ModelInfo, err
 		if err2 := json.Unmarshal(raw, &ollamaR); err2 == nil {
 			out := make([]ModelInfo, 0, len(ollamaR.Models))
 			for _, m := range ollamaR.Models {
-				out = append(out, ModelInfo{ID: m.Name, DisplayName: m.Name, SupportsTools: modelSupportsTools(m.Name)})
+				out = append(out, ModelInfo{ID: m.Name, DisplayName: ollamaDisplayName(m.Name), SupportsTools: modelSupportsTools(m.Name)})
 			}
 			return out, nil
 		}
@@ -98,7 +98,7 @@ func (p *OpenAICompatProvider) ListModels(ctx context.Context) ([]ModelInfo, err
 	for _, m := range r.Data {
 		out = append(out, ModelInfo{
 			ID:            m.ID,
-			DisplayName:   m.ID,
+			DisplayName:   ollamaDisplayName(m.ID), // strips :latest, cleans up IDs for all compat providers
 			SupportsTools: modelSupportsTools(m.ID),
 		})
 	}
@@ -226,11 +226,23 @@ func (p *OpenAICompatProvider) listModelsRaw(ctx context.Context) ([]byte, error
 	return io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 }
 
-// modelSupportsTools is a heuristic based on model ID since OpenAI/xAI don't expose this in /models.
+// ollamaDisplayName converts a raw model ID into a human-readable display name.
+// Strips the `:latest` tag (redundant noise), keeps other tags (e.g. `:7b`, `:q4`), and
+// replaces hyphens with spaces so "llama3.2" renders as "llama3.2" not "llama3-2:latest".
+func ollamaDisplayName(id string) string {
+	// Strip bare ":latest" suffix — it adds no information.
+	name := strings.TrimSuffix(id, ":latest")
+	// For model IDs like "grok-beta", humanize the separators.
+	name = strings.ReplaceAll(name, "-", " ")
+	return name
+}
+
+// modelSupportsTools is a heuristic: assume tool support unless the model ID indicates otherwise.
+// Providers don't reliably expose this in /models, so we use known patterns.
 func modelSupportsTools(id string) bool {
 	low := strings.ToLower(id)
-	// Known no-tool models.
-	for _, nosup := range []string{"instruct", "babbage", "davinci", "text-"} {
+	// Models known to NOT support tool/function calling.
+	for _, nosup := range []string{"instruct", "babbage", "davinci", "text-", "embed", "whisper", "tts", "dall-e", "vision"} {
 		if strings.Contains(low, nosup) {
 			return false
 		}

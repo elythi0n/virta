@@ -38,14 +38,25 @@ export default function AskPanel() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    getIntelConfig().then(setConfig).catch(() => {});
+    // Load config first so we can honour the saved default model selection.
+    getIntelConfig()
+      .then(cfg => {
+        setConfig(cfg);
+        // Pre-seed from the saved default so there's a selection before models load.
+        if (cfg.selected_model) setModel(cfg.selected_model);
+      })
+      .catch(() => {});
+
     listModels().then(g => {
       setGroups(g);
       setModelsReady(true);
-      // Always auto-pick: prefer a tool-capable model, fall back to the first available.
       const all = flatModels(g);
-      const pick = all.find(m => m.supports_tools)?.id ?? all[0]?.id ?? '';
-      if (pick) setModel(pick);
+      if (all.length === 0) return;
+      // Use the saved default if it's valid; otherwise pick the first tool-capable model.
+      setModel(prev => {
+        if (prev && all.some(m => m.id === prev)) return prev; // saved default exists in list
+        return all.find(m => m.supports_tools)?.id ?? all[0]?.id ?? prev;
+      });
     }).catch(() => setModelsReady(true));
   }, []);
 

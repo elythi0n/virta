@@ -118,7 +118,10 @@ func (r *Registry) AllModels(ctx context.Context) ([]GroupedModels, error) {
 		}
 		models, err := p.ListModels(ctx)
 		if err != nil {
-			models = c.models // serve stale rather than failing
+			// Do not update fetchedAt on failure — the next call retries immediately.
+			// Serve the stale cached list (empty on first attempt) so the UI is not blank.
+			groups = append(groups, GroupedModels{ProviderID: id, DisplayName: p.DisplayName(), Models: c.models})
+			continue
 		}
 		r.mu.Lock()
 		r.cache[id] = cachedModels{models: models, fetchedAt: time.Now()}
