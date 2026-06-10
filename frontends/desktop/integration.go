@@ -2,7 +2,7 @@ package main
 
 import "os"
 
-// IntegrationFeature reports which rung of an OS-integration fallback chain (docs/14) is currently
+// IntegrationFeature reports which rung of an OS-integration fallback chain is currently
 // active, as a machine code the UI maps to user-facing copy. Detail is an optional machine reason
 // (e.g. why a degraded rung is in effect), surfaced in diagnostics.
 type IntegrationFeature struct {

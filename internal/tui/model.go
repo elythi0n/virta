@@ -1,4 +1,4 @@
-// Package tui is the Virta terminal frontend (ADR-026). It connects to a running virtad daemon
+// Package tui is the Virta terminal frontend. It connects to a running virtad daemon
 // (or starts one), renders the live feed as a scrollable list, and lets the user type and send.
 // Palettes are derived from the same design-system tokens as the web and desktop apps.
 package tui

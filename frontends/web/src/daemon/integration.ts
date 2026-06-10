@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-// Which rung of an OS-integration fallback chain (docs/14) is active, as a machine code the UI maps
+// Which rung of an OS-integration fallback chain is active, as a machine code the UI maps
 // to user copy. Served by the desktop shell at /__integration; the browser build has no shell.
 export interface IntegrationFeature {
   id: string;

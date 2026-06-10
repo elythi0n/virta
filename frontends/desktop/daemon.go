@@ -10,7 +10,7 @@ import (
 )
 
 // daemonBinary embeds the virtad executable for this OS/arch, placed by `make app` before the
-// build. Embed-and-extract (ADR-022): one downloadable artifact carries the daemon, so there is
+// build. Embed-and-extract: one downloadable artifact carries the daemon, so there is
 // nothing separate to install; we extract it and run it as a child process.
 //
 //go:embed all:bin

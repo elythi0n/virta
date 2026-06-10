@@ -12,7 +12,7 @@ import (
 // Bundle is the versioned selector + observer configuration for a scrape target. It is bundled
 // with the binary (bundle/ in the repo) and can be updated without a binary release: a remote
 // update channel delivers a new bundle.json + observer.js, which the loader verifies before
-// accepting. See docs/14 for the update channel design.
+// accepting.
 type Bundle struct {
 	Version   int               `json:"version"`
 	CreatedAt time.Time         `json:"created_at"`

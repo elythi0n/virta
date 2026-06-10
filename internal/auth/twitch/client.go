@@ -1,7 +1,7 @@
 // Package twitch implements Twitch's OAuth Device Code Grant (DCF) — the flow for public
-// native clients with no client secret (ADR-008) — plus token refresh with single-use
+// native clients with no client secret — plus token refresh with single-use
 // rotation and token validation. The HTTP client and endpoint URLs are injectable so the whole
-// flow is tested offline; the live endpoints are exercised manually (tracked in live-debt).
+// flow is tested offline; the live endpoints are exercised manually (tracked as live-test debt).
 package twitch
 
 import (

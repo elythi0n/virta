@@ -1,4 +1,4 @@
-// Package plugins holds the daemon-side seams for the plugin system (ADR-035). It defines the
+// Package plugins holds the daemon-side seams for the plugin system. It defines the
 // DataSource contract — a server-side poller or socket that publishes live external data as
 // namespaced plugin.<id>.* events — so a contributing panel subscribes to it over the existing WS
 // bus the same way the feed subscribes to messages, and no API keys, CORS, or rate limits ever

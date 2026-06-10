@@ -20,7 +20,7 @@ const (
 	FrameMessage FrameType = "message"
 	// FrameStatus reports the bridge's own state (connecting, live, ended, degraded).
 	FrameStatus FrameType = "status"
-	// FrameError carries a machine reason code — never prose (ADR-021).
+	// FrameError carries a machine reason code — never prose; the UI maps codes to its own copy.
 	FrameError FrameType = "error"
 )
 

@@ -75,7 +75,7 @@ func chat(id, slug, text string, ephemeral bool) platform.MessageEvent {
 	}}
 }
 
-// TestZeroWriteWhenDisabled is the ADR-014 guarantee: with logging disabled, nothing is
+// TestZeroWriteWhenDisabled is the zero-write guarantee: with logging disabled, nothing is
 // persisted no matter what flows through.
 func TestZeroWriteWhenDisabled(t *testing.T) {
 	fs := newFakeStore()

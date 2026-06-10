@@ -1,4 +1,4 @@
-// Command virta-tui is the Virta terminal frontend (ADR-026). It connects to a running virtad
+// Command virta-tui is the Virta terminal frontend. It connects to a running virtad
 // daemon (started automatically if none is found) and renders the live feed in your terminal.
 // Requires a truecolor-capable terminal for the full palette; degrades to 256-color and 16-color.
 package main

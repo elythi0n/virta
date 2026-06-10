@@ -96,7 +96,7 @@ func extractChatroomID(body []byte) (string, error) {
 }
 
 // extractOfficialChatroomID pulls the chatroom id from the official API's channel list shape.
-// The exact field layout is unverified (docs 04 ⚠), so the decode is tolerant: a missing id
+// The exact field layout is unverified against the live API ⚠, so the decode is tolerant: a missing id
 // is treated as "not found" rather than an error.
 func extractOfficialChatroomID(body []byte) (string, error) {
 	var v struct {

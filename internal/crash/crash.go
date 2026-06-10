@@ -1,5 +1,5 @@
 // Package crash writes structured local-only crash dumps when the daemon panics, so post-mortem
-// debugging is possible without any telemetry leaving the machine (ADR-011: no external reporting
+// debugging is possible without any telemetry leaving the machine (no external reporting
 // by default). A dump is a JSON file under RuntimeDir/crashes/ containing the goroutine stack,
 // build info, and timestamp. A notice is printed to stderr pointing at the file.
 //

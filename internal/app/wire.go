@@ -258,7 +258,7 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	// through the pipeline (started after the runner exists, so it has something to submit to).
 	statsAgg := stats.New(clk, 0)
 	// The logbook sink persists chat when logging is enabled (opt-in, default off). It only
-	// writes non-ephemeral messages, so logging-off persists nothing (ADR-014).
+	// writes non-ephemeral messages, so logging-off persists nothing.
 	logSink := logbook.NewSink(st.Messages(), clk, log)
 	sweeper := logbook.NewSweeper(logSink, clk)
 	// The held queue is a sink that tracks AutoMod-held messages for the moderation pane; it

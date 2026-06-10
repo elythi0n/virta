@@ -49,7 +49,7 @@ func main() {
 	if err != nil {
 		fatal("load config", err)
 	}
-	// Local-only crash dumps: no data leaves the machine (ADR-011). Defer before any goroutines
+	// Local-only crash dumps: no data leaves the machine. Defer before any goroutines
 	// start so an unrecovered panic writes a structured dump under RuntimeDir/crashes/.
 	defer crash.Handle(cfg.RuntimeDir)
 

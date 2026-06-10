@@ -407,7 +407,7 @@ type HeldResolvedEvent struct {
 // ("plugin.<id>.<name>"), broadcast to clients over the same WS bus as everything else. Data is an
 // opaque JSON payload the contributing panel understands; the core never interprets it. This
 // reserves the plugin.* namespace so live external data reaches panels without touching the
-// renderer's network (keys/CORS/rate-limits stay server-side) — the ADR-035 DataSource seam.
+// renderer's network (keys/CORS/rate-limits stay server-side) — the plugin DataSource seam.
 type PluginEvent struct {
 	Stream string          // "plugin.<id>.<name>"
 	Data   json.RawMessage // opaque payload for the contributing panel

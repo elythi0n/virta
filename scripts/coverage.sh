@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Coverage gate (ADR-024): per-package thresholds — every real package must clear the
+# Coverage gate: per-package thresholds — every real package must clear the
 # overall floor (80%); foundational "core" packages must clear the core floor (90%).
 #
 # Per-package (not a global average) so one big well-tested package can't mask a thin one.

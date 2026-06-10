@@ -92,7 +92,7 @@ func (e *Engine) ingest(ev platform.Event) {
 			e.ids.put(idKey(t.Message.Channel, t.Message.PlatformMessageID), t.Message.ID)
 		}
 		// Ephemeral unless logging is on — the flag the store's choke point enforces, so
-		// logging-off can never persist chat (ADR-014).
+		// logging-off can never persist chat.
 		t.Message.Ephemeral = !e.logging.Load()
 		e.markFirstTime(&t.Message)
 		e.out.Submit(t)

@@ -1,5 +1,4 @@
-# Dormant until the repo is pushed (ADR-022: local-only development for now).
-# When pushed, this runs the same `make ci` we run locally, across all three OSes.
+# Runs the same `make ci` we run locally, across all three OSes.
 name: ci
 
 on:

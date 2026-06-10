@@ -1,7 +1,7 @@
 // Package logbook persists chat to the store when logging is enabled. It is the only writer of
 // the messages table, and writing is opt-in: the engine marks messages ephemeral while logging
 // is off, the Sink skips them, and the store's Append refuses them — three layers guaranteeing
-// "logging off ⇒ nothing written" (ADR-014). When on, the Sink batches inserts (by size or a
+// "logging off ⇒ nothing written". When on, the Sink batches inserts (by size or a
 // short timer) so persistence never stalls the feed, and a Sweeper enforces retention.
 package logbook
 

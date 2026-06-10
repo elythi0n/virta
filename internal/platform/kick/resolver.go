@@ -37,7 +37,7 @@ type ChatroomCache interface {
 }
 
 // ResolveError carries a machine reason code so the UI can explain a failed join in its own
-// words (ADR-021) without parsing strings.
+// words without parsing strings.
 type ResolveError struct {
 	Reason platform.ReasonCode
 	Slug   string

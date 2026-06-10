@@ -1,4 +1,4 @@
-// Package kick implements Kick's OAuth 2.1 authorization-code flow with PKCE (ADR-007/004).
+// Package kick implements Kick's OAuth 2.1 authorization-code flow with PKCE.
 // Unlike Twitch's device flow, Kick uses a browser redirect to a loopback URL; this package
 // builds the authorize URL, exchanges the code (with the PKCE verifier), refreshes tokens, and
 // resolves the account identity. The HTTP client and endpoints are injectable so the flow is
@@ -49,7 +49,7 @@ type Identity struct {
 // providers on each call, so they can be configured at runtime (settings UI).
 type Client struct {
 	clientID     func() string
-	clientSecret func() string // ⚠ Kick may require this even with PKCE; empty = pure PKCE (docs 04)
+	clientSecret func() string // ⚠ Kick may require this even with PKCE; empty = pure PKCE
 	http         *http.Client
 	clk          clock.Clock
 	authURL      string
@@ -157,7 +157,7 @@ func (c *Client) tokenRequest(ctx context.Context, form url.Values) (Token, erro
 }
 
 // Identity resolves the account a token belongs to via the public users endpoint. The exact
-// response shape is unverified (docs 04 ⚠); decoding is tolerant.
+// response shape is unverified against the live API ⚠; decoding is tolerant.
 func (c *Client) Identity(ctx context.Context, accessToken string) (Identity, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.usersURL, nil)
 	if err != nil {

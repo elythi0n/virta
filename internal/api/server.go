@@ -136,7 +136,7 @@ func New(cfg Config) (*Server, error) {
 	}
 	// Bootstrap for a same-machine browser: hand a loopback client the token so a virtad-served
 	// SPA can authenticate. Empty addr means "this origin". Remote clients are refused; serving a
-	// UI beyond loopback needs the hosted auth layer (ADR-031, deferred).
+	// UI beyond loopback needs the hosted auth layer (deferred).
 	mux.HandleFunc("GET /__discovery", s.handleDiscovery)
 	mux.HandleFunc("GET /__integration", s.handleDesktopIntegration)
 	// /overlay: the transparent feed-only build for an OBS browser source (zero-install).
@@ -188,7 +188,7 @@ func (s *Server) SetWebUI(h http.Handler, indexHTML func() ([]byte, error)) {
 
 // handleDiscovery hands a loopback client the token (and an empty address meaning "this origin"),
 // so a browser on this machine can authenticate to a virtad-served SPA with no configuration.
-// Remote clients are refused: serving the UI beyond loopback needs the hosted auth layer (ADR-031).
+// Remote clients are refused: serving the UI beyond loopback needs the hosted auth layer (deferred).
 func (s *Server) handleDiscovery(w http.ResponseWriter, r *http.Request) {
 	if !isLoopback(r.RemoteAddr) {
 		http.NotFound(w, r)
@@ -524,7 +524,7 @@ func crashDumps(runtimeDir string) []string {
 //     from the same machine, so the usual CSRF risk does not apply. This lets the Wails
 //     embedded webview call the daemon without a reverse proxy.
 //   - An explicit allowlist (s.corsOrigins) covers developer tools and integrations. A
-//     "*" entry opens it to any origin (ADR-017 opt-in; credentials ride the bearer
+//     "*" entry opens it to any origin (an explicit opt-in; credentials ride the bearer
 //     token, not cookies).
 func (s *Server) withCORS(next http.Handler) http.Handler {
 	allowAll := false

@@ -3,7 +3,7 @@
 // Soak harness — excluded from `make ci`, run on demand via `make soak` (optionally
 // SOAK_SECONDS / SOAK_RATE). It drives the full ingest path at a sustained rate for a long
 // duration and watches for memory growth, goroutine leaks, and drops — the offline
-// counterpart to the live 30-minute run on two busy channels (tracked in docs/live-debt.md).
+// counterpart to the live 30-minute run on two busy channels (tracked as live-test debt).
 package engine
 
 import (

@@ -1,4 +1,4 @@
-// A tiny JSON-Schema → form-field mapping, the seam for plugin configuration (ADR-035): a plugin
+// A tiny JSON-Schema → form-field mapping, the seam for plugin configuration: a plugin
 // ships a config schema and Settings renders the form from it — no plugin writes its own settings
 // UI. Pure (no React) so the schema→fields logic is unit-tested. Supports the property shapes a
 // config realistically needs: string, number/integer, boolean, enum (select), and string arrays.

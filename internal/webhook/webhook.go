@@ -1,4 +1,4 @@
-// Package webhook delivers outbound events to user-configured HTTPS endpoints (docs/15 §2).
+// Package webhook delivers outbound events to user-configured HTTPS endpoints.
 // Each endpoint has its own ordered delivery queue with 3 retries, jittered exponential backoff,
 // a 10 s timeout, and auto-pause after sustained failures. Delivery carries a SHA-256 HMAC so
 // receivers can verify authenticity.

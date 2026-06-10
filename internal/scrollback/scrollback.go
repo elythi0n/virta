@@ -1,7 +1,7 @@
 // Package scrollback keeps a bounded, in-memory ring of recent messages per channel so the app has
 // session history even when persistent logging is off. It is a pipeline Sink — it watches the
 // event stream and retains the tail — and serves the same History/Search shape the store does, so
-// the API can fall back to it when the database isn't being written (ADR-014: logging is opt-in).
+// the API can fall back to it when the database isn't being written (logging is opt-in).
 //
 // When logging is on the store holds the authoritative, durable history and this ring is unused for
 // reads; when off, this is the only scrollback there is, and it vanishes on restart by design.

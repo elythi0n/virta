@@ -50,7 +50,7 @@ type ChannelSpec struct {
 	Mode     platform.ConnMode `json:"mode,omitempty"`
 }
 
-// Logging is the per-profile persistence policy (off by default — ADR-014).
+// Logging is the per-profile persistence policy (off by default).
 type Logging struct {
 	Enabled   bool   `json:"enabled"`
 	Retention string `json:"retention,omitempty"`

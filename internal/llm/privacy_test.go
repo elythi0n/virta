@@ -2,7 +2,7 @@ package llm
 
 // TestPrivacy_AllTogglesOff verifies the structural guarantee: when the master kill switch is
 // off, Complete returns ErrLLMDisabled and no network call is ever initiated. This is the
-// automated privacy contract test required by 7.8 and ADR-011.
+// automated privacy contract test: intelligence toggles off must mean zero external calls.
 //
 // It does NOT make real network requests — it proves that the Meter itself enforces the kill
 // switch before reaching any provider, so the provider's network code is never invoked.

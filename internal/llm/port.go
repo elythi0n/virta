@@ -1,4 +1,4 @@
-// Package llm defines the Provider port for LLM integration (ADR-013). Every LLM feature
+// Package llm defines the Provider port for LLM integration. Every LLM feature
 // (the Ask pane agent loop, translation batches) goes through this interface, which means:
 // 1. Adding a new provider is one new implementation file.
 // 2. The usage meter can wrap any provider without changing callers.

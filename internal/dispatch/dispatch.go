@@ -1,7 +1,7 @@
 // Package dispatch is the one path outbound user input takes: parse it (slash commands → typed
 // actions), capability-check it, then either queue a chat send through the rate governor or
 // perform a moderation action. Mod buttons, the composer, and the held-message queue all call
-// here, so capability checks and pacing live in one place (ADR-028).
+// here, so capability checks and pacing live in one place.
 package dispatch
 
 import (

@@ -13,7 +13,7 @@ import (
 	"github.com/elythi0n/virta/internal/userctx"
 )
 
-// Scope is a capability a third-party API token may be granted (ADR-017 / docs-15 §1). The
+// Scope is a capability a third-party API token may be granted. The
 // frontends' own root token implicitly holds every scope; minted tokens carry an explicit subset.
 type Scope string
 

@@ -29,10 +29,10 @@ type Config struct {
 	// it on an existing install requires a data migration, not an instant swap.
 	StorageDriver string
 	// TwitchClientID is the registered public OAuth client id used for the Device Code Grant
-	// (no secret — ADR-008). Empty disables Twitch sign-in (anonymous read still works).
+	// (a public client — no secret). Empty disables Twitch sign-in (anonymous read still works).
 	TwitchClientID string
 	// KickClientID / KickClientSecret configure Kick OAuth (2.1 + PKCE). The secret may be
-	// empty (pure PKCE); whether Kick requires it is an open question (docs 04). Empty client
+	// empty (pure PKCE); whether Kick requires it is an open question. Empty client
 	// id disables Kick sign-in (anonymous read still works).
 	KickClientID     string
 	KickClientSecret string

@@ -1,5 +1,5 @@
 // Package command parses composer input into one typed intent: a chat send, a moderation
-// action, a help request, or a "not sent" hint for an unknown command (ADR-028). It is the
+// action, a help request, or a "not sent" hint for an unknown command. It is the
 // single front door that mod buttons, slash commands, and the held-message queue all funnel
 // through, so behavior and capability checks live in one place. Parsing is pure; executing the
 // result (sending, moderating) is the caller's job.
@@ -29,7 +29,7 @@ type Parsed struct {
 	Text     string             // KindSend: the message body (/me wrapper stripped)
 	IsAction bool               // KindSend: a /me action message
 	Action   platform.ModAction // KindMod: the typed moderation action
-	Hint     string             // KindHint: user-facing reason (ADR-021 copy), never sent
+	Hint     string             // KindHint: user-facing reason in plain language, never sent
 }
 
 // defaultTimeout is applied to /timeout when no duration is given.
