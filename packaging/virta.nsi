@@ -1,5 +1,8 @@
 ; Virta NSIS Windows installer script.
-; Run: makensis packaging/virta.nsi (from the repo root, after `make app` produces the binary).
+; Run: makensis packaging/virta.nsi (after `make app` / scripts/package-windows.sh produce the
+; binaries). makensis compiles with the script's own directory as the working directory, so all
+; input/output paths are anchored to the repo root explicitly.
+!define ROOT "${__FILEDIR__}\.."
 !define APP_NAME "Virta"
 ; Overridable from the build: makensis -DAPP_VERSION=v1.2.3 packaging/virta.nsi
 !ifndef APP_VERSION
@@ -10,15 +13,15 @@
 !define UNINSTALLER "Uninstall.exe"
 
 Name "${APP_NAME} ${APP_VERSION}"
-OutFile "dist\${INSTALLER_NAME}"
+OutFile "${ROOT}\dist\${INSTALLER_NAME}"
 InstallDir "${INSTALL_DIR}"
 RequestExecutionLevel admin
 
 Section "Install"
   SetOutPath "${INSTALL_DIR}"
-  File "frontends\desktop\build\bin\virta.exe"
-  File "dist\virtad.exe"
-  File "dist\virta-tui.exe"
+  File "${ROOT}\frontends\desktop\build\bin\virta.exe"
+  File "${ROOT}\dist\virtad.exe"
+  File "${ROOT}\dist\virta-tui.exe"
   WriteUninstaller "${INSTALL_DIR}\${UNINSTALLER}"
   CreateShortCut "$SMPROGRAMS\Virta.lnk" "${INSTALL_DIR}\virta.exe"
   CreateShortCut "$DESKTOP\Virta.lnk" "${INSTALL_DIR}\virta.exe"

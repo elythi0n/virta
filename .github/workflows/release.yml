@@ -87,6 +87,14 @@ jobs:
         with:
           path: dist
           merge-multiple: true
+      # The homepage links to releases/latest/download/<name>, which needs version-stable
+      # filenames; attach an alias per installer alongside the version-stamped originals.
+      - name: Add stable-named aliases
+        run: |
+          cd dist
+          cp VirtaSetup-v*.exe Virta-Setup.exe
+          cp Virta-v*.dmg Virta.dmg
+          cp Virta-v*.AppImage Virta-x86_64.AppImage
       - name: Draft GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
