@@ -235,7 +235,7 @@ func (c *pluginControl) ProxyHTTP(r *http.Request, id string, req api.PluginProx
 	if err != nil {
 		return api.PluginProxyResponse{}, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	data, err := io.ReadAll(io.LimitReader(resp.Body, proxyMaxBody))
 	if err != nil {
 		return api.PluginProxyResponse{}, err
