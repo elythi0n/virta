@@ -26,6 +26,9 @@ type Entry struct {
 	Error    string // non-empty when State == StateError
 	// InstallDir is the local cache directory for remote plugins (empty for built-ins).
 	InstallDir string
+	// Config holds the plugin's saved configuration values (validated against Manifest.Config
+	// by the settings UI; stored opaquely here).
+	Config json.RawMessage
 	// cancel stops the plugin's goroutines on disable/uninstall.
 	cancel context.CancelFunc
 }
@@ -77,6 +80,7 @@ type PluginRecord struct {
 	ManifestRaw json.RawMessage `json:"manifest"`
 	State       PluginState     `json:"state"`
 	InstallDir  string          `json:"install_dir,omitempty"`
+	Config      json.RawMessage `json:"config,omitempty"`
 }
 
 // New creates a Registry.
@@ -108,6 +112,78 @@ func (r *Registry) RegisterBuiltIn(m *Manifest) error {
 	return nil
 }
 
+// RegisterRemote registers (or replaces, on reinstall/upgrade) a remotely installed plugin.
+// Saved config is carried over across reinstalls of the same plugin id.
+func (r *Registry) RegisterRemote(ctx context.Context, m *Manifest, installDir string) error {
+	if err := m.Validate(); err != nil {
+		return err
+	}
+	r.mu.Lock()
+	m.BuiltIn = false
+	var keptConfig json.RawMessage
+	if prev, ok := r.entries[m.ID]; ok {
+		if prev.Manifest.BuiltIn {
+			r.mu.Unlock()
+			return fmt.Errorf("plugin %q is built-in and cannot be replaced by a remote install", m.ID)
+		}
+		keptConfig = prev.Config
+		if prev.cancel != nil {
+			prev.cancel()
+		}
+	}
+	r.entries[m.ID] = &Entry{Manifest: m, State: StateInstalled, InstallDir: installDir, Config: keptConfig}
+	r.mu.Unlock()
+	return r.persist(ctx, m.ID)
+}
+
+// GetConfig returns the plugin's saved configuration values (nil when never configured).
+func (r *Registry) GetConfig(id string) (json.RawMessage, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	e, ok := r.entries[id]
+	if !ok {
+		return nil, errors.New("plugin not found: " + id)
+	}
+	return e.Config, nil
+}
+
+// SetConfig stores the plugin's configuration values and persists them.
+func (r *Registry) SetConfig(ctx context.Context, id string, cfg json.RawMessage) error {
+	r.mu.Lock()
+	e, ok := r.entries[id]
+	if !ok {
+		r.mu.Unlock()
+		return errors.New("plugin not found: " + id)
+	}
+	e.Config = cfg
+	r.mu.Unlock()
+	return r.persist(ctx, id)
+}
+
+// persist writes the plugin's current record to the store (no-op without a store).
+func (r *Registry) persist(ctx context.Context, id string) error {
+	if r.store == nil {
+		return nil
+	}
+	r.mu.RLock()
+	e, ok := r.entries[id]
+	if !ok {
+		r.mu.RUnlock()
+		return errors.New("plugin not found: " + id)
+	}
+	rec := &PluginRecord{ID: id, State: e.State, InstallDir: e.InstallDir, Config: e.Config}
+	if !e.Manifest.BuiltIn {
+		raw, err := json.Marshal(e.Manifest)
+		if err != nil {
+			r.mu.RUnlock()
+			return fmt.Errorf("pluginhost: marshal manifest: %w", err)
+		}
+		rec.ManifestRaw = raw
+	}
+	r.mu.RUnlock()
+	return r.store.Save(ctx, rec)
+}
+
 // Start loads persisted plugin state and starts all enabled plugins.
 func (r *Registry) Start(ctx context.Context) error {
 	if r.store == nil {
@@ -131,6 +207,27 @@ func (r *Registry) Start(ctx context.Context) error {
 		return fmt.Errorf("pluginhost: load plugin records: %w", err)
 	}
 	for _, rec := range records {
+		// Remote plugins exist only as records — reconstruct their entries before state handling.
+		if len(rec.ManifestRaw) > 0 {
+			m, perr := ParseManifest(rec.ManifestRaw)
+			if perr != nil {
+				r.log.Warn("plugin record has invalid manifest, skipping", "id", rec.ID, "err", perr)
+				continue
+			}
+			r.mu.Lock()
+			if _, exists := r.entries[rec.ID]; !exists {
+				m.BuiltIn = false
+				r.entries[rec.ID] = &Entry{Manifest: m, State: StateInstalled, InstallDir: rec.InstallDir, Config: rec.Config}
+			}
+			r.mu.Unlock()
+		} else {
+			// Built-in record: carry the saved config onto the registered entry.
+			r.mu.Lock()
+			if e, ok := r.entries[rec.ID]; ok && len(rec.Config) > 0 {
+				e.Config = rec.Config
+			}
+			r.mu.Unlock()
+		}
 		if rec.State == StateDisabled {
 			r.mu.Lock()
 			if e, ok := r.entries[rec.ID]; ok {
@@ -188,9 +285,15 @@ func (r *Registry) Enable(ctx context.Context, id string) error {
 	e.cancel = cancel
 	e.State = StateEnabled
 	e.Error = ""
+	builtin := e.Manifest.BuiltIn
 	r.mu.Unlock()
 
-	r.log.Info("plugin enabled", "id", id, "builtin", e.Manifest.BuiltIn)
+	r.log.Info("plugin enabled", "id", id, "builtin", builtin)
+	if !builtin {
+		if err := r.persist(ctx, id); err != nil {
+			r.log.Warn("plugin state persist failed", "id", id, "err", err)
+		}
+	}
 	return nil
 }
 
@@ -212,10 +315,33 @@ func (r *Registry) Disable(ctx context.Context, id string) error {
 	r.host.UnregisterAll(id)
 	r.log.Info("plugin disabled", "id", id)
 
+	// Persist via the full record so a remote plugin's manifest/config survive the disable.
+	if err := r.persist(ctx, id); err != nil {
+		r.log.Warn("plugin state persist failed", "id", id, "err", err)
+	}
+	return nil
+}
+
+// Remove deletes a plugin's entry and persisted record (used by uninstall).
+func (r *Registry) Remove(ctx context.Context, id string) error {
+	r.mu.Lock()
+	e, ok := r.entries[id]
+	if !ok {
+		r.mu.Unlock()
+		return errors.New("plugin not found: " + id)
+	}
+	if e.Manifest.BuiltIn {
+		r.mu.Unlock()
+		return errors.New("built-in plugins cannot be removed")
+	}
+	if e.cancel != nil {
+		e.cancel()
+	}
+	delete(r.entries, id)
+	r.mu.Unlock()
+	r.host.UnregisterAll(id)
 	if r.store != nil {
-		if err := r.store.Save(ctx, &PluginRecord{ID: id, State: StateDisabled}); err != nil {
-			r.log.Warn("plugin state persist failed", "id", id, "err", err)
-		}
+		return r.store.Delete(ctx, id)
 	}
 	return nil
 }

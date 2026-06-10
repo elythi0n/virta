@@ -143,6 +143,10 @@ func New(cfg Config) (*Server, error) {
 	// Served from the embedded web assets. The token must be passed as a query param:
 	// http://127.0.0.1:<port>/overlay?token=<token>&channels=twitch:forsen
 	mux.HandleFunc("GET /overlay", s.handleOverlay)
+	// Sandboxed plugin GUI assets (static files + the __virta.js SDK bootstrap). Served without a
+	// token: iframes can't attach Authorization headers, and all privileged work goes through the
+	// authenticated postMessage bridge in the host SPA, never from these assets directly.
+	mux.HandleFunc("GET /plugins/{id}/gui/{path...}", s.handlePluginGUI)
 	// SPA fallback: anything not matched above is served from the embedded web UI (if present).
 	mux.HandleFunc("/", s.handleWebUI)
 
@@ -467,6 +471,9 @@ func (s *Server) routes() []route {
 		{"POST", "/v1/plugins/{id}/disable", ScopeAdmin, s.handleDisablePlugin, "Disable a plugin"},
 		{"POST", "/v1/plugins/install", ScopeAdmin, s.handleInstallPlugin, "Install a plugin from a Git URL"},
 		{"DELETE", "/v1/plugins/{id}", ScopeAdmin, s.handleUninstallPlugin, "Uninstall a remote plugin"},
+		{"GET", "/v1/plugins/{id}/config", ScopeRead, s.handleGetPluginConfig, "Get saved plugin configuration values"},
+		{"PUT", "/v1/plugins/{id}/config", ScopeAdmin, s.handlePutPluginConfig, "Save plugin configuration values"},
+		{"POST", "/v1/plugins/{id}/http", ScopeRead, s.handlePluginHTTP, "Bridged HTTP request for a plugin (manifest-declared endpoints only)"},
 		{"GET", "/v1/intel/models", ScopeRead, s.handleListModels, "List available AI models"},
 		{"POST", "/v1/intel/ask", ScopeRead, s.handleAsk, "Ask a question over logged chat (agent loop, NDJSON stream)"},
 		{"POST", "/v1/intel/title", ScopeRead, s.handleGenerateTitle, "Stream a short AI-generated title for a conversation"},

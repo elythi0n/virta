@@ -99,6 +99,11 @@ func HostSDKBootstrap(pluginID string, scopes []Scope) string {
   var _handlers = {};
   var _scopes = new Set(__SCOPES__);
 
+  // The host SPA's origin. When the daemon serves the SPA this equals our own origin; in dev the
+  // SPA (vite) embeds us cross-origin and passes its origin as ?host=. Both sides pin origins:
+  // we only talk to HOST, the host only talks to our (daemon) origin.
+  var HOST = new URLSearchParams(window.location.search).get('host') || window.location.origin;
+
   // hasScope lets the plugin verify it declared a scope before calling an API that requires it.
   function hasScope(s) { return _scopes.has(s); }
 
@@ -115,7 +120,7 @@ func HostSDKBootstrap(pluginID string, scopes []Scope) string {
         _pending[id] = { resolve: resolve, reject: reject };
         window.parent.postMessage(
           { __virta: true, seq: id, plugin: "__PLUGIN_ID__", msg: msg },
-          window.location.origin  // restrict to same origin — not '*'
+          HOST  // pinned to the embedding host's origin — not '*'
         );
       });
     },
@@ -131,8 +136,8 @@ func HostSDKBootstrap(pluginID string, scopes []Scope) string {
   };
 
   window.addEventListener('message', function(ev) {
-    // Only accept messages from the same origin (parent page = the host SPA).
-    if (ev.origin !== window.location.origin) return;
+    // Only accept messages from the embedding host SPA.
+    if (ev.origin !== HOST) return;
     if (!ev.data || !ev.data.__virta_host) return;
     // Verify the message is addressed to this plugin instance.
     if (ev.data.plugin && ev.data.plugin !== "__PLUGIN_ID__") return;

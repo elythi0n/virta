@@ -2,8 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { Badge, Button, Dialog, Input, Text } from '@virta/ui-kit';
 import type { IconName } from '../Icon';
 import Icon from '../Icon';
-import { listPlugins, getPlugin, enablePlugin, disablePlugin, installPlugin, uninstallPlugin } from '../daemon/plugins';
+import { listPlugins, getPlugin, enablePlugin, disablePlugin, installPlugin, uninstallPlugin, putPluginConfig } from '../daemon/plugins';
 import type { PluginInfo, PluginDetail } from '../daemon/plugins';
+import { syncPluginPanels } from './pluginPanels';
 import SchemaForm from './SchemaForm';
 import styles from './PluginsPanel.module.css';
 
@@ -49,6 +50,8 @@ export default function PluginsPanel() {
       live.forEach(p => byId.set(p.id, p));
       setPlugins([...byId.values()]);
     }).catch(() => {});
+    // Newly installed/enabled GUI plugins contribute panels — keep the catalog in sync.
+    void syncPluginPanels();
   }, []);
 
   useEffect(() => { reload(); }, [reload]);
@@ -88,9 +91,20 @@ export default function PluginsPanel() {
     try {
       const detail = await getPlugin(id);
       setSettingsPlugin(detail);
-      setSettingsValues({});
+      setSettingsValues(detail.config ?? {});
     } catch { /* plugin may not have settings */ }
   }, []);
+
+  const [savingSettings, setSavingSettings] = useState(false);
+  const saveSettings = useCallback(async () => {
+    if (!settingsPlugin) return;
+    setSavingSettings(true);
+    try {
+      await putPluginConfig(settingsPlugin.id, settingsValues);
+      setSettingsPlugin(null);
+    } catch { /* keep the dialog open so nothing is silently lost */ }
+    finally { setSavingSettings(false); }
+  }, [settingsPlugin, settingsValues]);
 
   const counts = {
     all: plugins.length,
@@ -205,7 +219,9 @@ export default function PluginsPanel() {
         footer={
           <>
             <Button variant="ghost" size="md" onClick={() => setSettingsPlugin(null)}>Close</Button>
-            <Button variant="solid" size="md" onClick={() => setSettingsPlugin(null)}>Save</Button>
+            <Button variant="solid" size="md" disabled={savingSettings} onClick={() => void saveSettings()}>
+              {savingSettings ? 'Saving…' : 'Save'}
+            </Button>
           </>
         }
       >

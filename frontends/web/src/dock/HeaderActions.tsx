@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import type { IDockviewHeaderActionsProps } from 'dockview';
 import { Popover, Tooltip } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { PANEL_CATALOG } from '../shell/views';
+import { panelCatalogVersion, subscribePanelCatalog } from '../panels/registry';
 import { useTheme } from '../theme';
 import { useIsDesktop } from '../shell/useIsDesktop';
 import styles from './HeaderActions.module.css';
@@ -13,6 +14,8 @@ const uid = () => `panel-${crypto.randomUUID?.() ?? Math.random().toString(36).s
 // the group is docked in the grid) a pop-out into its own window.
 export default function HeaderActions(props: IDockviewHeaderActionsProps) {
   const { theme } = useTheme();
+  // Re-render the "+" catalog when plugin panels register at runtime.
+  useSyncExternalStore(subscribePanelCatalog, panelCatalogVersion, panelCatalogVersion);
   const [addOpen, setAddOpen] = useState(false);
   const isDesktop = useIsDesktop();
   const inGrid = !props.location || props.location.type === 'grid';

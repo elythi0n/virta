@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { Button, Text, Tooltip } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { PANEL_CATALOG, type ViewId } from './views';
+import { panelCatalogVersion, subscribePanelCatalog } from '../panels/registry';
 import AddChannel from './AddChannel';
 import StreamsSidebar, { type StreamLayout } from './StreamsSidebar';
 import styles from './SideBar.module.css';
@@ -33,6 +34,8 @@ const TITLES: Record<ViewId, string> = {
 };
 
 export default function SideBar({ view, openPanel, openChannel, openStream, listFeeds, mergeChannelIntoFeed, onNewFeed, hidden }: Props) {
+  // Re-render the catalog when plugin panels register at runtime.
+  useSyncExternalStore(subscribePanelCatalog, panelCatalogVersion, panelCatalogVersion);
   const [layout, setLayout] = useState<StreamLayout>(loadLayout);
   const toggleLayout = () =>
     setLayout((l) => {

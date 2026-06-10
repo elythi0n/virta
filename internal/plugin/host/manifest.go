@@ -86,6 +86,10 @@ type Manifest struct {
 	// Scopes is the list of host API capabilities the plugin requests.
 	// The user must consent to these during installation.
 	Scopes []Scope `json:"scopes"`
+	// HTTPEndpoints lists the URL prefixes the plugin may reach through the host's HTTP bridge
+	// ('http' scope). Requests outside these prefixes (or origins found in the plugin's saved
+	// config values) are refused by the daemon.
+	HTTPEndpoints []string `json:"http_endpoints,omitempty"`
 	// Contributes declares what the plugin adds to the host.
 	Contributes Contributes `json:"contributes"`
 	// Main specifies the executable entry points.
@@ -120,7 +124,20 @@ func (m *Manifest) Validate() error {
 			return fmt.Errorf("manifest: unknown scope %q", s)
 		}
 	}
+	for _, ep := range m.HTTPEndpoints {
+		if !strings.HasPrefix(ep, "https://") && !isLoopbackHTTP(ep) {
+			return fmt.Errorf("manifest: http_endpoints entry %q must be https:// (http:// is allowed for loopback only)", ep)
+		}
+	}
+	if len(m.HTTPEndpoints) > 0 && !m.HasScope(ScopeHTTP) {
+		return errors.New("manifest: http_endpoints declared without the 'http' scope")
+	}
 	return nil
+}
+
+// isLoopbackHTTP reports whether ep is a plain-HTTP URL pointing at localhost (dev convenience).
+func isLoopbackHTTP(ep string) bool {
+	return strings.HasPrefix(ep, "http://localhost") || strings.HasPrefix(ep, "http://127.0.0.1")
 }
 
 // HasScope reports whether the manifest declares the given scope.

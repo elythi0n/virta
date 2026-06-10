@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useWailsResize } from './shell/useWailsResize';
 import type { DockviewApi, DockviewReadyEvent } from 'dockview';
 import Dock from './dock/Dock';
@@ -11,11 +11,15 @@ import NewFeedDialog from './shell/NewFeedDialog';
 import { CommandPalette, TooltipProvider, matchesShortcut, type CommandAction } from '@virta/ui-kit';
 import type { Density } from '@virta/feed-core';
 import { PANEL_CATALOG, type ViewId } from './shell/views';
+import { panelCatalogVersion, subscribePanelCatalog } from './panels/registry';
+import { syncPluginPanels } from './panels/pluginPanels';
 import { loadLayout, saveLayoutDebounced } from './shell/layout';
 import { ActionsProvider } from './actions';
 import { OpenChannelProvider } from './openChannel';
 import { OpenStreamProvider } from './openStream';
 import { OpenUnifiedChatProvider } from './openUnifiedChat';
+import { JumpToMessageProvider } from './jumpToMessage';
+import { requestJump } from './panels/jump';
 import { HostedAuthProvider } from './daemon/hostedAuth';
 import { SharedDaemonStreamProvider } from './daemon/sharedStream';
 import { ChannelsProvider } from './daemon/ChannelsProvider';
@@ -130,6 +134,12 @@ export default function App() {
   const [newFeedOpen, setNewFeedOpen] = useState(false);
   const apiRef = useRef<DockviewApi | null>(null);
 
+  // Remote plugin panels: register contributions at boot; re-derive palette actions when they land.
+  const panelsVersion = useSyncExternalStore(subscribePanelCatalog, panelCatalogVersion, panelCatalogVersion);
+  useEffect(() => {
+    void syncPluginPanels();
+  }, []);
+
   // Reflect the accessibility preferences as document-level attributes the global CSS keys off.
   useEffect(() => {
     document.documentElement.dataset.reduceMotion = reduceMotion ? '1' : '0';
@@ -157,18 +167,18 @@ export default function App() {
     const api = event.api;
     apiRef.current = api;
 
-    // Restore the saved workspace; fall back to a seeded default if there's none (or it's stale).
+    // Restore the saved workspace; a corrupt save must not strand a half-restored layout, so on
+    // failure clear whatever partially applied. Anything that ends with zero panels — no save,
+    // a failed restore, or a save of an emptied workspace — reseeds the default.
     const saved = loadLayout();
-    let restored = false;
     if (saved) {
       try {
         api.fromJSON(saved);
-        restored = true;
       } catch {
-        restored = false;
+        api.clear();
       }
     }
-    if (!restored && api.panels.length === 0) {
+    if (api.panels.length === 0) {
       const add = (id: string, kind: string, title: string, position?: Parameters<DockviewApi['addPanel']>[0]['position']) =>
         api.addPanel({ id, component: 'panel', params: { kind }, title, position });
       // A representative default workspace: feed + mod queue as tabs, stats over stream beside it.
@@ -254,6 +264,20 @@ export default function App() {
     api.addPanel({ id, component: 'panel', params: { kind: 'feed', channels: [channelKey], title: label }, title: label });
   }, []);
 
+  // Jump to a message: if an open feed still has it buffered, activate that panel and let its
+  // feed scroll to and flash the row; otherwise fall back to opening the channel's chat.
+  const jumpToMessage = useCallback(
+    (channelKey: string, messageId: string, label: string) => {
+      const claim = requestJump({ channel: channelKey, id: messageId });
+      if (claim) {
+        if (claim.panelId) apiRef.current?.getPanel(claim.panelId)?.api.setActive();
+        return;
+      }
+      openChannel(channelKey, label);
+    },
+    [openChannel],
+  );
+
   // Open a channel's embedded player. Stable id per channel so it focuses rather than duplicates.
   const openStream = useCallback((channelKey: string, label: string) => {
     const api = apiRef.current;
@@ -316,7 +340,9 @@ export default function App() {
       { id: 'theme-dark', title: 'Appearance: Dark', group: 'Preferences', perform: () => setMode('dark') },
       { id: 'theme-light', title: 'Appearance: Light', group: 'Preferences', perform: () => setMode('light') },
     ];
-  }, [openPanel, openSettings]);
+    // panelsVersion re-derives the "Open …" actions when plugin panels register at runtime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openPanel, openSettings, panelsVersion]);
 
   // One keymap: dispatch the first action whose shortcut matches. Skip when typing in a field.
   useEffect(() => {
@@ -349,6 +375,7 @@ export default function App() {
           <OpenChannelProvider value={openChannel}>
           <OpenStreamProvider value={openStream}>
           <OpenUnifiedChatProvider value={openUnifiedChat}>
+          <JumpToMessageProvider value={jumpToMessage}>
           <TooltipProvider>
           <div className="app">
           <Titlebar onOpenPalette={() => setPaletteOpen(true)} />
@@ -382,6 +409,7 @@ export default function App() {
           <ShortcutHelp open={helpOpen} onOpenChange={setHelpOpen} actions={actions} />
           <NewFeedDialog open={newFeedOpen} onClose={() => setNewFeedOpen(false)} onSubmit={openFeedSet} />
           </TooltipProvider>
+          </JumpToMessageProvider>
           </OpenUnifiedChatProvider>
           </OpenStreamProvider>
           </OpenChannelProvider>

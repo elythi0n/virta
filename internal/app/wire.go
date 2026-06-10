@@ -431,7 +431,10 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 		},
 	)
 
-	pluginReg := pluginhost.New(hostAPI, nil, log)
+	// Plugin records (remote installs + per-plugin config) persist to a JSON file so they
+	// survive restarts even when the logbook database is disabled.
+	pluginStore := pluginhost.NewFileStore(cfg.DataDir + "/plugins/plugins.json")
+	pluginReg := pluginhost.New(hostAPI, pluginStore, log)
 
 	pluginInstaller := pluginhost.NewInstaller(cfg.DataDir + "/plugins")
 	pluginCtl := newPluginControl(pluginReg, pluginInstaller)
