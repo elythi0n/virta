@@ -265,20 +265,28 @@ func TestDaemon_AdapterEventReachesStreamClient(t *testing.T) {
 
 	rctx, rcancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer rcancel()
-	_, data, err := conn.Read(rctx)
-	if err != nil {
-		t.Fatalf("read: %v", err)
-	}
-	var we struct {
-		Type    string `json:"type"`
-		Message *struct {
-			ID string `json:"id"`
-		} `json:"message"`
-	}
-	if err := json.Unmarshal(data, &we); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-	if we.Type != "message" || we.Message == nil || we.Message.ID != "e2e-1" {
-		t.Fatalf("client received %s, want message e2e-1", data)
+	// The stream multiplexes everything a client subscribes to — including the builtin
+	// plugins' status events, which can land first. Skip frames until the message arrives.
+	for {
+		_, data, err := conn.Read(rctx)
+		if err != nil {
+			t.Fatalf("read: %v", err)
+		}
+		var we struct {
+			Type    string `json:"type"`
+			Message *struct {
+				ID string `json:"id"`
+			} `json:"message"`
+		}
+		if err := json.Unmarshal(data, &we); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if we.Type != "message" {
+			continue
+		}
+		if we.Message == nil || we.Message.ID != "e2e-1" {
+			t.Fatalf("client received %s, want message e2e-1", data)
+		}
+		return
 	}
 }

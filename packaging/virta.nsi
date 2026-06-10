@@ -1,8 +1,8 @@
 ; Virta NSIS Windows installer script.
 ; Run: makensis packaging/virta.nsi (after `make app` / scripts/package-windows.sh produce the
-; binaries). makensis compiles with the script's own directory as the working directory, so all
-; input/output paths are anchored to the repo root explicitly.
-!define ROOT "${__FILEDIR__}\.."
+; binaries). makensis resolves relative paths against this script's directory, so the repo root
+; is one level up regardless of where makensis is invoked from.
+!define ROOT ".."
 !define APP_NAME "Virta"
 ; Overridable from the build: makensis -DAPP_VERSION=v1.2.3 packaging/virta.nsi
 !ifndef APP_VERSION
