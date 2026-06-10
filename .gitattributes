@@ -1,0 +1,3 @@
+# Keep LF in working trees on all platforms. Windows CI runners default to
+# core.autocrlf=true, which rewrites checkouts to CRLF and makes gofmt fail.
+* text=auto eol=lf
