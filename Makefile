@@ -1,4 +1,4 @@
-# Virta — build pipeline. Everything is `make`; "CI" = `make ci` run locally (ADR-022).
+# Virta — build pipeline. Everything is `make`; "CI" = `make ci` run locally.
 # No step requires a network or a remote.
 
 MODULE      := github.com/elythi0n/virta
@@ -13,7 +13,7 @@ LDFLAGS     := -s -w \
 # Cross-compile matrix (the 6 shipped OS/arch targets).
 PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64
 
-.PHONY: all ci build run lint fmt fmt-check vet test test-race cover cross app daemon web serve fixtures \
+.PHONY: all ci build run lint fmt fmt-check vet test test-race cover cross app daemon tui web serve fixtures \
         tokens tokens-check apigen apigen-check test-live-twitch test-live-kick test-live-x test-live-llm soak docker clean tidy
 
 all: ci
@@ -63,11 +63,11 @@ fmt-check:
 vet:
 	go vet ./...
 
-## lint: golangci-lint (incl. depguard, forbidigo — ADR-020/024).
+## lint: golangci-lint (incl. depguard, forbidigo).
 lint:
 	golangci-lint run
 
-## test: unit/contract/integration tests (offline only — ADR-024).
+## test: unit/contract/integration tests (offline only — no network).
 test:
 	go test ./...
 
@@ -89,6 +89,13 @@ cross:
 			-o dist/virtad-$$os-$$arch$$ext ./cmd/virtad || exit 1; \
 	done
 	@echo "✓ cross-compiled $(words $(PLATFORMS)) targets"
+
+## tui: build the virta-tui binary for the host OS.
+tui:
+	@mkdir -p dist
+	@ext=""; [ "$$(go env GOOS)" = "windows" ] && ext=".exe"; \
+		go build -ldflags '$(LDFLAGS)' -o dist/virta-tui$$ext ./cmd/virta-tui
+	@echo "✓ artifact: dist/virta-tui"
 
 ## web: build the web UI and stage it where virtad embeds it, so the daemon serves the app itself.
 web:
@@ -149,7 +156,7 @@ app-debug:
 	@echo "✓ debug bundle: frontends/desktop/build/bin/virta-debug  (Settings → About → Open WebKit Inspector)"
 
 ## app-appimage: Linux AppImage. Requires appimagetool + the app target's prerequisites.
-app-appimage: app
+app-appimage: app daemon tui
 	@command -v appimagetool >/dev/null 2>&1 || { echo "appimagetool not found (https://appimage.github.io/appimagetool/)"; exit 1; }
 	@mkdir -p dist/AppDir/usr/bin dist/AppDir/usr/share/applications dist/AppDir/usr/share/icons/hicolor/512x512/apps
 	cp frontends/desktop/build/bin/virta dist/AppDir/usr/bin/virta
@@ -157,12 +164,21 @@ app-appimage: app
 	cp dist/virta-tui dist/AppDir/usr/bin/virta-tui
 	cp packaging/virta.desktop dist/AppDir/usr/share/applications/virta.desktop
 	cp frontends/ui-kit/src/assets/virta-logo-512.png dist/AppDir/usr/share/icons/hicolor/512x512/apps/virta.png
-	ARCH=x86_64 appimagetool dist/AppDir dist/Virta-$(shell git describe --tags --dirty).AppImage
-	@echo "✓ AppImage: dist/Virta-*.AppImage"
+	# appimagetool requires AppRun, a .desktop file, and an icon at the AppDir root.
+	cp packaging/virta.desktop dist/AppDir/virta.desktop
+	cp frontends/ui-kit/src/assets/virta-logo-512.png dist/AppDir/virta.png
+	ln -sf usr/bin/virta dist/AppDir/AppRun
+	ARCH=x86_64 appimagetool dist/AppDir dist/Virta-$(VERSION).AppImage
+	@echo "✓ AppImage: dist/Virta-$(VERSION).AppImage"
 
-## app-dmg: macOS disk image (universal). Requires xcode + create-dmg.
+## app-dmg: macOS disk image. Requires xcode + create-dmg. Stages a Virta.app bundle first —
+## the raw binary from `app` isn't double-clickable on macOS without one.
 app-dmg: app
 	@command -v create-dmg >/dev/null 2>&1 || { echo "create-dmg not found (brew install create-dmg)"; exit 1; }
+	@rm -rf dist/dmg
+	@mkdir -p dist/dmg/Virta.app/Contents/MacOS dist/dmg/Virta.app/Contents/Resources
+	cp frontends/desktop/build/bin/virta dist/dmg/Virta.app/Contents/MacOS/virta
+	sed 's/__VERSION__/$(VERSION)/' packaging/Info.plist > dist/dmg/Virta.app/Contents/Info.plist
 	create-dmg \
 		--volname "Virta" \
 		--background frontends/ui-kit/src/assets/virta-logo-512.png \
@@ -172,15 +188,16 @@ app-dmg: app
 		--icon "Virta.app" 175 120 \
 		--hide-extension "Virta.app" \
 		--app-drop-link 425 120 \
-		"dist/Virta-$(shell git describe --tags --dirty).dmg" \
-		"frontends/desktop/build/bin/"
-	@echo "✓ DMG: dist/Virta-*.dmg"
+		"dist/Virta-$(VERSION).dmg" \
+		"dist/dmg/"
+	@echo "✓ DMG: dist/Virta-$(VERSION).dmg"
 
 ## app-nsis: Windows NSIS installer. Requires NSIS makensis + running on Windows or Wine.
-app-nsis: app
+## On Windows runners (no make) use scripts/package-windows.sh, which mirrors this.
+app-nsis: app daemon tui
 	@command -v makensis >/dev/null 2>&1 || { echo "makensis not found (choco install nsis / apt install nsis)"; exit 1; }
-	makensis packaging/virta.nsi
-	@echo "✓ installer: dist/VirtaSetup-*.exe"
+	makensis -DAPP_VERSION=$(VERSION) packaging/virta.nsi
+	@echo "✓ installer: dist/VirtaSetup-$(VERSION).exe"
 
 ## fixtures: regenerate golden fixtures by re-running normalization with -update.
 fixtures:
@@ -198,8 +215,8 @@ tidy:
 clean:
 	rm -rf dist coverage.out coverage.txt
 
-# --- Live tests (manual, build-tagged, NEVER part of `make ci` — ADR-024). ---
-## test-live-*: hit real platform/provider endpoints. Run deliberately; see docs/live-debt.md.
+# --- Live tests (manual, build-tagged, NEVER part of `make ci`). ---
+## test-live-*: hit real platform/provider endpoints. Run deliberately.
 test-live-twitch:
 	go test -tags live -run TestLive ./internal/platform/twitch/... 2>/dev/null || echo "no live twitch tests yet"
 test-live-kick:

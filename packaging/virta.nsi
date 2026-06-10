@@ -1,7 +1,10 @@
 ; Virta NSIS Windows installer script.
 ; Run: makensis packaging/virta.nsi (from the repo root, after `make app` produces the binary).
 !define APP_NAME "Virta"
-!define APP_VERSION "1.0.0"
+; Overridable from the build: makensis -DAPP_VERSION=v1.2.3 packaging/virta.nsi
+!ifndef APP_VERSION
+  !define APP_VERSION "dev"
+!endif
 !define INSTALLER_NAME "VirtaSetup-${APP_VERSION}.exe"
 !define INSTALL_DIR "$PROGRAMFILES64\Virta"
 !define UNINSTALLER "Uninstall.exe"
