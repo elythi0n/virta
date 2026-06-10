@@ -1,5 +1,5 @@
 import { Input, Segmented, Select } from '@virta/ui-kit';
-import { parseSchema, type JsonSchema } from './schemaForm';
+import { parseSchema, type JsonSchema } from './schemaFields';
 import styles from './SchemaForm.module.css';
 
 type Props = {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultsFor, parseSchema, type JsonSchema } from './schemaForm';
+import { defaultsFor, parseSchema, type JsonSchema } from './schemaFields';
 
 const SCHEMA: JsonSchema = {
   properties: {
