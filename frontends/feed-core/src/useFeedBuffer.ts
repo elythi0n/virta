@@ -61,20 +61,38 @@ export interface FeedBuffer {
 /**
  * Buffers incoming messages and applies them on the next animation frame, so a burst of arrivals
  * (a chat firehose) becomes one render per frame instead of one render per message. The newest
- * `max` are kept to bound memory.
+ * `max` are kept to bound memory. Hidden browser tabs never fire animation frames, so while
+ * hidden the queue drains on a coarse timer instead and is capped at `max` — anything past that
+ * is what the capped buffer would discard at the next flush anyway.
  */
 export function useFeedBuffer({ max = 2000 }: { max?: number } = {}): FeedBuffer {
   const [messages, setMessages] = useState<FeedMessage[]>([]);
   const queue = useRef<FeedMessage[]>([]);
   const frame = useRef<number | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const flush = useCallback(() => {
     frame.current = null;
+    if (timer.current !== null) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
     const incoming = queue.current;
     if (incoming.length === 0) return;
     queue.current = [];
     setMessages((prev) => appendCapped(prev, incoming, max));
   }, [max]);
+
+  const schedule = useCallback(() => {
+    if (frame.current !== null || timer.current !== null) return;
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+      // No frame will come while hidden; a 1 s timer keeps the queue draining (the browser may
+      // throttle it further in long background stints — the queue cap absorbs that).
+      timer.current = setTimeout(flush, 1000);
+    } else {
+      frame.current = requestAnimationFrame(flush);
+    }
+  }, [flush]);
 
   const push = useCallback(
     (incoming: FeedMessage | FeedMessage[]) => {
@@ -84,10 +102,25 @@ export function useFeedBuffer({ max = 2000 }: { max?: number } = {}): FeedBuffer
       } else {
         queue.current.push(incoming);
       }
-      if (frame.current === null) frame.current = requestAnimationFrame(flush);
+      if (queue.current.length > max) queue.current = queue.current.slice(queue.current.length - max);
+      schedule();
     },
-    [flush],
+    [schedule, max],
   );
+
+  // Coming back to a visible tab: replace a pending background timer with an immediate frame so
+  // the backlog paints right away instead of up to a second late.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const onVisibility = () => {
+      if (document.visibilityState !== 'visible' || timer.current === null) return;
+      clearTimeout(timer.current);
+      timer.current = null;
+      if (frame.current === null) frame.current = requestAnimationFrame(flush);
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [flush]);
 
   // Deletions/clears arrive well after their messages are committed (a mod action, seconds later),
   // so applying them to committed state is enough; the sub-frame window where a target is still
@@ -106,12 +139,17 @@ export function useFeedBuffer({ max = 2000 }: { max?: number } = {}): FeedBuffer
       cancelAnimationFrame(frame.current);
       frame.current = null;
     }
+    if (timer.current !== null) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
     setMessages([]);
   }, []);
 
   useEffect(
     () => () => {
       if (frame.current !== null) cancelAnimationFrame(frame.current);
+      if (timer.current !== null) clearTimeout(timer.current);
     },
     [],
   );

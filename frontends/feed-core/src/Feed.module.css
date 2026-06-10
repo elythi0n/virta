@@ -22,6 +22,26 @@
   width: 100%;
 }
 
+/* Jumped-to row: a brief tint that fades, so the eye lands on the right line. */
+.flash {
+  animation: rowFlash 1.8s ease-out both;
+}
+@keyframes rowFlash {
+  0%,
+  35% {
+    background: color-mix(in srgb, var(--virta-accent) 18%, transparent);
+  }
+  100% {
+    background: transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flash {
+    animation: none;
+    background: color-mix(in srgb, var(--virta-accent) 18%, transparent);
+  }
+}
+
 .pill {
   position: absolute;
   left: 50%;

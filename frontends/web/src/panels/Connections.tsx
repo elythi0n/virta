@@ -26,7 +26,7 @@ const STABILITY: Record<string, string> = {
   besteffort: 'Best-effort',
 };
 
-// The Connections surface (ADR-025): one card per platform showing what it can do (capability
+// The Connections surface: one card per platform showing what it can do (capability
 // tags), how stable that access is, and the account state — sign in to unlock send/moderation.
 // Reading needs no account, so a platform is useful before you ever sign in.
 export default function Connections() {

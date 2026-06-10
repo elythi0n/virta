@@ -3,7 +3,7 @@ import { Input, Select, Text } from '@virta/ui-kit';
 import { PlatformGlyph, type Platform } from '@virta/feed-core';
 import Icon from '../Icon';
 import { searchMessages, useChannels } from '../daemon';
-import { useOpenChannel } from '../openChannel';
+import { useJumpToMessage } from '../jumpToMessage';
 import type { LoggedMessage } from '../daemon/wire.gen';
 import styles from './SearchPanel.module.css';
 
@@ -20,11 +20,12 @@ function highlight(body: string, q: string): [string, string, string] {
 }
 
 // Full-text search across the logged history: a query, optional channel/author filters, and a list
-// of matches newest-first. Click a result to open that channel's chat. Logging is opt-in, so this
+// of matches newest-first. Click a result to jump to the message in an open feed (scrolled to and
+// flashed) when it's still buffered, else open that channel's chat. Logging is opt-in, so this
 // is empty until it's enabled in Settings → Storage.
 export default function SearchPanel() {
   const { channels } = useChannels();
-  const openChannel = useOpenChannel();
+  const jumpTo = useJumpToMessage();
   const [q, setQ] = useState('');
   const ALL = '__all__'; // sentinel for "all channels" — Radix Select forbids empty-string values
   const [channel, setChannel] = useState(ALL);
@@ -115,7 +116,7 @@ export default function SearchPanel() {
                 const [before, hit, after] = highlight(m.body, q.trim());
                 return (
                   <li key={m.id}>
-                    <button type="button" className={styles.row} onClick={() => openChannel(m.channel, slugOf(m.channel))} title="Open this channel's chat">
+                    <button type="button" className={styles.row} onClick={() => jumpTo(m.channel, m.id, slugOf(m.channel))} title="Jump to this message">
                       <div className={styles.meta}>
                         <PlatformGlyph platform={platformOf(m.channel)} className={styles.glyph} />
                         <span className={styles.channel}>{slugOf(m.channel)}</span>

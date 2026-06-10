@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Feed, useFeedBuffer, type FeedMessage } from '@virta/feed-core';
 import { Text } from '@virta/ui-kit';
+import { markActivity } from '../dock/activity';
+import { mentionsMe } from './mentions';
 import { useDaemonStream } from '../daemon';
 import { useFeedDisplay } from '../feedDisplay';
 import { useTheme } from '../theme';
@@ -8,16 +10,9 @@ import styles from './MentionInbox.module.css';
 
 const hex = (r: number, g: number, b: number) => '#' + [r, g, b].map((n) => n.toString(16).padStart(2, '0')).join('');
 
-// A message mentions you when one of your names appears in its text (case-insensitive).
-function mentionsMe(m: FeedMessage, names: string[]): boolean {
-  if (names.length === 0) return false;
-  const body = m.body.toLowerCase();
-  return names.some((n) => body.includes(n));
-}
-
 // Collects, across every channel, the messages that mention one of your names (set in Settings).
 // Subscribes to all channels and keeps only the matches, newest at the bottom like a feed.
-export default function MentionInbox() {
+export default function MentionInbox({ panelId }: { panelId?: string }) {
   const { theme } = useTheme();
   const { mentionNames } = useFeedDisplay();
   const { messages, push, clear } = useFeedBuffer({ max: 500 });
@@ -35,9 +30,11 @@ export default function MentionInbox() {
 
   const onMessage = useCallback(
     (m: FeedMessage) => {
-      if (mentionsMe(m, names)) push(m);
+      if (!mentionsMe(m, names)) return;
+      markActivity(panelId, 'mention');
+      push(m);
     },
-    [names, push],
+    [names, push, panelId],
   );
   useDaemonStream({ onMessage });
 

@@ -9,6 +9,8 @@ import styles from './Feed.module.css';
 const STICK_THRESHOLD = 48;
 // How long a celebration banner stays up before fading out.
 const BANNER_MS = 4500;
+// How long a jumped-to row stays tinted before the flash fades.
+const FLASH_MS = 1800;
 
 type Banner = { id: string; text: string; type: MessageType };
 
@@ -28,12 +30,21 @@ type FeedProps = {
   renderActions?: (m: FeedMessage) => ReactNode;
   /** Show the transient banner when a high-impact event (gift bomb, big raid) arrives live. */
   celebrate?: boolean;
+  /**
+   * Scroll to and briefly flash a message (e.g. a clicked search hit). Bump `nonce` to re-trigger
+   * for the same id. Ignored when the id isn't in `messages`.
+   */
+  jumpTo?: { id: string; nonce: number };
+  /** Makes author names clickable (e.g. to focus a single chatter). */
+  onAuthorClick?: (m: FeedMessage) => void;
+  /** Wrap a row with panel-level chrome (e.g. a right-click menu); receives the rendered row. */
+  wrapRow?: (m: FeedMessage, row: ReactNode) => ReactNode;
 };
 
 // Virtualized chat feed: only the visible window is in the DOM (stable keys by message id), so
 // throughput is bounded by the viewport, not the backlog. Pins to the bottom while the user is
 // there; scrolling up detaches and a pill offers to jump back to the latest.
-export default function Feed({ messages, background, showSource, density = 'cozy', showTimestamps = true, showDeleted = false, renderActions, celebrate = true }: FeedProps) {
+export default function Feed({ messages, background, showSource, density = 'cozy', showTimestamps = true, showDeleted = false, renderActions, celebrate = true, jumpTo, onAuthorClick, wrapRow }: FeedProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const stick = useRef(true); // live pin state, read inside the scroll handler
   const prevCount = useRef(0);
@@ -55,6 +66,26 @@ export default function Feed({ messages, background, showSource, density = 'cozy
       virtualizer.scrollToIndex(messages.length - 1, { align: 'end' });
     }
   }, [virtualizer, messages.length]);
+
+  // The virtualizer caches a measured height per item key forever; with ids rotating through a
+  // capped buffer, that map grows without bound over a long session. Periodically drop entries
+  // for ids no longer in the list — those rows can never be measured again. The instance returned
+  // by useVirtualizer is stable, so the interval closes over it safely.
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+  const virtualizerRef = useRef(virtualizer);
+  virtualizerRef.current = virtualizer;
+  useEffect(() => {
+    const id = setInterval(() => {
+      const cache = (virtualizerRef.current as unknown as { itemSizeCache?: Map<unknown, number> }).itemSizeCache;
+      if (!cache || cache.size <= 4000) return;
+      const live = new Set<unknown>(messagesRef.current.map((m) => m.id));
+      for (const key of cache.keys()) {
+        if (!live.has(key)) cache.delete(key);
+      }
+    }, 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   // On new messages: keep pinned to the bottom, or count them as unseen while detached.
   useLayoutEffect(() => {
@@ -99,6 +130,21 @@ export default function Feed({ messages, background, showSource, density = 'cozy
     return () => clearTimeout(t);
   }, [banner]);
 
+  // Jump-to-message: unpin, center the target row, and flash it so the eye lands on the right
+  // line. Keyed off the request nonce, not `messages` — appends must not re-run the scroll.
+  const [flashId, setFlashId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!jumpTo) return;
+    const index = messages.findIndex((m) => m.id === jumpTo.id);
+    if (index < 0) return;
+    stick.current = false;
+    setAtBottom(false);
+    virtualizer.scrollToIndex(index, { align: 'center' });
+    setFlashId(jumpTo.id);
+    const t = setTimeout(() => setFlashId(null), FLASH_MS);
+    return () => clearTimeout(t);
+  }, [jumpTo?.nonce]);
+
   const onScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -122,25 +168,32 @@ export default function Feed({ messages, background, showSource, density = 'cozy
     <div className={styles.feed}>
       <div className={styles.viewport} ref={scrollRef} onScroll={onScroll} role="log" aria-label="Chat feed">
         <div className={styles.sizer} style={{ height: virtualizer.getTotalSize() }}>
-          {items.map((vi) => (
-            <div
-              key={vi.key}
-              data-index={vi.index}
-              ref={virtualizer.measureElement}
-              className={styles.rowWrap}
-              style={{ transform: `translateY(${vi.start}px)` }}
-            >
+          {items.map((vi) => {
+            const m = messages[vi.index];
+            const row = (
               <FeedRow
-                message={messages[vi.index]}
+                message={m}
                 background={background}
                 showSource={showSource}
                 density={density}
                 showTimestamps={showTimestamps}
                 showDeleted={showDeleted}
                 renderActions={renderActions}
+                onAuthorClick={onAuthorClick}
               />
-            </div>
-          ))}
+            );
+            return (
+              <div
+                key={vi.key}
+                data-index={vi.index}
+                ref={virtualizer.measureElement}
+                className={`${styles.rowWrap} ${flashId === m.id ? styles.flash : ''}`}
+                style={{ transform: `translateY(${vi.start}px)` }}
+              >
+                {wrapRow ? wrapRow(m, row) : row}
+              </div>
+            );
+          })}
         </div>
       </div>
       {banner && (

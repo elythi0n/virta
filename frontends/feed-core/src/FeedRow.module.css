@@ -128,6 +128,16 @@
   color: var(--virta-text-1);
   font-weight: 600;
 }
+.authorBtn {
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+.authorBtn:hover {
+  text-decoration: underline;
+}
 .body {
   flex: 1 1 auto;
   color: var(--virta-text-0);

@@ -24,6 +24,22 @@
   outline: none;
 }
 
+.icon {
+  flex: none;
+  color: var(--virta-text-2);
+}
+
+.dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--virta-accent);
+}
+.dotMention {
+  background: var(--virta-warn);
+}
+
 .close {
   display: grid;
   place-items: center;

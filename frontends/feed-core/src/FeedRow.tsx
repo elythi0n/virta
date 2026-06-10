@@ -77,13 +77,15 @@ type FeedRowProps = {
   showDeleted?: boolean;
   /** Optional hover-revealed actions for a chat row (e.g. moderator buttons); return null to omit. */
   renderActions?: (m: FeedMessage) => ReactNode;
+  /** Makes the author name a button (e.g. to focus that chatter). */
+  onAuthorClick?: (m: FeedMessage) => void;
   density: Density;
 };
 
 // The single most-rendered element. Bespoke and memoized so streaming a new message never
 // re-renders the rows above it. Chat rows carry a platform rail, optional source tag, badges, the
 // author, and segments; non-chat types render as a tinted event band; deletions fade and strike.
-function FeedRow({ message, background, showSource, showTimestamps = true, showDeleted = false, renderActions, density }: FeedRowProps) {
+function FeedRow({ message, background, showSource, showTimestamps = true, showDeleted = false, renderActions, onAuthorClick, density }: FeedRowProps) {
   const type = message.type ?? 'chat';
 
   if (isEventType(type)) {
@@ -135,9 +137,21 @@ function FeedRow({ message, background, showSource, showTimestamps = true, showD
           {badges.length > 3 && <span className={styles.badgeMore}>+{badges.length - 3}</span>}
         </span>
       )}
-      <span className={styles.author} style={authorStyle}>
-        {message.author}
-      </span>
+      {onAuthorClick ? (
+        <button
+          type="button"
+          className={`${styles.author} ${styles.authorBtn}`}
+          style={authorStyle}
+          title={`Show only ${message.author}`}
+          onClick={() => onAuthorClick(message)}
+        >
+          {message.author}
+        </button>
+      ) : (
+        <span className={styles.author} style={authorStyle}>
+          {message.author}
+        </span>
+      )}
       <span className={`${styles.body} ${type === 'action' ? styles.action : ''}`}>
         {message.deleted && !showDeleted ? (
           <span className={styles.tombstone}>message deleted</span>

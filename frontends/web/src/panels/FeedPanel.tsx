@@ -1,12 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Feed, parseSegments, PlatformGlyph, useFeedBuffer, type Density, type FeedMessage, type Platform } from '@virta/feed-core';
-import { Button, Dialog, Input, Segmented, Text, Tooltip } from '@virta/ui-kit';
+import { Button, ContextMenu, Dialog, Input, Segmented, Text, Tooltip, type ContextMenuEntry } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { filterFeed, QUICK_FILTERS, type QuickFilter } from './quickFilter';
 import { applyCalm } from './calmMode';
+import { onJumpRequest } from './jump';
 import ModRowActions, { type ModAction } from './ModRowActions';
 import ChatSettingsControl from './ChatSettingsControl';
-import { getHistory, sendMessage, useCapabilities, useChannels, useDaemonStream, useStats } from '../daemon';
+import { markActivity } from '../dock/activity';
+import { mentionsMe } from './mentions';
+import { useOpenChannel } from '../openChannel';
+import { getHistory, listFilters, saveFilters, sendMessage, useCapabilities, useChannels, useDaemonStream, useStats } from '../daemon';
 import type { ChatSettings, LoggedMessage } from '../daemon/wire.gen';
 
 // Convert a logged/scrollback row into a feed message for backfill. The stored body is plain text
@@ -196,7 +200,7 @@ type Props = {
 export default function FeedPanel({ channels, panelId }: Props) {
   const { theme } = useTheme();
   const { density: defaultDensity } = useDensity();
-  const { showTimestamps, showDeleted, autoCalmRate } = useFeedDisplay();
+  const { showTimestamps, showDeleted, autoCalmRate, mentionNames } = useFeedDisplay();
   const { channels: joined } = useChannels();
   const { stats } = useStats();
   const { messages, push, markDeleted, clearChannel } = useFeedBuffer({ max: MAX_MESSAGES });
@@ -210,9 +214,25 @@ export default function FeedPanel({ channels, panelId }: Props) {
   const pending = useRef<FeedMessage[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
   const calmActiveRef = useRef(false);
+
+  // Messages naming you (Settings → Appearance) render highlighted in this feed, on top of any
+  // daemon-side highlight rules. Read through a ref so `receive` keeps its stable identity.
+  const names = useMemo(() => mentionNames.map((n) => n.toLowerCase().trim()).filter(Boolean), [mentionNames]);
+  const namesRef = useRef(names);
+  namesRef.current = names;
+
   const receive = useCallback(
     (m: FeedMessage | FeedMessage[]) => {
-      const arr = Array.isArray(m) ? m : [m];
+      let arr = Array.isArray(m) ? m : [m];
+      let mentioned = false;
+      if (namesRef.current.length > 0) {
+        arr = arr.map((msg) => {
+          if (msg.highlighted || !mentionsMe(msg, namesRef.current)) return msg;
+          mentioned = true;
+          return { ...msg, highlighted: true };
+        });
+      }
+      markActivity(panelId, mentioned ? 'mention' : 'activity');
       if (calmActiveRef.current) {
         pending.current.push(...arr);
         setPendingCount(pending.current.length);
@@ -220,7 +240,7 @@ export default function FeedPanel({ channels, panelId }: Props) {
         push(arr);
       }
     },
-    [push],
+    [push, panelId],
   );
 
   const status = useDaemonStream({ onMessage: receive, onDeleted: markDeleted, onClear: clearChannel, onChatSettings }, channels);
@@ -310,12 +330,36 @@ export default function FeedPanel({ channels, panelId }: Props) {
     return () => clearInterval(id);
   }, [calmActive, push, flushPending]);
 
+  // Author focus: a one-click view filter down to a single chatter (toggled from the author name
+  // or the row menu). Display-only, like the other filters — the buffer keeps streaming under it.
+  const [authorFocus, setAuthorFocus] = useState<string | null>(null);
+  const toggleAuthorFocus = useCallback((m: FeedMessage) => {
+    setAuthorFocus((cur) => (cur === m.author ? null : m.author));
+  }, []);
+
   // Client-side view filter over the buffered feed; the full buffer keeps streaming underneath.
   const { visible, thinned } = useMemo(() => {
-    const filtered = filterFeed(messages, quick, query);
+    let filtered = filterFeed(messages, quick, query);
+    if (authorFocus) filtered = filtered.filter((m) => m.author === authorFocus);
     if (!calmActive) return { visible: filtered, thinned: 0 };
     return applyCalm(filtered);
-  }, [messages, quick, query, calmActive]);
+  }, [messages, quick, query, calmActive, authorFocus]);
+
+  // Claim jump-to-message requests this feed can serve: the channel is in scope and the message
+  // is still in the displayed list. The ref keeps the handler registration stable across renders.
+  const visibleRef = useRef(visible);
+  visibleRef.current = visible;
+  const [jump, setJump] = useState<{ id: string; nonce: number } | null>(null);
+  useEffect(
+    () =>
+      onJumpRequest((req) => {
+        if (channels && !channels.includes(req.channel)) return null;
+        if (!visibleRef.current.some((m) => m.id === req.id)) return null;
+        setJump((j) => ({ id: req.id, nonce: (j?.nonce ?? 0) + 1 }));
+        return { panelId };
+      }),
+    [channels, panelId],
+  );
 
   // Recent chatters (newest first, unique) for the composer's @mention autocomplete.
   const chatters = useMemo(() => {
@@ -359,11 +403,52 @@ export default function FeedPanel({ channels, panelId }: Props) {
     [caps, runMod, onReply],
   );
 
-  // Chat-settings toggles apply to one channel, so show them only for a single moderatable feed.
-  const modChannel = targets.length === 1 && caps[targets[0].split(':')[0]]?.moderation ? targets[0] : null;
-
   // A feed aggregating more than one channel shows the source tag; a single-channel feed hides it.
   const showSource = channels === undefined || channels.length !== 1;
+
+  // Right-click menu on chat rows: copy, focus the author, add a profile filter rule for the
+  // author (the same ruleset the Filters panel edits — append and save), or open the source
+  // channel as its own panel when this feed aggregates several.
+  const openChannelPanel = useOpenChannel();
+  const addAuthorRule = useCallback((action: 'hide' | 'highlight', author: string) => {
+    const id = `rule-${crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)}`;
+    listFilters()
+      .then((rules) => saveFilters([...rules, { id, action, authors: [author] }]))
+      .catch(() => {});
+  }, []);
+  const wrapRow = useCallback(
+    (m: FeedMessage, row: ReactNode) => {
+      if (m.deleted || (m.type && m.type !== 'chat' && m.type !== 'action') || !m.author) return row;
+      const channel = m.channel;
+      const channelSlug = channel ? (channel.split(':')[1] ?? channel) : '';
+      const items: ContextMenuEntry[] = [
+        { kind: 'item', label: 'Copy message', onSelect: () => void navigator.clipboard?.writeText(m.body).catch(() => {}) },
+        {
+          kind: 'item',
+          label: authorFocus === m.author ? `Stop focusing ${m.author}` : `Focus ${m.author}`,
+          onSelect: () => toggleAuthorFocus(m),
+        },
+        { kind: 'separator' },
+        { kind: 'item', label: `Highlight ${m.author} everywhere`, onSelect: () => addAuthorRule('highlight', m.author) },
+        { kind: 'item', label: `Mute ${m.author} everywhere`, danger: true, onSelect: () => addAuthorRule('hide', m.author) },
+        ...(showSource && channel
+          ? [
+              { kind: 'separator' as const },
+              {
+                kind: 'item' as const,
+                label: `Open ${channelSlug} as panel`,
+                onSelect: () => openChannelPanel(channel, channelSlug),
+              },
+            ]
+          : []),
+      ];
+      return <ContextMenu items={items} trigger={<div>{row}</div>} />;
+    },
+    [authorFocus, toggleAuthorFocus, addAuthorRule, showSource, openChannelPanel],
+  );
+
+  // Chat-settings toggles apply to one channel, so show them only for a single moderatable feed.
+  const modChannel = targets.length === 1 && caps[targets[0].split(':')[0]]?.moderation ? targets[0] : null;
 
   // Clamp author colors against the live theme background.
   useEffect(() => {
@@ -383,7 +468,13 @@ export default function FeedPanel({ channels, panelId }: Props) {
   }, [status, rate, receive]);
 
   return (
-    <div className={styles.panel}>
+    <div
+      className={styles.panel}
+      onKeyDown={(e) => {
+        // Escape anywhere in the panel drops author focus (the input clears its own query first).
+        if (e.key === 'Escape' && authorFocus) setAuthorFocus(null);
+      }}
+    >
       <div className={styles.toolbar}>
         <div className={styles.streamers}>
           {targets.length === 0 ? (
@@ -464,7 +555,10 @@ export default function FeedPanel({ channels, panelId }: Props) {
           value={query}
           onChange={(e) => setQuery(e.currentTarget.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Escape') setQuery('');
+            if (e.key === 'Escape' && query) {
+              setQuery('');
+              e.stopPropagation();
+            }
           }}
         />
         <div className={styles.quick} role="group" aria-label="Quick filters">
@@ -482,6 +576,16 @@ export default function FeedPanel({ channels, panelId }: Props) {
         </div>
       </div>
       )}
+      {authorFocus && (
+        <div className={styles.focusBar}>
+          <Text variant="meta" tone="subtle">
+            Showing only <strong>{authorFocus}</strong>
+          </Text>
+          <button type="button" className={styles.focusClear} onClick={() => setAuthorFocus(null)}>
+            Clear ×
+          </button>
+        </div>
+      )}
       <div className={styles.feedWrap}>
         <Feed
           messages={visible}
@@ -491,6 +595,9 @@ export default function FeedPanel({ channels, panelId }: Props) {
           showTimestamps={showTimestamps}
           showDeleted={showDeleted}
           renderActions={renderActions}
+          jumpTo={jump ?? undefined}
+          onAuthorClick={toggleAuthorFocus}
+          wrapRow={wrapRow}
         />
         {calmActive && pendingCount > 0 && (
           <button type="button" className={styles.pendingPill} onClick={flushPending}>

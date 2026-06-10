@@ -184,3 +184,26 @@
   filter: brightness(1.08);
 }
 
+
+/* Author-focus banner: shown while the view is filtered to a single chatter. */
+.focusBar {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  padding: var(--virta-space-4) var(--virta-space-12);
+  border-bottom: 1px solid var(--virta-line);
+  background: var(--virta-bg-1);
+}
+.focusClear {
+  border: 0;
+  padding: 1px var(--virta-space-8);
+  border-radius: var(--virta-radius-sm);
+  background: var(--virta-bg-2);
+  color: var(--virta-text-1);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  cursor: pointer;
+}
+.focusClear:hover {
+  color: var(--virta-text-0);
+}

@@ -47,3 +47,47 @@
   height: 2px;
   background: var(--virta-accent);
 }
+
+/*
+ * Sash polish: an invisible widened grab zone (the visible line stays thin), and a grip pill
+ * that fades in on hover so the resize affordance is discoverable without adding chrome.
+ */
+.dockview-theme-virta .dv-split-view-container.dv-horizontal > .dv-sash-container > .dv-sash.dv-enabled::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -8px;
+  right: -8px;
+}
+.dockview-theme-virta .dv-split-view-container.dv-vertical > .dv-sash-container > .dv-sash.dv-enabled::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -8px;
+  bottom: -8px;
+}
+.dockview-theme-virta .dv-sash.dv-enabled::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: var(--virta-radius-sm);
+  background: var(--virta-text-2);
+  opacity: 0;
+  transition: opacity 120ms ease;
+  pointer-events: none;
+}
+.dockview-theme-virta .dv-split-view-container.dv-horizontal > .dv-sash-container > .dv-sash.dv-enabled::after {
+  width: 4px;
+  height: 36px;
+}
+.dockview-theme-virta .dv-split-view-container.dv-vertical > .dv-sash-container > .dv-sash.dv-enabled::after {
+  width: 36px;
+  height: 4px;
+}
+.dockview-theme-virta .dv-sash.dv-enabled:hover::after {
+  opacity: 0.5;
+}
