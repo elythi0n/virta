@@ -34,6 +34,8 @@ linters:
               desc: "import platform implementations only from internal/app"
             - pkg: github.com/elythi0n/virta/internal/platform/kick
               desc: "import platform implementations only from internal/app"
+            - pkg: github.com/elythi0n/virta/internal/platform/youtube
+              desc: "import platform implementations only from internal/app"
             - pkg: github.com/elythi0n/virta/internal/platform/x
               desc: "import platform implementations only from internal/app"
             - pkg: github.com/elythi0n/virta/internal/store/sqlite

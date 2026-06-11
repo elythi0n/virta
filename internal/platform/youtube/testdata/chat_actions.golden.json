@@ -1,0 +1,238 @@
+[
+  {
+    "id": "",
+    "platform_message_id": "msg-text-1",
+    "platform": "youtube",
+    "channel": {
+      "platform": "youtube",
+      "id": "dQw4w9WgXcQ",
+      "slug": "somecreator",
+      "display_name": "SomeCreator"
+    },
+    "type": "chat",
+    "author": {
+      "id": "UCfan12345",
+      "login": "streamfan",
+      "display_name": "StreamFan",
+      "color": "",
+      "badges": [
+        {
+          "set": "moderator",
+          "version": "",
+          "title": "Moderator"
+        },
+        {
+          "set": "subscriber",
+          "version": "",
+          "title": "Member (6 months)",
+          "url": "https://yt3.ggpht.com/member-badge=s32"
+        }
+      ]
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "hello "
+      },
+      {
+        "kind": "mention",
+        "text": "@streamer"
+      },
+      {
+        "kind": "text",
+        "text": " check "
+      },
+      {
+        "kind": "emote",
+        "text": ":hand-wave:",
+        "emote": {
+          "provider": "youtube",
+          "id": "UCabc123/wave-emoji-id",
+          "name": ":hand-wave:",
+          "url_template": "https://yt3.ggpht.com/wave=w48-h48",
+          "animated": false
+        }
+      },
+      {
+        "kind": "text",
+        "text": " and 😀 "
+      },
+      {
+        "kind": "link",
+        "text": "https://example.com/clip"
+      }
+    ],
+    "sent_at": "2024-06-05T15:00:00Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "msg-owner-1",
+    "platform": "youtube",
+    "channel": {
+      "platform": "youtube",
+      "id": "dQw4w9WgXcQ",
+      "slug": "somecreator",
+      "display_name": "SomeCreator"
+    },
+    "type": "chat",
+    "author": {
+      "id": "UCowner9999",
+      "login": "thestreamer",
+      "display_name": "TheStreamer",
+      "color": "",
+      "badges": [
+        {
+          "set": "broadcaster",
+          "version": "",
+          "title": "Owner"
+        },
+        {
+          "set": "verified",
+          "version": "",
+          "title": "Verified"
+        }
+      ]
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "welcome everyone"
+      }
+    ],
+    "sent_at": "2024-06-05T15:00:00.5Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "msg-paid-1",
+    "platform": "youtube",
+    "channel": {
+      "platform": "youtube",
+      "id": "dQw4w9WgXcQ",
+      "slug": "somecreator",
+      "display_name": "SomeCreator"
+    },
+    "type": "announcement",
+    "author": {
+      "id": "UCspender77",
+      "login": "bigspender",
+      "display_name": "BigSpender",
+      "color": ""
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "Super Chat €5.00 — "
+      },
+      {
+        "kind": "text",
+        "text": "great stream!"
+      }
+    ],
+    "sent_at": "2024-06-05T15:00:01Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "msg-paid-2",
+    "platform": "youtube",
+    "channel": {
+      "platform": "youtube",
+      "id": "dQw4w9WgXcQ",
+      "slug": "somecreator",
+      "display_name": "SomeCreator"
+    },
+    "type": "announcement",
+    "author": {
+      "id": "UCquiet42",
+      "login": "quietdonor",
+      "display_name": "QuietDonor",
+      "color": ""
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "Super Chat $2.00"
+      }
+    ],
+    "sent_at": "2024-06-05T15:00:02Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "msg-member-1",
+    "platform": "youtube",
+    "channel": {
+      "platform": "youtube",
+      "id": "dQw4w9WgXcQ",
+      "slug": "somecreator",
+      "display_name": "SomeCreator"
+    },
+    "type": "sub",
+    "author": {
+      "id": "UCnewfan1",
+      "login": "newfan",
+      "display_name": "NewFan",
+      "color": "",
+      "badges": [
+        {
+          "set": "subscriber",
+          "version": "",
+          "title": "New member",
+          "url": "https://yt3.ggpht.com/new-member=s32"
+        }
+      ]
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "New member"
+      }
+    ],
+    "sent_at": "2024-06-05T15:00:03Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  },
+  {
+    "id": "",
+    "platform_message_id": "msg-member-2",
+    "platform": "youtube",
+    "channel": {
+      "platform": "youtube",
+      "id": "dQw4w9WgXcQ",
+      "slug": "somecreator",
+      "display_name": "SomeCreator"
+    },
+    "type": "resub",
+    "author": {
+      "id": "UCloyal2",
+      "login": "loyalfan",
+      "display_name": "LoyalFan",
+      "color": "",
+      "badges": [
+        {
+          "set": "subscriber",
+          "version": "",
+          "title": "Member (6 months)",
+          "url": "https://yt3.ggpht.com/loyal=s32"
+        }
+      ]
+    },
+    "segments": [
+      {
+        "kind": "text",
+        "text": "Member for 6 months"
+      },
+      {
+        "kind": "text",
+        "text": " — "
+      },
+      {
+        "kind": "text",
+        "text": "still here!"
+      }
+    ],
+    "sent_at": "2024-06-05T15:00:04Z",
+    "received_at": "0001-01-01T00:00:00Z"
+  }
+]
