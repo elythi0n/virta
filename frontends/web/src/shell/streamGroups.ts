@@ -23,7 +23,7 @@ export interface StreamGroup {
 
 // Platforms with working thumbnails/metadata rank higher, so a streamer on both Twitch and Kick
 // surfaces the Twitch card by default.
-const PLATFORM_RANK: Record<string, number> = { twitch: 3, kick: 2, x: 1 };
+const PLATFORM_RANK: Record<string, number> = { twitch: 4, kick: 3, youtube: 2, x: 1 };
 
 // score ranks a variant for becoming the group's primary: live first, then having a thumbnail,
 // then the platform preference. Higher wins.

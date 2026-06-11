@@ -25,6 +25,7 @@ export const color = {
   "warn": "var(--virta-warn)",
   "plat-kick": "var(--virta-plat-kick)",
   "plat-twitch": "var(--virta-plat-twitch)",
+  "plat-youtube": "var(--virta-plat-youtube)",
   "brand-anthropic": "var(--virta-brand-anthropic)",
   "brand-openai": "var(--virta-brand-openai)",
 } as const;

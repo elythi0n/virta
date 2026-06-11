@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PlatformGlyph, type Platform } from '@virta/feed-core';
+import { PlatformGlyph, platformLabel, type Platform } from '@virta/feed-core';
 import { ContextMenu, StatusDot, Text, type ContextMenuEntry, type DotStatus } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { useChannels, useStats, useStreams } from '../daemon';
@@ -20,7 +20,6 @@ function startPanelDrag(e: React.DragEvent, channelKey: string, label: string) {
   e.dataTransfer.setData(DRAG_KEY, JSON.stringify({ kind: 'feed', channels: [channelKey], title: label }));
 }
 
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 // Compact count: 1.2k above a thousand, whole numbers below.
 const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k` : Math.round(n).toString());
 
@@ -127,7 +126,7 @@ function StreamCard({
     if (v.key === primary.key) continue;
     menuItems.push({
       kind: 'submenu',
-      label: `Open on ${cap(v.platform)}`,
+      label: `Open on ${platformLabel(v.platform)}`,
       items: [
         { kind: 'item', label: 'Stream', onSelect: () => openStream(v.key, display) },
         { kind: 'item', label: 'Chat', onSelect: () => openChannel(v.key, display) },

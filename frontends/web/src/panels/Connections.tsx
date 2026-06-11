@@ -17,6 +17,8 @@ type PlatformDef = {
 const PLATFORMS: PlatformDef[] = [
   { id: 'twitch', label: 'Twitch', signable: true, note: 'Reads anonymously. Sign in to send and moderate from your account.' },
   { id: 'kick', label: 'Kick', signable: true, note: 'Reads anonymously (unofficial). Sign in to send and moderate.' },
+  // YouTube is read-only for now; signable flips on when its auth/send support ships.
+  { id: 'youtube', label: 'YouTube', signable: false, note: 'Reads live chat anonymously. Sign-in and sending are not available yet.' },
   { id: 'x', label: 'X', signable: false, note: 'Best-effort read via a browser session — no official API.' },
 ];
 

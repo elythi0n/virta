@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { PlatformGlyph, type Platform } from '@virta/feed-core';
+import { PlatformGlyph, platformLabel, type Platform } from '@virta/feed-core';
 import { ContextMenu, Text, type ContextMenuEntry } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { useChannels, useStats, useStreams } from '../daemon';
@@ -9,7 +9,6 @@ import { useOpenStream } from '../openStream';
 import { useOpenUnifiedChat } from '../openUnifiedChat';
 import styles from './StreamPane.module.css';
 
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k` : Math.round(n).toString());
 
 export default function StreamPane() {
@@ -127,7 +126,7 @@ function StreamCard({
     for (const v of variants) {
       menuItems.push({
         kind: 'item',
-        label: `${cap(v.platform)} chat only`,
+        label: `${platformLabel(v.platform)} chat only`,
         onSelect: () => openChannel(v.key, display),
       });
     }
@@ -225,10 +224,10 @@ function StreamCard({
                     type="button"
                     className={styles.platformChip}
                     onClick={() => openChannel(v.key, display)}
-                    title={`Open ${cap(v.platform)} chat only`}
+                    title={`Open ${platformLabel(v.platform)} chat only`}
                   >
                     <PlatformGlyph platform={v.platform as Platform} className={styles.chipGlyph} />
-                    <span>{cap(v.platform)}</span>
+                    <span>{platformLabel(v.platform)}</span>
                     <span className={styles.chipArrow}>›</span>
                   </button>
                 ))}

@@ -5,7 +5,7 @@ import type { FilterRule } from '../daemon/wire.gen';
 import styles from './FiltersPanel.module.css';
 
 type Action = 'hide' | 'highlight' | 'mask';
-const PLATFORMS = ['twitch', 'kick', 'x'] as const;
+const PLATFORMS = ['twitch', 'kick', 'youtube', 'x'] as const;
 
 // Comma-separated matcher fields are edited as raw strings, split on save.
 type EditRule = {

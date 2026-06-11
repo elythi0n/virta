@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { Button, Dialog, Input, Tooltip } from '@virta/ui-kit';
-import { PlatformGlyph, type Platform } from '@virta/feed-core';
+import { PlatformGlyph, platformLabel, type Platform } from '@virta/feed-core';
 import Icon from '../Icon';
 import { useChannels } from '../daemon';
 import styles from './AddChannel.module.css';
 
-const PLATFORMS = ['twitch', 'kick'] as const;
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const PLATFORMS = ['twitch', 'kick', 'youtube'] as const;
 
 // The "+" in the Streams header opens a modal to add a stream: pick a platform, type a channel, and
 // join it. The streams rail (polling the daemon) picks the new channel up within a few seconds, and
@@ -40,7 +39,7 @@ export default function AddChannel() {
       close();
     } catch (e: unknown) {
       const detail = e instanceof Error ? e.message : '';
-      setError(detail || `Couldn't add ${cap(platform)}/${name}. Check the channel name and try again.`);
+      setError(detail || `Couldn't add ${platformLabel(platform)}/${name}. Check the channel name and try again.`);
       setBusy(false);
     }
   };
@@ -82,7 +81,7 @@ export default function AddChannel() {
                   onClick={() => setPlatform(p)}
                 >
                   <PlatformGlyph platform={p as Platform} className={styles.platformGlyph} />
-                  <span className={styles.platformName}>{cap(p)}</span>
+                  <span className={styles.platformName}>{platformLabel(p)}</span>
                   {on && <Icon name="check" size={14} className={styles.platformCheck} />}
                 </button>
               );
@@ -96,7 +95,9 @@ export default function AddChannel() {
             <Input
               id="add-channel-name"
               aria-label="Channel name"
-              placeholder={platform === 'kick' ? 'kick.com/channel' : 'twitch.tv/channel'}
+              placeholder={
+                platform === 'kick' ? 'kick.com/channel' : platform === 'youtube' ? '@handle or channel name' : 'twitch.tv/channel'
+              }
               value={slug}
               autoFocus
               onChange={(e) => setSlug(e.currentTarget.value)}

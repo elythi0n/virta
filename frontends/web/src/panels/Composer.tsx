@@ -9,6 +9,9 @@ import type { SendTarget } from '../daemon/wire.gen';
 import { applySuggestion, suggest, suggestCommands, tokenAt, type Suggestion } from './autocomplete';
 import styles from './Composer.module.css';
 
+// Platforms with a working sign-in flow. Send reachability itself comes from the daemon's
+// previewSend (can_send per target); this set only gates the "sign in" offer for unreachable
+// targets. YouTube is deliberately absent: it is read-only until its auth/send support ships.
 const SIGNABLE = new Set(['twitch', 'kick']);
 const platformOf = (channel: string) => channel.split(':')[0];
 const label = (channel: string) => channel.split(':')[1] ?? channel;

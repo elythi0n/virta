@@ -1,11 +1,10 @@
 import { useMemo } from 'react';
-import { PlatformGlyph, type Platform } from '@virta/feed-core';
+import { PlatformGlyph, platformLabel, type Platform } from '@virta/feed-core';
 import { Text } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { useChannels, useStats, useStreams, type ChannelStats } from '../daemon';
 import styles from './StatsPanel.module.css';
 
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k` : Math.round(n).toString());
 // Rates under 10/s keep one decimal so slow chats don't all read "0".
 const fmtRate = (n: number) => (n >= 10 ? Math.round(n).toString() : n.toFixed(1));
@@ -144,7 +143,7 @@ export default function StatsPanel() {
               <div key={p.platform} className={styles.platformRow}>
                 <span className={styles.platformName}>
                   <PlatformGlyph platform={p.platform as Platform} className={styles.glyph} />
-                  {cap(p.platform)}
+                  {platformLabel(p.platform)}
                 </span>
                 <span className={styles.num}>{p.viewers > 0 ? `${fmt(p.viewers)} viewers` : '—'}</span>
                 <span className={styles.num}>{fmtRate(p.messagesPerSec)} msg/s</span>

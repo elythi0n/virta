@@ -59,4 +59,17 @@ describe('groupStreams', () => {
     const groups = groupStreams([ch('twitch', 'forsen'), ch('kick', 'forsen')], streams);
     expect(groups[0].viewers).toBe(3000);
   });
+
+  it('groups a YouTube simulcast with the other platforms and ranks it below Kick', () => {
+    const groups = groupStreams([ch('youtube', 'ludwig'), ch('kick', 'ludwig'), ch('twitch', 'Ludwig')], {});
+    expect(groups).toHaveLength(1);
+    expect(groups[0].variants.map((v) => v.platform)).toEqual(['twitch', 'kick', 'youtube']);
+  });
+
+  it('prefers a live YouTube variant over offline higher-ranked platforms', () => {
+    const streams = live('youtube', 'ludwig', 12000, 'thumb.jpg');
+    const groups = groupStreams([ch('twitch', 'ludwig'), ch('youtube', 'ludwig')], streams);
+    expect(groups[0].primary.platform).toBe('youtube');
+    expect(groups[0].viewers).toBe(12000);
+  });
 });
