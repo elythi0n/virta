@@ -24,16 +24,19 @@ import (
 	"github.com/elythi0n/virta/internal/emotes"
 	"github.com/elythi0n/virta/internal/engine"
 	"github.com/elythi0n/virta/internal/filter"
+	"github.com/elythi0n/virta/internal/filter/wordlist"
 	"github.com/elythi0n/virta/internal/held"
 	hostedpkg "github.com/elythi0n/virta/internal/hosted"
 	"github.com/elythi0n/virta/internal/id"
 	"github.com/elythi0n/virta/internal/intel"
 	"github.com/elythi0n/virta/internal/logbook"
+	"github.com/elythi0n/virta/internal/moments"
 	"github.com/elythi0n/virta/internal/obsws"
 	"github.com/elythi0n/virta/internal/pipeline"
 	"github.com/elythi0n/virta/internal/platform"
 	"github.com/elythi0n/virta/internal/platform/kick"
 	"github.com/elythi0n/virta/internal/platform/twitch"
+	"github.com/elythi0n/virta/internal/platform/youtube"
 	pluginhost "github.com/elythi0n/virta/internal/plugin/host"
 	markets "github.com/elythi0n/virta/internal/plugin/markets"
 	pluginsource "github.com/elythi0n/virta/internal/plugin/source"
@@ -92,24 +95,28 @@ func SelectStore(cfg config.Config, clk clock.Clock, gen id.Generator) (store.St
 // Daemon is the assembled engine: storage, the secret vault, the message pipeline, and the
 // local API, wired together and ready to run. It owns the lifecycle of everything it builds.
 type Daemon struct {
-	cfg         config.Config
-	log         *slog.Logger
-	store       store.Store
-	vault       secrets.Vault
-	runner      *pipeline.Runner
-	engine      *engine.Engine
-	stats       *stats.Aggregator
-	logSink     *logbook.Sink
-	sweeper     *logbook.Sweeper
-	profiles    *profiles.Manager
-	twitchAuth  *twitchauth.Manager
-	kickAuth    *kickauth.Manager
-	api         *api.Server
-	toolBelt    *intel.ToolBelt
-	pluginHost  *pluginhost.Registry
-	marketsDS   *markets.DataSource
-	hostedStore hostedpkg.Store // non-nil only when cfg.Hosted
-	obswsSink   *obsws.Manager
+	cfg             config.Config
+	log             *slog.Logger
+	store           store.Store
+	vault           secrets.Vault
+	runner          *pipeline.Runner
+	engine          *engine.Engine
+	stats           *stats.Aggregator
+	moments         *moments.Detector
+	logSink         *logbook.Sink
+	sweeper         *logbook.Sweeper
+	profiles        *profiles.Manager
+	twitchAuth      *twitchauth.Manager
+	kickAuth        *kickauth.Manager
+	api             *api.Server
+	toolBelt        *intel.ToolBelt
+	pluginHost      *pluginhost.Registry
+	marketsDS       *markets.DataSource
+	hostedStore     hostedpkg.Store // non-nil only when cfg.Hosted
+	obswsSink       *obsws.Manager
+	sevenTVEvents   *emotes.SevenTVEvents // nil until Start
+	profanityStage  *filter.Stage         // separate from the user-rule filterStage
+	profanityLoader *wordlist.Loader
 }
 
 // authControl adapts the auth managers to the API's auth controller.
@@ -231,14 +238,18 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	// applied as a pure pipeline stage. Each provider is wrapped with a disk-backed set cache
 	// (24h TTL, serves stale on a network blip), so a warm start skips the network and an
 	// offline start still has emotes. Snapshots populate once a channel's platform user id is
-	// available (Twitch via Helix in M3; Kick from the channel payload) — until then the stage
-	// is a no-op, never blocking the feed.
+	// available (Twitch via Helix; Kick from the channel payload) — channelControl.Join resolves
+	// the id before calling Refresh, and the auth hook re-refreshes already-joined channels when
+	// an account signs in after a channel was joined.
 	emoteCache := emoteSetCache{repo: st.Emotes(), clk: clk}
 	emoteResolver := emotes.NewResolver(
 		emotes.Cached(emotes.New7TV(nil, ""), emoteCache, clk, emotes.DefaultTTL),
 		emotes.Cached(emotes.NewBTTV(nil, ""), emoteCache, clk, emotes.DefaultTTL),
 		emotes.Cached(emotes.NewFFZ(nil, ""), emoteCache, clk, emotes.DefaultTTL),
 	)
+	// 7TV EventAPI: push-based emote-set invalidation so streamer emote changes take effect
+	// immediately instead of waiting for the 24h REST poll cycle.
+	sevenTVEvents := emotes.NewSevenTVEvents(emoteResolver, log)
 
 	// Badge artwork (mod/sub/broadcaster icons) is resolved per channel from Twitch's tokenless
 	// badge CDN and stamped onto each message's badges; channels without resolved artwork fall
@@ -246,17 +257,41 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	badgeResolver := badges.NewResolver(badges.NewTwitch(nil, ""))
 
 	// Live stream metadata (viewer count, title, thumbnail) per channel, resolved anonymously
-	// (Twitch GraphQL, Kick's channel API) and served over GET /v1/streams for the streams rail.
-	streamResolver := streams.NewResolver(streams.NewTwitch(nil, ""), streams.NewKick(nil, ""))
+	// (Twitch GraphQL, Kick's channel API, YouTube's /live page) and served over GET /v1/streams
+	// for the streams rail.
+	streamResolver := streams.NewResolver(streams.NewTwitch(nil, ""), streams.NewKick(nil, ""), streams.NewYouTube(nil, ""))
 
 	// The pipeline annotates each message — filter rules (hide/highlight/mask) first, then
 	// emote overlays — and fans events out to the API hub (and, later, the logger and other
 	// sinks). The filter stage starts with an empty ruleset (no surprise masking); profiles and
 	// settings populate and hot-swap it once they land.
 	filterStage := filter.NewStage(nil)
+	// The profanity stage is a separate filter.Stage driven by the word-list loader and a
+	// settings toggle (filter.profanity.enabled). It runs before the user-rule filterStage so
+	// its masks apply regardless of profile. Profanity masking is opt-in: the stage starts
+	// empty (no masking) and is populated only when the setting is true.
+	profanityStage := filter.NewStage(nil)
+	profanityLoader := wordlist.New(cfg.DataDir + "/filter")
+	applyProfanity := func() {
+		raw, err := st.Settings().Get(context.Background(), "filter.profanity.enabled")
+		if err != nil || string(raw.Data) != "true" {
+			profanityStage.SetRuleset(nil)
+			return
+		}
+		terms := profanityLoader.Load(context.Background())
+		if len(terms) == 0 {
+			return
+		}
+		rs, _ := filter.Compile([]filter.Rule{filter.ProfanityRule("profanity.en", terms...)})
+		profanityStage.SetRuleset(rs)
+	}
+	applyProfanity() // apply saved setting on startup
 	// The stats aggregator is a sink that tallies activity and feeds periodic StatsEvents back
 	// through the pipeline (started after the runner exists, so it has something to submit to).
 	statsAgg := stats.New(clk, 0)
+	// The moments detector is a sink that bookmarks chat-activity spikes: it persists each
+	// closed moment and feeds a MomentEvent back through the pipeline, same shape as stats.
+	momentsDet := moments.New(clk, st.Moments(), gen, log)
 	// The logbook sink persists chat when logging is enabled (opt-in, default off). It only
 	// writes non-ephemeral messages, so logging-off persists nothing.
 	logSink := logbook.NewSink(st.Messages(), clk, log)
@@ -283,8 +318,8 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	obswsSink := obsws.New(vault, st.Settings(), log)
 	runner := pipeline.NewRunner(pipeline.Options{
 		Clock:  clk,
-		Stages: []pipeline.Stage{filterStage, emotes.NewStage(emoteResolver), badges.NewStage(badgeResolver, badgeResolver), velocityStage},
-		Sinks:  []pipeline.Sink{srv.Sink(), statsAgg, logSink, heldQueue, scrollbackRing, webhookSink, obswsSink},
+		Stages: []pipeline.Stage{profanityStage, filterStage, emotes.NewStage(emoteResolver), badges.NewStage(badgeResolver, badgeResolver), velocityStage},
+		Sinks:  []pipeline.Sink{srv.Sink(), statsAgg, momentsDet, logSink, heldQueue, scrollbackRing, webhookSink, obswsSink},
 		Logger: log,
 	})
 
@@ -292,7 +327,9 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	// deletions, and routes channel join/leave to the right adapter. Register the read-only
 	// anonymous Twitch adapter (no credentials needed); more platforms register here later.
 	eng := engine.New(runner, gen)
-	twitchAdapter := twitch.New(twitch.Options{Clock: clk})
+	// ESDial enables the authenticated EventSub read path (richer events + the AutoMod held
+	// queue); reads migrate per channel between IRC and EventSub as subscriptions come and go.
+	twitchAdapter := twitch.New(twitch.Options{Clock: clk, ESDial: twitch.DialEventSub})
 	eng.Register(twitchAdapter)
 	// Kick needs a slug→chatroom-id resolver, cached forever in the channels table. The direct
 	// lookup uses a stock client today (a uTLS Chrome-fingerprint upgrade is tracked); when it's
@@ -305,14 +342,32 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	)
 	kickAdapter := kick.New(kick.Options{Clock: clk, Resolver: kickResolver})
 	eng.Register(kickAdapter)
+	// YouTube reads live chat anonymously by polling InnerTube per channel. Read-only for now,
+	// so it stays out of the dispatch sender map (dispatch reports "platform not available" for
+	// sends) and has no auth hook.
+	youtubeAdapter := youtube.New(youtube.Options{Clock: clk})
+	eng.Register(youtubeAdapter)
 
 	// The profile manager owns the active workspace: it drives the engine, filter stage, and
 	// logging policy on activation and persists live channel changes. Profiles activate at Start.
 	logCtl := loggingControl{eng: eng, sink: logSink, sweeper: sweeper}
 	mgr := profiles.New(st.Profiles(), eng, filterStage, logCtl, runner, clk)
-	srv.SetChannels(channelControl{eng: eng, emotes: emoteResolver, badges: badgeResolver, streams: streamResolver, profiles: mgr, profRepo: st.Profiles()})
+	// resolveID is populated after the adapters are built (below), so we pass a pointer-stable
+	// map that the channelControl closure captures and the auth wiring fills in.
+	idResolvers := map[platform.Platform]func(context.Context, string) (string, error){}
+	srv.SetChannels(channelControl{
+		eng:           eng,
+		emotes:        emoteResolver,
+		badges:        badgeResolver,
+		streams:       streamResolver,
+		profiles:      mgr,
+		profRepo:      st.Profiles(),
+		resolveID:     idResolvers,
+		sevenTVEvents: sevenTVEvents,
+	})
 	srv.SetProfiles(profileControl{mgr: mgr, repo: st.Profiles()})
 	srv.SetFilters(filterControl{mgr: mgr})
+	srv.SetProfanity(profanityControl{stage: profanityStage, loader: profanityLoader, settings: st.Settings()})
 	srv.SetConnections(connectionsControl{mgr: mgr})
 	srv.SetAccounts(accountsControl{
 		repo:  st.Accounts(),
@@ -337,6 +392,7 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	srv.SetSend(sendControl{sender: sender})
 	srv.SetHeld(heldControl{queue: heldQueue, sender: sender, emitter: runner})
 	srv.SetHistory(historyControl{store: st, ring: scrollbackRing, loggingOn: logSink.Enabled})
+	srv.SetMoments(momentsControl{repo: st.Moments()})
 	tokenStore := api.NewMemTokens()
 	if raw, err := st.Settings().Get(context.Background(), "api.tokens"); err == nil {
 		_ = tokenStore.LoadFromJSON(raw.Data)
@@ -392,6 +448,23 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 			return helix.UserID(ctx, tok, login)
 		}
 		twitchAdapter.Authenticate(acc.PlatformUID, tokens, helix, resolve)
+		// Now that IDs can be resolved, refresh emotes for all channels already joined over IRC
+		// and subscribe them to 7TV live-update events. Channels joined after this point resolve
+		// their IDs inline in channelControl.Join.
+		go func() {
+			for _, status := range eng.Channels() {
+				if status.Channel.Platform != platform.Twitch {
+					continue
+				}
+				id, err := resolve(context.Background(), status.Channel.Slug)
+				if err != nil {
+					continue
+				}
+				ch := platform.ChannelRef{Platform: platform.Twitch, Slug: status.Channel.Slug, ID: id}
+				_ = emoteResolver.Refresh(context.Background(), ch)
+				sevenTVEvents.Subscribe(ch)
+			}
+		}()
 	}
 	authKick := func(acc store.Account) {
 		ref := acc.SecretRef
@@ -405,6 +478,11 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 		}
 		kickAdapter.Authenticate(tokens, kickAPI, resolve)
 	}
+	// Wire per-platform broadcaster-id resolvers so channelControl.Join can populate
+	// ChannelRef.ID before calling emoteResolver.Refresh (enabling channel-specific emote sets).
+	idResolvers[platform.Twitch] = twitchAdapter.ResolveID
+	idResolvers[platform.Kick] = kickAdapter.ResolveID
+
 	twitchAuth.SetOnAuthorized(authTwitch)
 	kickAuth.SetOnAuthorized(authKick)
 	if accs, err := st.Accounts().List(context.Background()); err == nil {
@@ -439,6 +517,7 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	pluginInstaller := pluginhost.NewInstaller(cfg.DataDir + "/plugins")
 	pluginCtl := newPluginControl(pluginReg, pluginInstaller)
 	srv.SetPlugins(pluginCtl)
+	srv.SetOverlays(overlaysControl{plugins: pluginCtl, addr: srv.Addr})
 	// Markets is a first-party built-in plugin — runs through the same DataSource seam.
 	marketsCfg := loadMarketsConfig(cfg)
 	marketsDS := markets.New(marketsCfg)
@@ -450,10 +529,11 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	srv.SetOBSWS(obswsSink)
 
 	return &Daemon{cfg: cfg, log: log, store: st, vault: vault, runner: runner, engine: eng,
-		stats: statsAgg, logSink: logSink, sweeper: sweeper, profiles: mgr,
+		stats: statsAgg, moments: momentsDet, logSink: logSink, sweeper: sweeper, profiles: mgr,
 		twitchAuth: twitchAuth, kickAuth: kickAuth, api: srv, toolBelt: toolBelt,
 		pluginHost: pluginReg, marketsDS: marketsDS, hostedStore: hostedStore,
-		obswsSink: obswsSink}, nil
+		obswsSink: obswsSink, sevenTVEvents: sevenTVEvents,
+		profanityStage: profanityStage, profanityLoader: profanityLoader}, nil
 }
 
 // loadMarketsConfig reads the persisted Markets config from settings, falling back to defaults.
@@ -522,12 +602,14 @@ func (c emoteSetCache) Put(ctx context.Context, key string, refs []platform.Emot
 // API's string boundary to platform types and back, and persisting changes to the active
 // profile so a user's channel edits survive a restart.
 type channelControl struct {
-	eng      *engine.Engine
-	emotes   *emotes.Resolver
-	badges   *badges.Resolver
-	streams  *streams.Resolver
-	profiles *profiles.Manager
-	profRepo store.ProfileRepo // for per-user channel reads in hosted mode
+	eng           *engine.Engine
+	emotes        *emotes.Resolver
+	badges        *badges.Resolver
+	streams       *streams.Resolver
+	profiles      *profiles.Manager
+	profRepo      store.ProfileRepo                                                   // for per-user channel reads in hosted mode
+	resolveID     map[platform.Platform]func(context.Context, string) (string, error) // slug → numeric platform id
+	sevenTVEvents *emotes.SevenTVEvents
 }
 
 func (c channelControl) Join(ctx context.Context, plat, slug, mode string) error {
@@ -553,7 +635,21 @@ func (c channelControl) Join(ctx context.Context, plat, slug, mode string) error
 		_ = c.profiles.AddChannel(ctx, ref, m)
 	}
 	// Warm emotes, badges, and stream metadata off the request path.
-	go func() { _ = c.emotes.Refresh(context.Background(), ref) }()
+	// Emotes: try to resolve the numeric broadcaster id first so 7TV/BTTV/FFZ can fetch
+	// channel-specific sets; fall back to a no-ID refresh (global emotes only) if auth is not
+	// yet set up (the auth hook re-triggers a full refresh for joined channels on sign-in).
+	go func() {
+		emoteRef := ref
+		if resolve, ok := c.resolveID[p]; ok {
+			if id, err := resolve(context.Background(), slug); err == nil {
+				emoteRef.ID = id
+			}
+		}
+		_ = c.emotes.Refresh(context.Background(), emoteRef)
+		if emoteRef.ID != "" && c.sevenTVEvents != nil {
+			c.sevenTVEvents.Subscribe(emoteRef)
+		}
+	}()
 	go c.badges.Refresh(context.Background(), ref)
 	go func() { _ = c.streams.Refresh(context.Background(), ref) }()
 	return nil
@@ -575,6 +671,9 @@ func (c channelControl) Leave(ctx context.Context, plat, slug string) error {
 			return err
 		}
 		_ = c.profiles.RemoveChannel(context.Background(), ref)
+	}
+	if c.sevenTVEvents != nil {
+		c.sevenTVEvents.Unsubscribe(ref) // uses stored ref (with ID) for the unsubscribe message
 	}
 	return nil
 }
@@ -635,6 +734,39 @@ func (c filterControl) SetFilters(ctx context.Context, rules []api.FilterRule) e
 		return fmt.Errorf("%w: %v", api.ErrInvalidRuleset, err)
 	}
 	return c.mgr.SetFilters(ctx, in)
+}
+
+// profanityControl adapts the profanity stage and settings repo to the API's Profanity surface.
+type profanityControl struct {
+	stage    *filter.Stage
+	loader   *wordlist.Loader
+	settings store.SettingsRepo
+}
+
+func (c profanityControl) Enabled() bool {
+	raw, err := c.settings.Get(context.Background(), "filter.profanity.enabled")
+	return err == nil && string(raw.Data) == "true"
+}
+
+func (c profanityControl) SetEnabled(ctx context.Context, enabled bool) error {
+	val := json.RawMessage(`false`)
+	if enabled {
+		val = json.RawMessage(`true`)
+	}
+	if err := c.settings.Put(ctx, store.Setting{Scope: "filter.profanity.enabled", Data: val}); err != nil {
+		return err
+	}
+	if !enabled {
+		c.stage.SetRuleset(nil)
+		return nil
+	}
+	terms := c.loader.Load(ctx)
+	if len(terms) == 0 {
+		return nil
+	}
+	rs, _ := filter.Compile([]filter.Rule{filter.ProfanityRule("profanity.en", terms...)})
+	c.stage.SetRuleset(rs)
+	return nil
 }
 
 // connectionsControl adapts the profile manager to the API's per-platform connection-method
@@ -1077,6 +1209,20 @@ func (c historyControl) toLogged(_ context.Context, msgs []store.StoredMessage) 
 	return out, nil
 }
 
+// momentsControl adapts the moment repo to the API's Moments surface: list detected hype
+// moments (newest-first, optionally narrowed to one "platform:slug" channel) and delete one.
+type momentsControl struct {
+	repo store.MomentRepo
+}
+
+func (c momentsControl) List(ctx context.Context, channel, before string, limit int) ([]platform.Moment, error) {
+	return c.repo.List(ctx, store.MomentQuery{Channel: channel, Before: before, Limit: limit})
+}
+
+func (c momentsControl) Delete(ctx context.Context, id string) error {
+	return c.repo.Delete(ctx, id)
+}
+
 func (c heldControl) resolve(ctx context.Context, id string, approve bool) error {
 	m, ok := c.queue.Get(id)
 	if !ok {
@@ -1150,6 +1296,59 @@ func (c portabilityControl) ImportProfile(ctx context.Context, p api.ProfileExpo
 		return api.ProfileInfo{}, err
 	}
 	return api.ProfileInfo{ID: created.ID, Name: created.Name, Default: created.IsDefault}, nil
+}
+
+// overlaysControl iterates all installed plugins, reads their config for an "overlays" key, and
+// returns a flat list of OverlayInfo entries. The URL is built from the overlay_token in the
+// plugin's config together with the daemon's listen address. If a plugin has no overlay_token
+// the URL is left empty.
+type overlaysControl struct {
+	plugins api.Plugins
+	addr    func() string
+}
+
+func (c overlaysControl) List(ctx context.Context) ([]api.OverlayInfo, error) {
+	type overlaySpec struct {
+		ID    string   `json:"id"`
+		Name  string   `json:"name"`
+		Types []string `json:"types,omitempty"`
+	}
+	type pluginConfig struct {
+		OverlayToken string        `json:"overlay_token"`
+		Overlays     []overlaySpec `json:"overlays"`
+	}
+
+	var out []api.OverlayInfo
+	pc, ok := c.plugins.(interface {
+		GetConfig(id string) (json.RawMessage, error)
+	})
+	if !ok {
+		return out, nil
+	}
+
+	for _, p := range c.plugins.List() {
+		raw, err := pc.GetConfig(p.ID)
+		if err != nil || len(raw) == 0 {
+			continue
+		}
+		var cfg pluginConfig
+		if err := json.Unmarshal(raw, &cfg); err != nil {
+			continue
+		}
+		for _, ov := range cfg.Overlays {
+			info := api.OverlayInfo{
+				ID:       ov.ID,
+				Name:     ov.Name,
+				PluginID: p.ID,
+				Types:    ov.Types,
+			}
+			if cfg.OverlayToken != "" && c.addr != nil {
+				info.URL = "http://" + c.addr() + "/plugins/" + p.ID + "/gui/overlay.html?token=" + cfg.OverlayToken + "&overlay=" + ov.ID
+			}
+			out = append(out, info)
+		}
+	}
+	return out, nil
 }
 
 // parseTarget turns a "platform:slug" target into a ChannelRef, rejecting an unknown platform so
@@ -1246,6 +1445,8 @@ func parsePlatform(s string) (platform.Platform, bool) {
 		return platform.Twitch, true
 	case platform.Kick:
 		return platform.Kick, true
+	case platform.YouTube:
+		return platform.YouTube, true
 	case platform.X:
 		return platform.X, true
 	default:
@@ -1257,9 +1458,11 @@ func parsePlatform(s string) (platform.Platform, bool) {
 func (d *Daemon) Start() error {
 	d.runner.Start()
 	d.stats.Start(d.runner)
+	d.moments.Start(d.runner)
 	d.logSink.Start()
 	d.sweeper.Start()
 	d.obswsSink.Start()
+	d.sevenTVEvents.Start()
 
 	ctx := context.Background()
 	if d.cfg.Hosted {
@@ -1372,12 +1575,43 @@ func (d *Daemon) Store() store.Store         { return d.store }
 func (d *Daemon) Vault() secrets.Vault       { return d.vault }
 func (d *Daemon) Pipeline() *pipeline.Runner { return d.runner }
 
+// SetProfanityEnabled persists the enabled flag and arms or disarms the profanity masking stage.
+// When enabled the word list is loaded (from disk cache or remote) and compiled into a mask
+// rule; when disabled the stage is cleared immediately. Safe to call from a future API handler.
+func (d *Daemon) SetProfanityEnabled(ctx context.Context, enabled bool) error {
+	val := []byte("false")
+	if enabled {
+		val = []byte("true")
+	}
+	if err := d.store.Settings().Put(ctx, store.Setting{Scope: "filter.profanity.enabled", Data: val}); err != nil {
+		return err
+	}
+	if !enabled {
+		d.profanityStage.SetRuleset(nil)
+		return nil
+	}
+	terms := d.profanityLoader.Load(ctx)
+	if len(terms) == 0 {
+		return nil
+	}
+	rs, _ := filter.Compile([]filter.Rule{filter.ProfanityRule("profanity.en", terms...)})
+	d.profanityStage.SetRuleset(rs)
+	return nil
+}
+
+// ProfanityEnabled reports whether profanity masking is currently armed.
+func (d *Daemon) ProfanityEnabled() bool {
+	raw, err := d.store.Settings().Get(context.Background(), "filter.profanity.enabled")
+	return err == nil && string(raw.Data) == "true"
+}
+
 // Close shuts everything down in order: stop accepting clients, close adapters so no new
 // events arrive, drain the pipeline, then release storage.
 func (d *Daemon) Close(ctx context.Context) error {
 	apiErr := d.api.Close(ctx)
 	_ = d.twitchAuth.Close()
 	_ = d.kickAuth.Close()
+	d.sevenTVEvents.Close()
 	_ = d.engine.Close()
 	_ = d.sweeper.Close()
 	_ = d.runner.Close() // closes the sinks, including the logbook sink (final flush)
