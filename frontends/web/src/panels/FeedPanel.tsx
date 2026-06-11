@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Feed, parseSegments, PlatformGlyph, useFeedBuffer, type Density, type FeedMessage, type Platform } from '@virta/feed-core';
+import { Feed, parseSegments, applyDecorations, PlatformGlyph, useFeedBuffer, type Density, type FeedMessage, type Platform } from '@virta/feed-core';
+import { useDecorators } from '../decorators';
 import { Button, ContextMenu, Dialog, Input, Segmented, Text, Tooltip, type ContextMenuEntry } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { filterFeed, QUICK_FILTERS, type QuickFilter } from './quickFilter';
@@ -111,6 +112,7 @@ const AUTHOR_COLORS = [hex(34, 34, 38), hex(91, 140, 255), hex(80, 200, 120), he
 const SAMPLE_SOURCES: { platform: Platform; slug: string; label: string }[] = [
   { platform: 'twitch', slug: 'shroud', label: 'shroud' },
   { platform: 'kick', slug: 'trainwreck', label: 'Trainwreck' },
+  { platform: 'youtube', slug: 'ludwig', label: 'Ludwig' },
   { platform: 'twitch', slug: 'forsen', label: 'forsen' },
 ];
 
@@ -204,6 +206,9 @@ export default function FeedPanel({ channels, panelId }: Props) {
   const { channels: joined } = useChannels();
   const { stats } = useStats();
   const { messages, push, markDeleted, clearChannel } = useFeedBuffer({ max: MAX_MESSAGES });
+  const decorators = useDecorators();
+  const decoratorsRef = useRef(decorators);
+  decoratorsRef.current = decorators;
   const [chatSettings, setChatSettings] = useState<Record<string, ChatSettings>>({});
   const onChatSettings = useCallback((ch: string, s: ChatSettings) => setChatSettings((prev) => ({ ...prev, [ch]: s })), []);
 
@@ -231,6 +236,12 @@ export default function FeedPanel({ channels, panelId }: Props) {
           mentioned = true;
           return { ...msg, highlighted: true };
         });
+      }
+      if (decoratorsRef.current.length > 0) {
+        arr = arr.map(msg => ({
+          ...msg,
+          segments: applyDecorations(msg.segments, decoratorsRef.current),
+        }));
       }
       markActivity(panelId, mentioned ? 'mention' : 'activity');
       if (calmActiveRef.current) {

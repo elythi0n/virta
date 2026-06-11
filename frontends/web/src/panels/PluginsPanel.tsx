@@ -4,11 +4,13 @@ import type { IconName } from '../Icon';
 import Icon from '../Icon';
 import { listPlugins, getPlugin, enablePlugin, disablePlugin, installPlugin, uninstallPlugin, putPluginConfig } from '../daemon/plugins';
 import type { PluginInfo, PluginDetail } from '../daemon/plugins';
+import { listMarketplace } from '../daemon/marketplace';
+import type { MarketplacePlugin } from '../daemon/marketplace';
 import { syncPluginPanels } from './pluginPanels';
 import SchemaForm from './SchemaForm';
 import styles from './PluginsPanel.module.css';
 
-type FilterTab = 'all' | 'installed' | 'available';
+type FilterTab = 'all' | 'installed' | 'available' | 'marketplace';
 
 // Static catalog used as fallback while the API is loading.
 const BUILT_IN_CATALOG: PluginInfo[] = [
@@ -39,6 +41,7 @@ export default function PluginsPanel() {
   const [installUrl, setInstallUrl] = useState('');
   const [installing, setInstalling] = useState(false);
   const [installErr, setInstallErr] = useState('');
+  const [market, setMarket] = useState<MarketplacePlugin[]>([]);
   // Plugin settings dialog
   const [settingsPlugin, setSettingsPlugin] = useState<PluginDetail | null>(null);
   const [settingsValues, setSettingsValues] = useState<Record<string, unknown>>({});
@@ -55,6 +58,33 @@ export default function PluginsPanel() {
   }, []);
 
   useEffect(() => { reload(); }, [reload]);
+
+  useEffect(() => {
+    const url = sessionStorage.getItem('virta.pendingInstall');
+    if (url) {
+      sessionStorage.removeItem('virta.pendingInstall');
+      setInstallUrl(url);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (filter === 'marketplace' && market.length === 0) {
+      listMarketplace().then(setMarket).catch(() => {});
+    }
+  }, [filter, market.length]);
+
+  const installFromMarket = useCallback(async (p: MarketplacePlugin) => {
+    setBusy(b => ({ ...b, [p.id]: true }));
+    try {
+      await installPlugin(p.install_url);
+      reload();
+      setFilter('installed');
+    } catch (e) {
+      setInstallErr(e instanceof Error ? e.message : 'Installation failed');
+    } finally {
+      setBusy(b => ({ ...b, [p.id]: false }));
+    }
+  }, [reload]);
 
   const toggle = useCallback(async (p: PluginInfo) => {
     setBusy(b => ({ ...b, [p.id]: true }));
@@ -110,6 +140,7 @@ export default function PluginsPanel() {
     all: plugins.length,
     installed: plugins.filter(p => p.state === 'enabled').length,
     available: plugins.filter(p => p.state === 'disabled').length,
+    marketplace: market.length,
   };
 
   const visible = plugins.filter(p =>
@@ -144,70 +175,115 @@ export default function PluginsPanel() {
       </div>
 
       <div className={styles.filterBar} role="tablist" aria-label="Filter plugins">
-        {(['all', 'installed', 'available'] as FilterTab[]).map(tab => (
+        {(['all', 'installed', 'available', 'marketplace'] as FilterTab[]).map(tab => (
           <button key={tab} type="button" role="tab" aria-selected={filter === tab}
             className={`${styles.tab} ${filter === tab ? styles.tabOn : ''}`}
             onClick={() => setFilter(tab)}>
-            {tab === 'all' ? 'All' : tab === 'installed' ? 'Enabled' : 'Disabled'}
+            {tab === 'all' ? 'All' : tab === 'installed' ? 'Enabled' : tab === 'available' ? 'Disabled' : 'Marketplace'}
             <span className={styles.tabCount}>{counts[tab]}</span>
           </button>
         ))}
       </div>
 
-      <ul className={styles.grid} role="list">
-        {visible.map(p => {
-          const isBusy = !!busy[p.id];
-          const isEnabled = p.state === 'enabled';
-          const isError = p.state === 'error';
-          return (
-            <li key={p.id} className={styles.item}>
-              <div className={`${styles.card} ${isEnabled ? styles.installed : ''} ${isError ? styles.errored : ''}`}>
-                <div className={styles.cardTop}>
-                  <span className={styles.cardIcon}><Icon name={pluginIcon(p.id)} size={16} /></span>
-                  <div className={styles.cardBadges}>
-                    <Badge tone={isEnabled ? 'ok' : isError ? 'danger' : 'neutral'}>
-                      {isEnabled ? 'Enabled' : isError ? 'Error' : 'Disabled'}
-                    </Badge>
-                    {p.built_in && <Badge tone="neutral">Built-in</Badge>}
+      {filter !== 'marketplace' ? (
+        <ul className={styles.grid} role="list">
+          {visible.map(p => {
+            const isBusy = !!busy[p.id];
+            const isEnabled = p.state === 'enabled';
+            const isError = p.state === 'error';
+            return (
+              <li key={p.id} className={styles.item}>
+                <div className={`${styles.card} ${isEnabled ? styles.installed : ''} ${isError ? styles.errored : ''}`}>
+                  <div className={styles.cardTop}>
+                    <span className={styles.cardIcon}><Icon name={pluginIcon(p.id)} size={16} /></span>
+                    <div className={styles.cardBadges}>
+                      <Badge tone={isEnabled ? 'ok' : isError ? 'danger' : 'neutral'}>
+                        {isEnabled ? 'Enabled' : isError ? 'Error' : 'Disabled'}
+                      </Badge>
+                      {p.built_in && <Badge tone="neutral">Built-in</Badge>}
+                    </div>
                   </div>
-                </div>
-                <div className={styles.cardName}>{p.name}</div>
-                <p className={styles.cardDesc}>{p.description}</p>
-                {isError && p.error && <p className={styles.cardError}>{p.error}</p>}
-                <div className={styles.cardFooter}>
-                  <span className={styles.cardAuthor}>{p.publisher ?? 'Third-party'}</span>
-                  <div className={styles.cardActions}>
-                    {!p.built_in && isEnabled && (
-                      <button type="button" className={styles.uninstallBtn}
-                        disabled={isBusy} onClick={() => void doUninstall(p.id)}>
-                        Uninstall
+                  <div className={styles.cardName}>{p.name}</div>
+                  <p className={styles.cardDesc}>{p.description}</p>
+                  {isError && p.error && <p className={styles.cardError}>{p.error}</p>}
+                  <div className={styles.cardFooter}>
+                    <span className={styles.cardAuthor}>{p.publisher ?? 'Third-party'}</span>
+                    <div className={styles.cardActions}>
+                      {!p.built_in && isEnabled && (
+                        <button type="button" className={styles.uninstallBtn}
+                          disabled={isBusy} onClick={() => void doUninstall(p.id)}>
+                          Uninstall
+                        </button>
+                      )}
+                      {p.has_config && (
+                        <button type="button" className={styles.settingsBtn}
+                          aria-label={`Settings for ${p.name}`} title="Settings"
+                          onClick={() => void openSettings(p.id)}>
+                          <Icon name="settings" size={13} />
+                        </button>
+                      )}
+                      <button type="button"
+                        className={`${styles.toggleBtn} ${isEnabled ? styles.toggleBtnOn : ''}`}
+                        disabled={isBusy}
+                        onClick={() => void toggle(p)}>
+                        {isBusy ? '…' : isEnabled ? 'Disable' : 'Enable'}
                       </button>
-                    )}
-                    {p.has_config && (
-                      <button type="button" className={styles.settingsBtn}
-                        aria-label={`Settings for ${p.name}`} title="Settings"
-                        onClick={() => void openSettings(p.id)}>
-                        <Icon name="settings" size={13} />
-                      </button>
-                    )}
-                    <button type="button"
-                      className={`${styles.toggleBtn} ${isEnabled ? styles.toggleBtnOn : ''}`}
-                      disabled={isBusy}
-                      onClick={() => void toggle(p)}>
-                      {isBusy ? '…' : isEnabled ? 'Disable' : 'Enable'}
-                    </button>
+                    </div>
                   </div>
+                  {(p.tags ?? []).length > 0 && (
+                    <div className={styles.cardTags}>
+                      {(p.tags ?? []).map(t => <span key={t} className={styles.tag}>{t}</span>)}
+                    </div>
+                  )}
                 </div>
-                {(p.tags ?? []).length > 0 && (
-                  <div className={styles.cardTags}>
-                    {(p.tags ?? []).map(t => <span key={t} className={styles.tag}>{t}</span>)}
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <div className={styles.marketSection}>
+          {market.length === 0 && <Text variant="body" tone="subtle">Loading marketplace…</Text>}
+          <ul className={styles.grid} role="list">
+            {market.map(p => {
+              const installed = plugins.some(q => q.id === p.id && q.state === 'enabled');
+              const isBusy = !!busy[p.id];
+              return (
+                <li key={p.id} className={styles.item}>
+                  <div className={`${styles.card} ${installed ? styles.installed : ''}`}>
+                    <div className={styles.cardTop}>
+                      <span className={styles.cardIcon}><Icon name={pluginIcon(p.id)} size={16} /></span>
+                      <div className={styles.cardBadges}>
+                        {installed && <Badge tone="ok">Installed</Badge>}
+                        {p.verified && <Badge tone="neutral">Verified</Badge>}
+                      </div>
+                    </div>
+                    <div className={styles.cardName}>{p.name}</div>
+                    <p className={styles.cardDesc}>{p.description}</p>
+                    <div className={styles.cardFooter}>
+                      <span className={styles.cardAuthor}>{p.publisher ?? 'Third-party'}</span>
+                      <div className={styles.cardActions}>
+                        {!installed && (
+                          <button type="button"
+                            className={`${styles.toggleBtn}`}
+                            disabled={isBusy}
+                            onClick={() => void installFromMarket(p)}>
+                            {isBusy ? 'Installing…' : 'Install'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    {(p.tags ?? []).length > 0 && (
+                      <div className={styles.cardTags}>
+                        {(p.tags ?? []).map(t => <span key={t} className={styles.tag}>{t}</span>)}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
 
       {/* Plugin settings dialog */}
       <Dialog

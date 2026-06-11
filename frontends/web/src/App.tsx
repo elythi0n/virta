@@ -21,6 +21,7 @@ import { OpenUnifiedChatProvider } from './openUnifiedChat';
 import { JumpToMessageProvider } from './jumpToMessage';
 import { requestJump } from './panels/jump';
 import { HostedAuthProvider } from './daemon/hostedAuth';
+import { fetchPendingDeepLink } from './daemon/deeplink';
 import { SharedDaemonStreamProvider } from './daemon/sharedStream';
 import { ChannelsProvider } from './daemon/ChannelsProvider';
 import { DensityProvider } from './density';
@@ -138,6 +139,26 @@ export default function App() {
   const panelsVersion = useSyncExternalStore(subscribePanelCatalog, panelCatalogVersion, panelCatalogVersion);
   useEffect(() => {
     void syncPluginPanels();
+  }, []);
+
+  useEffect(() => {
+    fetchPendingDeepLink().then(url => {
+      if (!url) return;
+      try {
+        const u = new URL(url);
+        if (u.protocol !== 'virta:') return;
+        const host = u.hostname;
+        if (host === 'install') {
+          const pluginUrl = u.searchParams.get('url');
+          if (pluginUrl) {
+            // Navigate to plugins panel and trigger install
+            setActiveView('panels');
+            // The install URL is stored so PluginsPanel can pick it up
+            sessionStorage.setItem('virta.pendingInstall', pluginUrl);
+          }
+        }
+      } catch { /* ignore malformed URLs */ }
+    }).catch(() => {});
   }, []);
 
   // Reflect the accessibility preferences as document-level attributes the global CSS keys off.
