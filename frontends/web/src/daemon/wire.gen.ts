@@ -210,6 +210,22 @@ export interface ModelItem {
   price_out_per_mtok?: number;
 }
 
+export interface Moment {
+  id: string;
+  channel: ChannelRef;
+  started_at: string;
+  ended_at: string;
+  peak_rate: number;
+  baseline: number;
+  excerpt: MomentMessage[];
+}
+
+export interface MomentMessage {
+  author: string;
+  body: string;
+  sent_at_ms: number;
+}
+
 export type Platform = string;
 
 export interface PlatformAuthConfig {
@@ -338,6 +354,7 @@ export interface WireEvent {
   state?: HealthStatus;
   settings?: ChatSettings;
   stats?: StatsSnapshot;
+  moment?: Moment;
   profile_id?: string;
   profile_name?: string;
   held?: HeldMessage;

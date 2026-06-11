@@ -13,6 +13,8 @@ export { useStats } from './useStats';
 export type { ChannelStats } from './useStats';
 export { useStreams, listStreams } from './streams';
 export { listFilters, saveFilters } from './filters';
+export { listMoments, deleteMoment } from './moments';
+export type { Moment, MomentMessage } from './moments';
 export { listMethods, setMethod } from './connections';
 export { listAccounts, disconnectAccount } from './accounts';
 export { getAuthConfig, setAuthConfig } from './authConfig';

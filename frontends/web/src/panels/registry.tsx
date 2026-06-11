@@ -6,6 +6,7 @@ import OBSPanel from './OBSPanel';
 import FeedPanel from './FeedPanel';
 import FiltersPanel from './FiltersPanel';
 import HeldQueuePanel from './HeldQueuePanel';
+import HighlightsPanel from './HighlightsPanel';
 import MentionInbox from './MentionInbox';
 import MarketsPanel from './MarketsPanel';
 import PluginsPanel from './PluginsPanel';
@@ -37,6 +38,7 @@ export const PANELS: PanelContribution[] = [
   { kind: 'feed', title: 'Chat', icon: 'chat', render: (p) => <FeedPanel channels={p.channels} panelId={p.panelId} /> },
   { kind: 'mentions', title: 'Mentions', icon: 'mentions', render: (p) => <MentionInbox panelId={p.panelId} /> },
   { kind: 'celebrations', title: 'Celebrations', icon: 'gift', render: (p) => <CelebrationsPane panelId={p.panelId} /> },
+  { kind: 'highlights', title: 'Highlights', icon: 'flame', render: () => <HighlightsPanel /> },
   { kind: 'filters', title: 'Filters', icon: 'filter', render: () => <FiltersPanel /> },
   { kind: 'stream', title: 'Streams', icon: 'stream', render: () => <StreamPane /> },
   { kind: 'mods', title: 'Mod queue', icon: 'mods', render: () => <HeldQueuePanel /> },

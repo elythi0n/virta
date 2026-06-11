@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { DeletionRef, FeedMessage } from '@virta/feed-core';
 import type { ConnectionStatus } from './client';
-import type { ChatSettings, HeldMessage } from './wire.gen';
+import type { ChatSettings, HeldMessage, Moment } from './wire.gen';
 import { useSharedStream } from './sharedStream';
 
 export interface StreamHandlers {
@@ -12,6 +12,7 @@ export interface StreamHandlers {
   onHeld?: (held: HeldMessage) => void;
   onHeldResolved?: (channelKey: string, id: string, approved: boolean) => void;
   onPlugin?: (stream: string, data: unknown) => void;
+  onMoment?: (channelKey: string, moment: Moment) => void;
 }
 
 // Connects to the daemon for the panel's lifetime, routing live messages, deletions, and clears to
@@ -47,6 +48,7 @@ export function useDaemonStream(handlers: StreamHandlers, channels?: string[]): 
         onHeld: (h) => ref.current.onHeld?.(h),
         onHeldResolved: (c, id, approved) => ref.current.onHeldResolved?.(c, id, approved),
         onPlugin: (stream, data) => ref.current.onPlugin?.(stream, data),
+        onMoment: (k, m) => ref.current.onMoment?.(k, m),
       },
       key ? key.split(',') : undefined,
     );

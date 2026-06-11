@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react';
 import type { DeletionRef, FeedMessage } from '@virta/feed-core';
 import { createDaemonClient, type ConnectionStatus, type DaemonClient } from './client';
-import type { ChatSettings, HeldMessage, StatsSnapshot } from './wire.gen';
+import type { ChatSettings, HeldMessage, Moment, StatsSnapshot } from './wire.gen';
 
 // The full set of event callbacks a subscriber can register.
 export interface SharedStreamHandlers {
@@ -13,6 +13,7 @@ export interface SharedStreamHandlers {
   onHeldResolved?: (channelKey: string, id: string, approved: boolean) => void;
   onPlugin?: (stream: string, data: unknown) => void;
   onStats?: (channelKey: string, snapshot: StatsSnapshot) => void;
+  onMoment?: (channelKey: string, moment: Moment) => void;
 }
 
 interface Subscription {
@@ -40,6 +41,7 @@ export class SharedConnection {
       onHeldResolved: (key, id, approved) => this.subs.forEach((s) => s.handlers.onHeldResolved?.(key, id, approved)),
       onPlugin: (stream, data) => this.subs.forEach((s) => s.handlers.onPlugin?.(stream, data)),
       onStats: (key, snapshot) => this.subs.forEach((s) => s.handlers.onStats?.(key, snapshot)),
+      onMoment: (key, moment) => this.dispatchMoment(key, moment),
       onStatus: (status) => {
         this.currentStatus = status;
         this.statusListeners.forEach((fn) => fn(status));
@@ -61,6 +63,16 @@ export class SharedConnection {
       const msgKey = msg.channel;
       if (msgKey && sub.channels.includes(msgKey)) {
         sub.handlers.onMessage(msg);
+      }
+    }
+  }
+
+  // Moments route by the moment's channel key, same as messages: an unfiltered subscriber gets
+  // them all; a channel-scoped subscriber only gets its own channels' moments.
+  private dispatchMoment(key: string, moment: Moment) {
+    for (const sub of this.subs.values()) {
+      if (!sub.channels || sub.channels.length === 0 || sub.channels.includes(key)) {
+        sub.handlers.onMoment?.(key, moment);
       }
     }
   }

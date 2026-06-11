@@ -1,5 +1,5 @@
 import type { DeletionRef, FeedMessage } from '@virta/feed-core';
-import type { ChatSettings, Discovery, HeldMessage, StatsSnapshot, WireEvent } from './wire.gen';
+import type { ChatSettings, Discovery, HeldMessage, Moment, StatsSnapshot, WireEvent } from './wire.gen';
 import { discover as discoverDaemon } from './discovery';
 import { channelKey, toFeedMessage } from './normalize';
 
@@ -28,6 +28,8 @@ export interface DaemonClientOptions {
   onHeldResolved?: (channelKey: string, id: string, approved: boolean) => void;
   /** A plugin DataSource published on a namespaced stream ("plugin.<id>.<name>"). */
   onPlugin?: (stream: string, data: unknown) => void;
+  /** A chat spike was auto-bookmarked as a moment, keyed by the moment's channel. */
+  onMoment?: (channelKey: string, moment: Moment) => void;
   onStatus: (status: ConnectionStatus) => void;
   /** Channel keys ("platform:slug") to receive; empty = all. */
   channels?: string[];
@@ -101,6 +103,8 @@ export function createDaemonClient(opts: DaemonClientOptions): DaemonClient {
         opts.onHeldResolved?.(channelKey(event.channel.platform, event.channel.slug), event.held_id ?? '', !!event.approved);
       } else if (event.type === 'plugin' && event.stream) {
         opts.onPlugin?.(event.stream, event.data);
+      } else if (event.type === 'moment' && event.moment) {
+        opts.onMoment?.(channelKey(event.moment.channel.platform, event.moment.channel.slug), event.moment);
       }
     };
     ws.onerror = () => ws.close();
