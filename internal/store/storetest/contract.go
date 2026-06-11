@@ -382,6 +382,82 @@ func RunContract(t *testing.T, newStore func(t *testing.T) store.Store) {
 		}
 	})
 
+	t.Run("moments: add, list with channel filter and cursor, delete", func(t *testing.T) {
+		s := newStore(t)
+		base := time.Date(2026, 6, 5, 12, 0, 0, 0, time.UTC)
+		mk := func(id string, ch platform.ChannelRef, at time.Time) platform.Moment {
+			return platform.Moment{
+				ID: id, Channel: ch,
+				StartedAt: at, EndedAt: at.Add(8 * time.Second),
+				PeakRate: 12.5, Baseline: 1.25,
+				Excerpt: []platform.MomentMessage{
+					{Author: "alice", Body: "POG " + id, SentAt: at.UnixMilli()},
+					{Author: "bob", Body: "LETSGO", SentAt: at.Add(time.Second).UnixMilli()},
+				},
+			}
+		}
+		forsen := platform.ChannelRef{Platform: platform.Twitch, Slug: "forsen"}
+		xqc := platform.ChannelRef{Platform: platform.Kick, Slug: "xqc"}
+		for _, m := range []platform.Moment{
+			mk("mom-0001", forsen, base),
+			mk("mom-0002", xqc, base.Add(time.Minute)),
+			mk("mom-0003", forsen, base.Add(2*time.Minute)),
+		} {
+			if err := s.Moments().Add(ctx, m); err != nil {
+				t.Fatalf("Add %s: %v", m.ID, err)
+			}
+		}
+		// newest-first across all channels
+		all, err := s.Moments().List(ctx, store.MomentQuery{Limit: 10})
+		if err != nil {
+			t.Fatalf("List: %v", err)
+		}
+		if len(all) != 3 || all[0].ID != "mom-0003" || all[2].ID != "mom-0001" {
+			t.Fatalf("List order wrong: %v", momentIDs(all))
+		}
+		// round-trip of every field
+		got := all[2]
+		if got.Channel.Platform != platform.Twitch || got.Channel.Slug != "forsen" {
+			t.Errorf("Channel = %+v", got.Channel)
+		}
+		if !got.StartedAt.Equal(base) || !got.EndedAt.Equal(base.Add(8*time.Second)) {
+			t.Errorf("times = %v .. %v", got.StartedAt, got.EndedAt)
+		}
+		if got.PeakRate != 12.5 || got.Baseline != 1.25 {
+			t.Errorf("rates = %v / %v", got.PeakRate, got.Baseline)
+		}
+		if len(got.Excerpt) != 2 || got.Excerpt[0].Author != "alice" || got.Excerpt[0].Body != "POG mom-0001" ||
+			got.Excerpt[0].SentAt != base.UnixMilli() {
+			t.Errorf("excerpt = %+v", got.Excerpt)
+		}
+		// narrowed to one channel
+		inForsen, _ := s.Moments().List(ctx, store.MomentQuery{Channel: "twitch:forsen", Limit: 10})
+		if got := momentIDs(inForsen); len(got) != 2 || got[0] != "mom-0003" || got[1] != "mom-0001" {
+			t.Errorf("List twitch:forsen = %v, want [mom-0003 mom-0001]", got)
+		}
+		// cursor pages older moments only
+		before, _ := s.Moments().List(ctx, store.MomentQuery{Before: "mom-0003", Limit: 10})
+		if got := momentIDs(before); len(got) != 2 || got[0] != "mom-0002" {
+			t.Errorf("List before mom-0003 = %v, want [mom-0002 mom-0001]", got)
+		}
+		// limit clamps the page
+		one, _ := s.Moments().List(ctx, store.MomentQuery{Limit: 1})
+		if got := momentIDs(one); len(got) != 1 || got[0] != "mom-0003" {
+			t.Errorf("List limit 1 = %v, want [mom-0003]", got)
+		}
+		// delete removes the row; a missing id is ErrNotFound
+		if err := s.Moments().Delete(ctx, "mom-0002"); err != nil {
+			t.Fatalf("Delete: %v", err)
+		}
+		if err := s.Moments().Delete(ctx, "mom-0002"); !errors.Is(err, store.ErrNotFound) {
+			t.Errorf("Delete missing = %v, want ErrNotFound", err)
+		}
+		remaining, _ := s.Moments().List(ctx, store.MomentQuery{Limit: 10})
+		if len(remaining) != 2 {
+			t.Errorf("after delete: %v", momentIDs(remaining))
+		}
+	})
+
 	t.Run("emote cache: sets and files round-trip", func(t *testing.T) {
 		s := newStore(t)
 		if err := s.Emotes().PutSet(ctx, store.EmoteSet{Key: "7tv:twitch:1", Data: json.RawMessage(`[]`)}); err != nil {
@@ -405,6 +481,14 @@ func RunContract(t *testing.T, newStore func(t *testing.T) store.Store) {
 }
 
 func ids(ms []store.StoredMessage) []string {
+	out := make([]string, len(ms))
+	for i, m := range ms {
+		out[i] = m.ID
+	}
+	return out
+}
+
+func momentIDs(ms []platform.Moment) []string {
 	out := make([]string, len(ms))
 	for i, m := range ms {
 		out[i] = m.ID

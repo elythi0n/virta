@@ -46,6 +46,7 @@ type Store interface {
 	Messages() MessageRepo
 	Emotes() EmoteRepo
 	Conversations() ConversationRepo
+	Moments() MomentRepo
 
 	// Migrate brings the schema to the current version. Safe to call on every startup.
 	Migrate(ctx context.Context) error
@@ -244,5 +245,21 @@ type ConversationRepo interface {
 	Get(ctx context.Context, id string) (Conversation, error)
 	List(ctx context.Context) ([]Conversation, error)
 	Update(ctx context.Context, id, title, model string, messages json.RawMessage) error
+	Delete(ctx context.Context, id string) error
+}
+
+// ---- Moments (hype spikes) ----
+
+// MomentQuery selects moments newest-first, optionally narrowed to one channel.
+type MomentQuery struct {
+	Channel string // "platform:slug" key; "" = all channels
+	Before  string // ULID cursor; "" = most recent
+	Limit   int    // page size (implementations clamp)
+}
+
+// MomentRepo persists detected hype moments.
+type MomentRepo interface {
+	Add(ctx context.Context, m platform.Moment) error
+	List(ctx context.Context, q MomentQuery) ([]platform.Moment, error)
 	Delete(ctx context.Context, id string) error
 }

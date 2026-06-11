@@ -26,6 +26,7 @@ CREATE TABLE accounts (id TEXT PRIMARY KEY, platform TEXT NOT NULL, platform_uid
 CREATE TABLE channels (id TEXT PRIMARY KEY, platform TEXT NOT NULL, platform_id TEXT NOT NULL DEFAULT '', slug TEXT NOT NULL, display_name TEXT NOT NULL DEFAULT '', meta TEXT, last_seen_at INTEGER NOT NULL DEFAULT 0, user_id TEXT NOT NULL DEFAULT '', UNIQUE(platform, slug));
 CREATE TABLE messages (id TEXT PRIMARY KEY, channel_id TEXT NOT NULL, platform TEXT NOT NULL, type TEXT NOT NULL, author_uid TEXT NOT NULL DEFAULT '', author_name TEXT NOT NULL DEFAULT '', body TEXT NOT NULL DEFAULT '', segments TEXT NOT NULL DEFAULT '[]', sent_at INTEGER NOT NULL DEFAULT 0, received_at INTEGER NOT NULL DEFAULT 0, deleted INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE emote_sets (key TEXT PRIMARY KEY, data TEXT NOT NULL, fetched_at INTEGER NOT NULL);
+CREATE TABLE moments (id TEXT PRIMARY KEY, channel_key TEXT NOT NULL DEFAULT '', platform TEXT NOT NULL DEFAULT '', slug TEXT NOT NULL DEFAULT '', started_at INTEGER NOT NULL DEFAULT 0, ended_at INTEGER NOT NULL DEFAULT 0, peak_rate REAL NOT NULL DEFAULT 0, baseline REAL NOT NULL DEFAULT 0, excerpt TEXT NOT NULL DEFAULT '[]');
 CREATE TABLE emote_files (url_hash TEXT PRIMARY KEY, path TEXT NOT NULL, bytes INTEGER NOT NULL, fetched_at INTEGER NOT NULL);
 CREATE VIRTUAL TABLE messages_fts USING fts5(body, content='messages', content_rowid='rowid');
 CREATE TRIGGER messages_fts_ai AFTER INSERT ON messages BEGIN

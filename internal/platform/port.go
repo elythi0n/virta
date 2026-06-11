@@ -23,9 +23,10 @@ import (
 type Platform string
 
 const (
-	Twitch Platform = "twitch"
-	Kick   Platform = "kick"
-	X      Platform = "x"
+	Twitch  Platform = "twitch"
+	Kick    Platform = "kick"
+	YouTube Platform = "youtube"
+	X       Platform = "x"
 )
 
 // ConnMode is how a channel is connected. Users choose per platform; Automatic
@@ -98,11 +99,12 @@ const (
 type EmoteProvider string
 
 const (
-	EmoteTwitch EmoteProvider = "twitch"
-	EmoteKick   EmoteProvider = "kick"
-	Emote7TV    EmoteProvider = "7tv"
-	EmoteBTTV   EmoteProvider = "bttv"
-	EmoteFFZ    EmoteProvider = "ffz"
+	EmoteTwitch  EmoteProvider = "twitch"
+	EmoteKick    EmoteProvider = "kick"
+	EmoteYouTube EmoteProvider = "youtube"
+	Emote7TV     EmoteProvider = "7tv"
+	EmoteBTTV    EmoteProvider = "bttv"
+	EmoteFFZ     EmoteProvider = "ffz"
 )
 
 // EmoteRef is a resolved emote: enough for any frontend to render it without lookups.
@@ -248,6 +250,7 @@ const (
 	ReasonSelectorDrift   ReasonCode = "selector_drift"   // X scrape selectors changed
 	ReasonNoBrowser       ReasonCode = "no_browser"       // X: no Chromium-family browser found
 	ReasonChannelNotFound ReasonCode = "channel_not_found"
+	ReasonNotLive         ReasonCode = "not_live" // channel exists but has no live broadcast (YouTube chat is per-broadcast)
 	ReasonUpstreamDown    ReasonCode = "upstream_down"
 )
 
@@ -370,6 +373,30 @@ type StatsEvent struct {
 	Stats   StatsSnapshot
 }
 
+// Moment is a detected chat-activity spike, bookmarked with a message excerpt so a broadcast
+// can be browsed by its hype moments afterward.
+type Moment struct {
+	ID        string          `json:"id"` // ULID
+	Channel   ChannelRef      `json:"channel"`
+	StartedAt time.Time       `json:"started_at"`
+	EndedAt   time.Time       `json:"ended_at"`
+	PeakRate  float64         `json:"peak_rate"` // msgs/sec at the spike's peak
+	Baseline  float64         `json:"baseline"`  // the channel's rate before the spike
+	Excerpt   []MomentMessage `json:"excerpt"`   // a small sample of spike messages
+}
+
+// MomentMessage is one excerpt line of a moment.
+type MomentMessage struct {
+	Author string `json:"author"`
+	Body   string `json:"body"`
+	SentAt int64  `json:"sent_at_ms"`
+}
+
+// MomentEvent announces a completed moment, emitted by the moments detector.
+type MomentEvent struct {
+	Moment Moment
+}
+
 // ProfileChangedEvent announces that the active workspace profile switched, so every attached
 // frontend re-renders against the new channel set, filters, and layout.
 type ProfileChangedEvent struct {
@@ -419,6 +446,7 @@ func (ChannelClearEvent) isEvent()   {}
 func (HealthEvent) isEvent()         {}
 func (ChatSettingsEvent) isEvent()   {}
 func (StatsEvent) isEvent()          {}
+func (MomentEvent) isEvent()         {}
 func (ProfileChangedEvent) isEvent() {}
 func (MessageHeldEvent) isEvent()    {}
 func (HeldResolvedEvent) isEvent()   {}

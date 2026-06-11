@@ -68,6 +68,7 @@ func (c *Core) Channels() store.ChannelRepo           { return channelRepo{c} }
 func (c *Core) Messages() store.MessageRepo           { return messageRepo{c} }
 func (c *Core) Emotes() store.EmoteRepo               { return emoteRepo{c} }
 func (c *Core) Conversations() store.ConversationRepo { return conversationRepo{c} }
+func (c *Core) Moments() store.MomentRepo             { return momentRepo{c} }
 
 // rebinding query helpers — every query flows through Rebind so placeholders are adapted once.
 func (c *Core) exec(ctx context.Context, q string, args ...any) (sql.Result, error) {
@@ -772,6 +773,84 @@ func (r conversationRepo) Update(ctx context.Context, id, title, model string, m
 func (r conversationRepo) Delete(ctx context.Context, id string) error {
 	res, err := r.c.exec(ctx,
 		`DELETE FROM conversations WHERE id = ? AND user_id = ?`, id, uid(ctx))
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return store.ErrNotFound
+	}
+	return nil
+}
+
+// ---- moments ----
+
+type momentRepo struct{ c *Core }
+
+const momentCols = `id, channel_key, platform, slug, started_at, ended_at, peak_rate, baseline, excerpt`
+
+func (r momentRepo) Add(ctx context.Context, m platform.Moment) error {
+	excerpt := m.Excerpt
+	if excerpt == nil {
+		excerpt = []platform.MomentMessage{}
+	}
+	ex, err := json.Marshal(excerpt)
+	if err != nil {
+		return fmt.Errorf("sqlcommon: marshal excerpt: %w", err)
+	}
+	_, err = r.c.exec(ctx,
+		`INSERT INTO moments (`+momentCols+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		m.ID, m.Channel.Key(), string(m.Channel.Platform), m.Channel.Slug,
+		tsStore(m.StartedAt), tsStore(m.EndedAt), m.PeakRate, m.Baseline, string(ex))
+	return err
+}
+
+func (r momentRepo) List(ctx context.Context, q store.MomentQuery) ([]platform.Moment, error) {
+	limit := q.Limit
+	if limit <= 0 || limit > 1000 {
+		limit = 100
+	}
+	query := `SELECT ` + momentCols + ` FROM moments`
+	var args []any
+	var conds []string
+	if q.Channel != "" {
+		conds = append(conds, `channel_key = ?`)
+		args = append(args, q.Channel)
+	}
+	if q.Before != "" {
+		conds = append(conds, `id < ?`)
+		args = append(args, q.Before)
+	}
+	if len(conds) > 0 {
+		query += ` WHERE ` + strings.Join(conds, ` AND `)
+	}
+	query += ` ORDER BY id DESC LIMIT ?`
+	args = append(args, limit)
+
+	rows, err := r.c.query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []platform.Moment
+	for rows.Next() {
+		var m platform.Moment
+		var key, plat, ex string
+		var started, ended int64
+		if err := rows.Scan(&m.ID, &key, &plat, &m.Channel.Slug, &started, &ended, &m.PeakRate, &m.Baseline, &ex); err != nil {
+			return nil, err
+		}
+		m.Channel.Platform = platform.Platform(plat)
+		m.StartedAt = tsLoad(started)
+		m.EndedAt = tsLoad(ended)
+		m.Excerpt = []platform.MomentMessage{}
+		_ = json.Unmarshal([]byte(ex), &m.Excerpt)
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
+func (r momentRepo) Delete(ctx context.Context, id string) error {
+	res, err := r.c.exec(ctx, `DELETE FROM moments WHERE id = ?`, id)
 	if err != nil {
 		return err
 	}

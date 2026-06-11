@@ -35,6 +35,7 @@ type Memory struct {
 	emoteSets     map[string]EmoteSet
 	emoteFiles    map[string]EmoteFile
 	conversations map[string]Conversation
+	moments       []platform.Moment
 }
 
 // NewMemory creates an empty in-memory store using clk for timestamps.
@@ -78,6 +79,7 @@ func (m *Memory) Channels() ChannelRepo           { return memChannels{m} }
 func (m *Memory) Messages() MessageRepo           { return memMessages{m} }
 func (m *Memory) Emotes() EmoteRepo               { return memEmotes{m} }
 func (m *Memory) Conversations() ConversationRepo { return memConversations{m} }
+func (m *Memory) Moments() MomentRepo             { return memMoments{m} }
 
 // ---- settings ----
 
@@ -584,6 +586,60 @@ func (r memConversations) Delete(_ context.Context, id string) error {
 	}
 	delete(r.m.conversations, id)
 	return nil
+}
+
+// ---- moments ----
+
+type memMoments struct{ m *Memory }
+
+// cloneMoment deep-copies a moment so callers can't mutate the stored excerpt.
+func cloneMoment(m platform.Moment) platform.Moment {
+	m.Excerpt = append([]platform.MomentMessage{}, m.Excerpt...)
+	return m
+}
+
+func (r memMoments) Add(_ context.Context, m platform.Moment) error {
+	r.m.mu.Lock()
+	defer r.m.mu.Unlock()
+	r.m.moments = append(r.m.moments, cloneMoment(m))
+	return nil
+}
+
+func (r memMoments) List(_ context.Context, q MomentQuery) ([]platform.Moment, error) {
+	limit := q.Limit
+	if limit <= 0 || limit > 1000 {
+		limit = 100
+	}
+	r.m.mu.Lock()
+	defer r.m.mu.Unlock()
+	// newest-first by ULID id
+	matched := make([]platform.Moment, 0)
+	for _, m := range r.m.moments {
+		if q.Channel != "" && m.Channel.Key() != q.Channel {
+			continue
+		}
+		if q.Before != "" && m.ID >= q.Before {
+			continue
+		}
+		matched = append(matched, cloneMoment(m))
+	}
+	sort.Slice(matched, func(i, j int) bool { return matched[i].ID > matched[j].ID })
+	if len(matched) > limit {
+		matched = matched[:limit]
+	}
+	return matched, nil
+}
+
+func (r memMoments) Delete(_ context.Context, id string) error {
+	r.m.mu.Lock()
+	defer r.m.mu.Unlock()
+	for i := range r.m.moments {
+		if r.m.moments[i].ID == id {
+			r.m.moments = append(r.m.moments[:i], r.m.moments[i+1:]...)
+			return nil
+		}
+	}
+	return ErrNotFound
 }
 
 var _ Store = (*Memory)(nil)
