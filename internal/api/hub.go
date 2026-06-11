@@ -39,6 +39,7 @@ type WireEvent struct {
 	State             *platform.HealthStatus   `json:"state,omitempty"`
 	Settings          *platform.ChatSettings   `json:"settings,omitempty"`
 	Stats             *platform.StatsSnapshot  `json:"stats,omitempty"`
+	Moment            *platform.Moment         `json:"moment,omitempty"` // a completed hype moment ("moment")
 	ProfileID         string                   `json:"profile_id,omitempty"`
 	ProfileName       string                   `json:"profile_name,omitempty"`
 	Held              *HeldMessage             `json:"held,omitempty"`     // a newly held message ("held")
@@ -271,6 +272,9 @@ func toWire(ev platform.Event) (we WireEvent, key string, broadcastAll bool) {
 		ch := e.Channel
 		st := e.Stats
 		return WireEvent{Type: "stats", SchemaVersion: schemaVersion, Channel: &ch, Stats: &st}, channelKey(ch), false
+	case platform.MomentEvent:
+		m := e.Moment
+		return WireEvent{Type: "moment", SchemaVersion: schemaVersion, Moment: &m}, channelKey(m.Channel), false
 	case platform.ProfileChangedEvent:
 		// Adapter-wide: every client re-renders against the new profile.
 		return WireEvent{Type: "profile_changed", SchemaVersion: schemaVersion, ProfileID: e.ProfileID, ProfileName: e.Name}, "", true

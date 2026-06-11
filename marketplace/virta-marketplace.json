@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-06-11",
+  "plugins": [
+    {
+      "id": "com.virta.leaderboard",
+      "name": "Leaderboard",
+      "version": "0.1.0",
+      "description": "Top chatters and top emotes leaderboard — updates live as chat flows.",
+      "publisher": "Virta",
+      "icon": "list",
+      "tags": ["stats", "leaderboard", "chatters"],
+      "install_url": "https://github.com/elythi0n/virta/releases/latest",
+      "verified": true
+    },
+    {
+      "id": "com.virta.polls",
+      "name": "Polls",
+      "version": "0.1.0",
+      "description": "Cross-platform chat voting — run polls with !vote commands across all joined channels.",
+      "publisher": "Virta",
+      "icon": "grid",
+      "tags": ["polls", "voting", "engagement"],
+      "install_url": "https://github.com/elythi0n/virta/releases/latest",
+      "verified": true
+    },
+    {
+      "id": "com.virta.alerts",
+      "name": "Alerts",
+      "version": "0.1.0",
+      "description": "Customizable stream alerts with OBS overlay — animated subs, raids, gifts, and follows.",
+      "publisher": "Virta",
+      "icon": "zap",
+      "tags": ["alerts", "obs", "overlay", "animations"],
+      "install_url": "https://github.com/elythi0n/virta/releases/latest",
+      "verified": true
+    },
+    {
+      "id": "com.virta.vod-replay",
+      "name": "VOD Replay",
+      "version": "0.1.0",
+      "description": "Replay Twitch VOD chat synced to a playback clock — reviews and reruns get live-feeling chat.",
+      "publisher": "Virta",
+      "icon": "play",
+      "tags": ["vod", "replay", "twitch", "chat"],
+      "install_url": "https://github.com/elythi0n/virta/releases/latest",
+      "verified": true
+    }
+  ]
+}

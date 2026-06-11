@@ -100,6 +100,7 @@ func asyncAPISpec() map[string]any {
 		{"state", "An adapter- or channel-level health transition."},
 		{"chat_settings", "A channel's chat-mode settings (slow/followers/emote/unique)."},
 		{"stats", "A channel's rolling activity (msg/s, unique chatters, top emotes)."},
+		{"moment", "A detected chat-activity spike, bookmarked with a message excerpt."},
 		{"profile_changed", "The active workspace profile switched."},
 		{"held", "A message AutoMod is holding for review."},
 		{"held_resolved", "A held message was approved or denied."},

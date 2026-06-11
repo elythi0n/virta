@@ -59,6 +59,7 @@ type Server struct {
 	send              Send                   // cross-posting controller, installed via SetSend
 	held              Held                   // AutoMod hold-queue controller, installed via SetHeld
 	history           History                // message-log search/scrollback controller, installed via SetHistory
+	moments           Moments                // hype-moment read/manage controller, installed via SetMoments
 	tokens            Tokens                 // scoped API-token controller, installed via SetTokens
 	portability       Portability            // profile import/export controller, installed via SetPortability
 	themes            Themes                 // custom theme management, installed via SetThemes
@@ -67,6 +68,9 @@ type Server struct {
 	intel             Intel                  // intelligence controller, installed via SetIntel
 	plugins           Plugins                // plugin host controller, installed via SetPlugins (nil = not available)
 	obsws             OBSWSController        // OBS WebSocket integration, installed via SetOBSWS (nil = not available)
+	profanity         Profanity              // profanity masking toggle, installed via SetProfanity
+	marketplace       marketplaceCache       // in-memory cache for the plugin marketplace registry
+	overlays          Overlays               // overlay registry, installed via SetOverlays
 	hostedAuth        HostedAuth             // multi-user account surface (nil in local/desktop mode)
 	webui             http.Handler           // embedded web UI, installed via SetWebUI (nil = not served)
 	webuiIndexHTML    func() ([]byte, error) // reads index.html directly, bypassing the file server
@@ -425,6 +429,8 @@ func (s *Server) routes() []route {
 		{"GET", "/v1/search", ScopeRead, s.handleSearch, "Full-text search over the message log"},
 		{"GET", "/v1/history", ScopeRead, s.handleHistory, "Per-channel scrollback"},
 		{"GET", "/v1/held", ScopeRead, s.handleListHeld, "AutoMod hold queue"},
+		{"GET", "/v1/moments", ScopeRead, s.handleListMoments, "List detected hype moments"},
+		{"DELETE", "/v1/moments/{id}", ScopeControl, s.handleDeleteMoment, "Delete a moment"},
 		{"GET", "/v1/accounts", ScopeRead, s.handleListAccounts, "Connected accounts"},
 		{"GET", "/v1/connections/methods", ScopeRead, s.handleListMethods, "Per-platform connection method"},
 		{"GET", "/v1/profiles", ScopeRead, s.handleListProfiles, "List workspace profiles"},
@@ -490,6 +496,10 @@ func (s *Server) routes() []route {
 		{"GET", "/v1/obsws/scenes", ScopeRead, s.handleGetOBSScenes, "List OBS scenes"},
 		{"POST", "/v1/obsws/test-source", ScopeControl, s.handlePostOBSTestSource, "Set a text source value in OBS"},
 		{"POST", "/v1/obsws/detect", ScopeRead, s.handlePostOBSDetect, "Detect a local OBS WebSocket server"},
+		{"GET", "/v1/filter/profanity", ScopeRead, s.handleGetProfanity, "Profanity masking toggle"},
+		{"PUT", "/v1/filter/profanity", ScopeControl, s.handleSetProfanity, "Enable/disable profanity masking"},
+		{"GET", "/v1/marketplace", ScopeRead, s.handleListMarketplace, "Plugin marketplace registry"},
+		{"GET", "/v1/overlays", ScopeRead, s.handleListOverlays, "List registered plugin overlay instances"},
 		{"GET", "/dev", ScopeRead, s.handleDev, "Developer event probe page"},
 	}
 }
