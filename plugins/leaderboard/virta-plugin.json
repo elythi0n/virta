@@ -1,0 +1,14 @@
+{
+  "id": "com.virta.leaderboard",
+  "name": "Leaderboard",
+  "version": "0.1.0",
+  "publisher": "Virta",
+  "description": "Session leaderboards: top chatters and top emotes across every connected platform.",
+  "tags": ["leaderboard", "stats", "chatters"],
+  "engines": { "virta": ">=1.0.0" },
+  "scopes": ["events", "ui"],
+  "contributes": {
+    "panels": [{ "kind": "leaderboard", "title": "Leaderboard", "icon": "star" }]
+  },
+  "main": { "gui": "gui/index.html" }
+}

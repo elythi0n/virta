@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Polls</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="head">
+      <span class="brand">Polls</span>
+      <span class="conn">
+        <span id="conn-dot" class="dot dot-wait" aria-hidden="true"></span>
+        <span id="conn-label">Connecting…</span>
+      </span>
+    </header>
+
+    <div id="err" class="err" hidden></div>
+
+    <main class="main">
+      <!-- Compose -->
+      <section id="view-compose" class="view">
+        <h2>New poll</h2>
+        <input id="question" class="input" type="text" maxlength="200" placeholder="Ask your chat something…" />
+        <div id="options" class="options"></div>
+        <div class="compose-row">
+          <button id="add-option" class="btn btn-ghost" type="button">+ Add option</button>
+          <label class="duration">
+            <span>Duration</span>
+            <select id="duration" class="select">
+              <option value="0">Off</option>
+              <option value="30">30s</option>
+              <option value="60">60s</option>
+              <option value="120">2m</option>
+              <option value="300">5m</option>
+            </select>
+          </label>
+        </div>
+        <button id="start" class="btn btn-primary btn-big" type="button" disabled>Start poll</button>
+      </section>
+
+      <!-- Live -->
+      <section id="view-live" class="view" hidden>
+        <h2 class="live-head">Live poll <span class="live-tag">live</span></h2>
+        <div id="live-question" class="question"></div>
+        <div id="live-rows" class="rows"></div>
+        <div class="totals-line">
+          <span id="live-totals" class="totals"></span>
+          <span id="countdown" class="countdown" hidden></span>
+        </div>
+        <button id="end" class="btn btn-danger" type="button">End poll</button>
+      </section>
+
+      <!-- Results -->
+      <section id="view-results" class="view" hidden>
+        <h2>Results</h2>
+        <div id="results-question" class="question"></div>
+        <div id="winner-banner" class="winner">
+          <span class="winner-badge">Winner</span>
+          <span id="winner-label" class="winner-label"></span>
+          <span id="winner-pct" class="winner-pct"></span>
+        </div>
+        <div id="result-rows" class="rows"></div>
+        <div id="results-totals" class="totals"></div>
+        <button id="new-poll" class="btn btn-primary btn-big" type="button">New poll</button>
+      </section>
+
+      <!-- History -->
+      <section id="history-section" class="history">
+        <button id="history-toggle" class="history-toggle" type="button" aria-expanded="false">
+          <span class="chev" aria-hidden="true"></span>
+          <span>History</span>
+          <span id="history-count" class="history-count"></span>
+        </button>
+        <ul id="history-list" class="history-list" hidden></ul>
+      </section>
+    </main>
+
+    <script src="__virta.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

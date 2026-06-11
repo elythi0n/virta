@@ -1,0 +1,34 @@
+{
+  "id": "com.virta.alerts",
+  "name": "Alerts",
+  "version": "0.1.0",
+  "publisher": "Virta",
+  "description": "Customizable stream alerts for subs, gifts, raids, and follows — animated OBS overlay with threshold tiers and an expandable animation library.",
+  "tags": ["alerts", "obs", "overlay", "animations"],
+  "engines": { "virta": ">=1.0.0" },
+  "scopes": ["events", "ui", "storage"],
+  "contributes": {
+    "panels": [{ "kind": "alerts", "title": "Alerts", "icon": "zap" }]
+  },
+  "main": { "gui": "gui/index.html" },
+  "config": {
+    "type": "object",
+    "properties": {
+      "rules": {
+        "type": "object",
+        "title": "Alert rules",
+        "description": "Managed by the Alerts panel."
+      },
+      "overlays": {
+        "type": "array",
+        "title": "Overlay instances",
+        "description": "Managed by the Alerts panel — one entry per OBS browser source."
+      },
+      "overlay_token": {
+        "type": "string",
+        "title": "Overlay token",
+        "description": "Auto-managed; used by the OBS overlay URL."
+      }
+    }
+  }
+}

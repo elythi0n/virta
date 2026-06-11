@@ -1,0 +1,41 @@
+/*
+ * Alerts — OBS overlay page chrome.
+ *
+ * Everything outside the alert card is transparent: OBS composites this page over the scene.
+ * Card styling itself lives in the shared alert-styles.css.
+ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+}
+
+/* The stage fills the source; the position class picks which band alerts appear in. It is the
+   confetti canvas's positioning parent, so it must stay position:fixed/relative. */
+.stage {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 56px;
+}
+.pos-top { justify-content: flex-start; }
+.pos-center { justify-content: center; }
+.pos-bottom { justify-content: flex-end; }
+
+/* Setup/diagnostic hint — small and dim, visible in the OBS preview without polluting a live
+   scene if something is misconfigured. */
+.hint {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px;
+  color: #E6EAF2;
+  background: rgba(14, 17, 22, 0.85);
+  border: 1px solid #232936;
+  border-radius: 8px;
+  padding: 10px 14px;
+  max-width: 520px;
+  text-align: center;
+}

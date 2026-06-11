@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>VOD Replay</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- Setup: pick a VOD -->
+    <section id="setup" class="setup">
+      <h1 class="title">VOD Replay</h1>
+      <p class="hint">Paste a Twitch VOD URL or ID and replay its chat against a playback clock.</p>
+      <div class="setup-row">
+        <input
+          id="vod-input"
+          type="text"
+          placeholder="https://www.twitch.tv/videos/123456789"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button id="load" type="button">Load</button>
+      </div>
+      <div id="setup-error" class="error" hidden></div>
+      <div id="setup-busy" class="hint" hidden>Loading chat…</div>
+    </section>
+
+    <!-- Player: chat feed + transport -->
+    <section id="player" class="player" hidden>
+      <header class="head">
+        <span id="vod-label" class="vod-label"></span>
+        <button id="change" class="linkish" type="button">Change VOD</button>
+      </header>
+
+      <main class="feed-wrap">
+        <div id="feed" class="feed"></div>
+        <div id="feed-note" class="feed-note" hidden></div>
+        <button id="resume-scroll" class="resume" type="button" hidden>Resume auto-scroll</button>
+      </main>
+
+      <footer class="transport">
+        <button id="playpause" type="button" title="Play / pause">Play</button>
+        <span id="clock" class="clock">0:00&nbsp;/&nbsp;--:--</span>
+        <input id="seek" type="range" min="0" max="0" step="1" value="0" title="Seek" />
+        <select id="speed" title="Playback speed">
+          <option value="1" selected>1x</option>
+          <option value="1.25">1.25x</option>
+          <option value="1.5">1.5x</option>
+          <option value="2">2x</option>
+        </select>
+      </footer>
+    </section>
+
+    <script src="__virta.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

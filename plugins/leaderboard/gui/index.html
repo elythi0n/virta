@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Leaderboard</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="head">
+      <div class="tabs" role="tablist">
+        <button id="tab-chatters" class="tab tab-active" role="tab" aria-selected="true">Top chatters</button>
+        <button id="tab-emotes" class="tab" role="tab" aria-selected="false">Top emotes</button>
+      </div>
+      <div class="controls">
+        <select id="channel" title="Channel filter">
+          <option value="">All channels</option>
+        </select>
+        <select id="topn" title="How many rows to show">
+          <option value="10">Top 10</option>
+          <option value="25" selected>Top 25</option>
+          <option value="50">Top 50</option>
+        </select>
+        <button id="pause" title="Stop tallying; the display keeps its current counts">Pause</button>
+        <button id="reset" title="Clear all tallies">Reset</button>
+      </div>
+    </header>
+
+    <main class="board-wrap">
+      <ol id="board" class="board"></ol>
+      <div id="empty" class="empty">Waiting for chat…</div>
+    </main>
+
+    <footer class="foot">Session only — resets when the panel closes.</footer>
+
+    <script src="__virta.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

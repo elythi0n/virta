@@ -1,0 +1,15 @@
+{
+  "id": "com.virta.vod-replay",
+  "name": "VOD Replay",
+  "version": "0.1.0",
+  "publisher": "Virta",
+  "description": "Replay Twitch VOD chat synced to a playback clock — reviews and reruns get live-feeling chat.",
+  "tags": ["vod", "replay", "twitch", "chat"],
+  "engines": { "virta": ">=1.0.0" },
+  "scopes": ["ui", "http"],
+  "http_endpoints": ["https://gql.twitch.tv/gql"],
+  "contributes": {
+    "panels": [{ "kind": "vod-replay", "title": "VOD Replay", "icon": "play" }]
+  },
+  "main": { "gui": "gui/index.html" }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "com.virta.polls",
+  "name": "Polls",
+  "version": "0.1.0",
+  "publisher": "Virta",
+  "description": "Cross-platform chat polls: viewers vote by typing a number, counted once per person across Twitch, Kick, and X.",
+  "tags": ["polls", "voting", "interaction"],
+  "engines": { "virta": ">=1.0.0" },
+  "scopes": ["events", "ui", "storage"],
+  "contributes": {
+    "panels": [{ "kind": "polls", "title": "Polls", "icon": "list" }]
+  },
+  "main": { "gui": "gui/index.html" },
+  "config": {
+    "type": "object",
+    "properties": {
+      "history": {
+        "type": "array",
+        "title": "Poll history",
+        "description": "Managed by the Polls panel."
+      }
+    }
+  }
+}

@@ -1,0 +1,135 @@
+/*
+ * Alerts — shared card style presets.
+ *
+ * Loaded by BOTH the panel preview and the OBS overlay so the preview is exactly what goes on
+ * stream. Every preset is one `.va-style-<id>` class on the `.va-card`; the registry entry that
+ * exposes it to the panel selects lives in animations.js (`styles`). To add a preset: write a
+ * class here, add `{ id, name, className }` there — done.
+ */
+
+/* ── base card ── */
+.va-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  max-width: min(82%, 720px);
+  padding: 20px 34px;
+  border-radius: 14px;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  text-align: center;
+  will-change: transform, opacity, filter;
+}
+
+.va-badge {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.va-text {
+  font-size: 26px;
+  font-weight: 650;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+.va-tpl-author { font-weight: 800; }
+.va-tpl-count, .va-tpl-viewers, .va-tpl-months { font-weight: 800; font-variant-numeric: tabular-nums; }
+
+/* Confetti canvas: fills the stage behind the card (the card comes later in the DOM). */
+.va-confetti {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* ── minimal-dark: quiet, native, blends with any scene ── */
+.va-style-minimal-dark {
+  background: rgba(14, 17, 22, 0.92);
+  border: 1px solid #232936;
+  color: #E6EAF2;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+.va-style-minimal-dark .va-badge { color: #8A93A6; }
+.va-style-minimal-dark .va-tpl-author { color: #5B8CFF; }
+
+/* ── neon-outline: dark core, electric cyan edge ── */
+.va-style-neon-outline {
+  background: rgba(7, 10, 16, 0.78);
+  border: 2px solid #29F0FF;
+  border-radius: 10px;
+  color: #FFFFFF;
+  box-shadow: 0 0 18px rgba(41, 240, 255, 0.55), inset 0 0 14px rgba(41, 240, 255, 0.18);
+}
+.va-style-neon-outline .va-badge {
+  color: #29F0FF;
+  text-shadow: 0 0 8px rgba(41, 240, 255, 0.8);
+}
+.va-style-neon-outline .va-text { text-shadow: 0 0 10px rgba(41, 240, 255, 0.45); }
+.va-style-neon-outline .va-tpl-author { color: #29F0FF; }
+
+/* ── gradient-glass: frosted blue→violet glass; the scene shows through ── */
+.va-style-gradient-glass {
+  background: linear-gradient(135deg, rgba(91, 140, 255, 0.38), rgba(176, 91, 255, 0.34));
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 18px;
+  color: #FFFFFF;
+  backdrop-filter: blur(10px) saturate(1.3);
+  -webkit-backdrop-filter: blur(10px) saturate(1.3);
+  box-shadow: 0 10px 36px rgba(20, 24, 48, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+.va-style-gradient-glass .va-badge { color: rgba(255, 255, 255, 0.82); }
+
+/* ── gold-epic: the milestone card — heavy, gilded, unmissable ── */
+.va-style-gold-epic {
+  background: linear-gradient(180deg, #2A1F06 0%, #4A3508 60%, #2A1F06 100%);
+  border: 2px solid #F5C84B;
+  border-radius: 12px;
+  color: #FFEFC2;
+  padding: 24px 44px;
+  box-shadow:
+    0 0 26px rgba(245, 200, 75, 0.55),
+    inset 0 1px 0 rgba(255, 236, 168, 0.55),
+    inset 0 -10px 24px rgba(0, 0, 0, 0.4);
+  letter-spacing: 0.01em;
+}
+.va-style-gold-epic .va-badge {
+  color: #F5C84B;
+  text-shadow: 0 0 10px rgba(245, 200, 75, 0.7);
+}
+.va-style-gold-epic .va-text { font-weight: 800; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); }
+.va-style-gold-epic .va-tpl-author,
+.va-style-gold-epic .va-tpl-count,
+.va-style-gold-epic .va-tpl-viewers,
+.va-style-gold-epic .va-tpl-months { color: #FFD96B; }
+
+/* ── retro-arcade: hard corners, hard shadow, CRT palette ── */
+.va-style-retro-arcade {
+  background: #14045A;
+  border: 3px solid #FF2E88;
+  border-radius: 0;
+  color: #FFFFFF;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  text-transform: uppercase;
+  box-shadow: 7px 7px 0 #16E3FF;
+}
+.va-style-retro-arcade .va-badge { color: #16E3FF; letter-spacing: 0.3em; }
+.va-style-retro-arcade .va-text { font-size: 22px; letter-spacing: 0.06em; }
+.va-style-retro-arcade .va-tpl-author { color: #FF2E88; }
+
+/* ── clean-light: bright studio card for light scenes ── */
+.va-style-clean-light {
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid #D8DEE9;
+  color: #14181F;
+  box-shadow: 0 12px 32px rgba(20, 24, 31, 0.22);
+}
+.va-style-clean-light .va-badge { color: #5B8CFF; }
+.va-style-clean-light .va-tpl-author { color: #3D6CE0; }

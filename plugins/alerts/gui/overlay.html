@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Virta Alerts overlay</title>
+    <link rel="stylesheet" href="alert-styles.css" />
+    <link rel="stylesheet" href="overlay.css" />
+  </head>
+  <body>
+    <!-- Standalone OBS browser source: no host SPA, no __virta.js. overlay.js reads ?token=
+         from the URL and talks to the daemon directly (same-origin fetch + WebSocket). -->
+    <div id="stage" class="stage pos-bottom">
+      <div id="hint" class="hint" hidden></div>
+    </div>
+    <script src="animations.js"></script>
+    <script src="overlay.js"></script>
+  </body>
+</html>

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Alerts</title>
+    <link rel="stylesheet" href="alert-styles.css" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="head">
+      <span class="brand">Alerts</span>
+      <label class="master">
+        <input type="checkbox" id="master" />
+        <span>Enabled</span>
+      </label>
+      <span id="status" class="status" aria-live="polite"></span>
+    </header>
+
+    <div id="notice" class="notice" hidden></div>
+
+    <main class="main">
+      <section class="preview-sec">
+        <div class="sec-label">
+          <span>Live preview</span>
+          <label class="pos-label">Position
+            <select id="position" class="select">
+              <option value="top">Top</option>
+              <option value="center">Center</option>
+              <option value="bottom">Bottom</option>
+            </select>
+          </label>
+        </div>
+        <div id="stage" class="stage pos-bottom" aria-label="Alert preview"></div>
+        <div class="preview-note">Tests and real incoming events both play here — the exact rendering the overlay uses.</div>
+      </section>
+
+      <section class="overlays-sec">
+        <div class="sec-label">
+          <span>Overlays</span>
+          <button id="add-overlay" class="btn btn-small btn-add" type="button">+ Add overlay</button>
+        </div>
+        <div class="overlays-hint">
+          Each overlay is its own OBS browser source with its own URL. Filter it to specific
+          alert types — e.g. one overlay for raids, another for everything else.
+        </div>
+        <div id="overlays" class="overlays"></div>
+        <div id="url-fallback" class="url-fallback" hidden>
+          <input id="overlay-url" class="input" readonly aria-label="Overlay URL" />
+        </div>
+        <div id="obs-hint" class="obs-hint" hidden>
+          OBS: add a Browser source, paste the URL, set 1920×1080 — the page background is transparent.
+        </div>
+      </section>
+
+      <section id="cards" class="cards"></section>
+    </main>
+
+    <script src="__virta.js"></script>
+    <script src="animations.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

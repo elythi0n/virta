@@ -49,15 +49,31 @@ type InstallResult struct {
 //   - A direct HTTPS URL to a .zip or .tar.gz archive
 //   - A GitHub repo URL (github.com/user/repo → resolves to latest release .zip)
 //   - A GitHub release URL
+//   - A local archive (absolute path or file:// URL) — the dev loop for plugins being
+//     authored on this machine: build the zip, install it, no publishing required.
 func (inst *Installer) Install(ctx context.Context, rawURL string) (*InstallResult, error) {
-	archiveURL, err := inst.resolveURL(ctx, rawURL)
-	if err != nil {
-		return nil, fmt.Errorf("installer: resolve URL: %w", err)
-	}
-
-	data, digest, err := inst.download(ctx, archiveURL)
-	if err != nil {
-		return nil, fmt.Errorf("installer: download: %w", err)
+	var (
+		data       []byte
+		digest     string
+		archiveURL string
+	)
+	if local, ok := localArchivePath(rawURL); ok {
+		raw, err := os.ReadFile(local)
+		if err != nil {
+			return nil, fmt.Errorf("installer: read local archive: %w", err)
+		}
+		sum := sha256.Sum256(raw)
+		data, digest, archiveURL = raw, hex.EncodeToString(sum[:]), local
+	} else {
+		resolved, err := inst.resolveURL(ctx, rawURL)
+		if err != nil {
+			return nil, fmt.Errorf("installer: resolve URL: %w", err)
+		}
+		data, digest, err = inst.download(ctx, resolved)
+		if err != nil {
+			return nil, fmt.Errorf("installer: download: %w", err)
+		}
+		archiveURL = resolved
 	}
 
 	manifest, files, err := inst.extractManifest(archiveURL, data)
@@ -115,6 +131,18 @@ func (inst *Installer) Uninstall(installDir string) error {
 		return errors.New("installer: refusing to remove root cache dir")
 	}
 	return os.RemoveAll(installDir)
+}
+
+// localArchivePath reports whether rawURL names a local archive file rather than something to
+// download: an absolute filesystem path or a file:// URL.
+func localArchivePath(rawURL string) (string, bool) {
+	if strings.HasPrefix(rawURL, "file://") {
+		return strings.TrimPrefix(rawURL, "file://"), true
+	}
+	if filepath.IsAbs(rawURL) {
+		return rawURL, true
+	}
+	return "", false
 }
 
 // resolveURL turns a GitHub repo URL into a release archive URL, or passes through others.
@@ -206,8 +234,7 @@ func (inst *Installer) extractZip(data []byte) (*Manifest, map[string][]byte, er
 		if f.FileInfo().IsDir() {
 			continue
 		}
-		// Strip leading directory component (GitHub adds repo-sha prefix).
-		name := stripFirstDir(f.Name)
+		name := filepath.ToSlash(f.Name)
 		rc, err := f.Open()
 		if err != nil {
 			return nil, nil, err
@@ -241,7 +268,7 @@ func (inst *Installer) extractTarGz(data []byte) (*Manifest, map[string][]byte, 
 		if hdr.Typeflag == tar.TypeDir {
 			continue
 		}
-		name := stripFirstDir(hdr.Name)
+		name := filepath.ToSlash(hdr.Name)
 		b, err := io.ReadAll(io.LimitReader(tr, 4<<20))
 		if err != nil {
 			return nil, nil, err
@@ -252,6 +279,7 @@ func (inst *Installer) extractTarGz(data []byte) (*Manifest, map[string][]byte, 
 }
 
 func parseManifestFromFiles(files map[string][]byte) (*Manifest, map[string][]byte, error) {
+	files = normalizeArchivePaths(files)
 	raw, ok := files[ManifestFileName]
 	if !ok {
 		return nil, nil, fmt.Errorf("archive does not contain %s", ManifestFileName)
@@ -263,10 +291,29 @@ func parseManifestFromFiles(files map[string][]byte) (*Manifest, map[string][]by
 	return m, files, nil
 }
 
-func stripFirstDir(p string) string {
-	parts := strings.SplitN(filepath.ToSlash(p), "/", 2)
-	if len(parts) == 2 {
-		return parts[1]
+// normalizeArchivePaths strips the shared leading directory when every file in the archive
+// lives under a single top-level folder (GitHub zipballs wrap the repo in a name-sha dir).
+// Hand-rolled archives with the manifest at the root pass through unchanged, so both layouts
+// install correctly.
+func normalizeArchivePaths(files map[string][]byte) map[string][]byte {
+	prefix := ""
+	for name := range files {
+		parts := strings.SplitN(name, "/", 2)
+		if len(parts) < 2 {
+			return files // a root-level file exists — nothing is wrapped
+		}
+		if prefix == "" {
+			prefix = parts[0]
+		} else if parts[0] != prefix {
+			return files // multiple top-level dirs — not a wrapped archive
+		}
 	}
-	return p
+	if prefix == "" {
+		return files
+	}
+	out := make(map[string][]byte, len(files))
+	for name, b := range files {
+		out[name[len(prefix)+1:]] = b
+	}
+	return out
 }
