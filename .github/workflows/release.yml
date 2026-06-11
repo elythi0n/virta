@@ -69,9 +69,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Install NSIS
-        run: choco install nsis -y --no-progress
-      - name: Build NSIS installer
+      # Inno Setup is preinstalled on GitHub-hosted Windows runners; the packaging
+      # script adds its install dir to PATH.
+      - name: Build Inno Setup installer
         shell: bash
         run: VERSION="$GITHUB_REF_NAME" bash scripts/package-windows.sh
       - uses: actions/upload-artifact@v4

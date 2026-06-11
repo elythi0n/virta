@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Windows packaging — mirrors `make app` + `make app-nsis` for Windows CI runners, which
+# Windows packaging — mirrors `make app` + `make app-inno` for Windows CI runners, which
 # have Git Bash but no GNU make (run with `shell: bash` in the workflow, or from Git Bash
 # locally). Produces dist/VirtaSetup-<VERSION>.exe. Keep in sync with the Makefile targets.
 set -euo pipefail
@@ -14,8 +14,9 @@ LDFLAGS="-s -w \
   -X $MODULE/internal/buildinfo.Commit=$COMMIT \
   -X $MODULE/internal/buildinfo.Date=$DATE"
 
-command -v makensis >/dev/null 2>&1 || export PATH="$PATH:/c/Program Files (x86)/NSIS"
-command -v makensis >/dev/null 2>&1 || { echo "makensis not found (choco install nsis)"; exit 1; }
+# Inno Setup comes preinstalled on GitHub-hosted Windows runners but is not on PATH.
+command -v iscc >/dev/null 2>&1 || export PATH="$PATH:/c/Program Files (x86)/Inno Setup 6"
+command -v iscc >/dev/null 2>&1 || { echo "iscc not found (choco install innosetup)"; exit 1; }
 
 # Web UI, staged for both the desktop shell and virtad's go:embed.
 (cd frontends/web && npm install && npm run build)
@@ -33,5 +34,6 @@ mkdir -p frontends/desktop/build/bin dist
 CGO_ENABLED=0 go build -ldflags "$LDFLAGS" -o dist/virtad.exe ./cmd/virtad
 CGO_ENABLED=0 go build -ldflags "$LDFLAGS" -o dist/virta-tui.exe ./cmd/virta-tui
 
-makensis -DAPP_VERSION="$VERSION" packaging/virta.nsi
+# ISCC only accepts slash-prefixed options; the env var stops MSYS from rewriting /D as a path.
+MSYS2_ARG_CONV_EXCL="/D" iscc "/DAppVersion=$VERSION" packaging/virta.iss
 echo "✓ installer: dist/VirtaSetup-$VERSION.exe"

@@ -192,11 +192,11 @@ app-dmg: app
 		"dist/dmg/"
 	@echo "✓ DMG: dist/Virta-$(VERSION).dmg"
 
-## app-nsis: Windows NSIS installer. Requires NSIS makensis + running on Windows or Wine.
+## app-inno: Windows Inno Setup installer. Requires ISCC + running on Windows.
 ## On Windows runners (no make) use scripts/package-windows.sh, which mirrors this.
-app-nsis: app daemon tui
-	@command -v makensis >/dev/null 2>&1 || { echo "makensis not found (choco install nsis / apt install nsis)"; exit 1; }
-	makensis -DAPP_VERSION=$(VERSION) packaging/virta.nsi
+app-inno: app daemon tui
+	@command -v iscc >/dev/null 2>&1 || { echo "iscc not found (choco install innosetup)"; exit 1; }
+	MSYS2_ARG_CONV_EXCL="/D" iscc "/DAppVersion=$(VERSION)" packaging/virta.iss
 	@echo "✓ installer: dist/VirtaSetup-$(VERSION).exe"
 
 ## fixtures: regenerate golden fixtures by re-running normalization with -update.
