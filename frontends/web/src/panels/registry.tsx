@@ -10,9 +10,9 @@ import MentionInbox from './MentionInbox';
 import MarketsPanel from './MarketsPanel';
 import PluginsPanel from './PluginsPanel';
 import SearchPanel from './SearchPanel';
+import StatsPanel from './StatsPanel';
 import StreamPane from './StreamPane';
 import WatchPane from './WatchPane';
-import styles from './Panel.module.css';
 
 export interface PanelRenderProps {
   channels?: string[];
@@ -32,15 +32,6 @@ export interface PanelContribution {
   catalog?: boolean;
 }
 
-function Placeholder({ title }: { title: string }) {
-  return (
-    <div className={styles.placeholder}>
-      <span className={styles.label}>{title}</span>
-      <span className={styles.hint}>Coming in a future release.</span>
-    </div>
-  );
-}
-
 // The registry of built-in panels. Order here is the order in the Panels catalog.
 export const PANELS: PanelContribution[] = [
   { kind: 'feed', title: 'Chat', icon: 'chat', render: (p) => <FeedPanel channels={p.channels} panelId={p.panelId} /> },
@@ -51,7 +42,7 @@ export const PANELS: PanelContribution[] = [
   { kind: 'mods', title: 'Mod queue', icon: 'mods', render: () => <HeldQueuePanel /> },
   { kind: 'ask', title: 'Ask AI', icon: 'chat', render: () => <AskPanel /> },
   { kind: 'search', title: 'Search', icon: 'search', render: () => <SearchPanel /> },
-  { kind: 'stats', title: 'Stats', icon: 'stats', render: () => <Placeholder title="Stats" /> },
+  { kind: 'stats', title: 'Stats', icon: 'stats', render: () => <StatsPanel /> },
   { kind: 'markets', title: 'Markets', icon: 'stats', render: () => <MarketsPanel /> },
   { kind: 'obs', title: 'OBS', icon: 'stream', render: () => <OBSPanel /> },
   // Opened programmatically, not from the catalog.

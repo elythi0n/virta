@@ -8,6 +8,7 @@ export interface ChannelStats {
   uniqueChatters: number;
   windowSeconds: number;
   topEmote?: string;
+  topEmotes: { name: string; count: number }[];
 }
 
 function toChannelStats(s: StatsSnapshot): ChannelStats {
@@ -16,6 +17,7 @@ function toChannelStats(s: StatsSnapshot): ChannelStats {
     uniqueChatters: s.unique_chatters,
     windowSeconds: s.window_seconds,
     topEmote: s.top_emotes?.[0]?.name,
+    topEmotes: s.top_emotes ?? [],
   };
 }
 
