@@ -19,11 +19,12 @@ const startupTimeout = 15 * time.Second
 
 // App is the shell's lifecycle owner and the Wails service (bound methods callable from JS).
 type App struct {
-	app         *application.App
-	mainWindow  *application.WebviewWindow
-	discovery   api.Discovery
-	integration IntegrationReport
-	daemon      *daemonProcess
+	app             *application.App
+	mainWindow      *application.WebviewWindow
+	discovery       api.Discovery
+	integration     IntegrationReport
+	daemon          *daemonProcess
+	pendingDeepLink string
 }
 
 func newApp() *App { return &App{} }
@@ -72,6 +73,10 @@ func (a *App) OpenStreamWindow(platform, slug string) {
 		url = "https://www.twitch.tv/" + slug
 	case "kick":
 		url = "https://kick.com/" + slug
+	case "youtube":
+		// The /live path resolves the handle's current livestream (or the channel page when
+		// offline); YouTube has no handle-addressable embed player.
+		url = "https://www.youtube.com/@" + strings.TrimPrefix(slug, "@") + "/live"
 	default:
 		return
 	}
@@ -113,6 +118,12 @@ func (a *App) assetHandler(embeds fs.FS) http.Handler {
 			}
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(a.discovery)
+
+		case "/__deeplink":
+			url := a.pendingDeepLink
+			a.pendingDeepLink = ""
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]string{"url": url})
 
 		case "/__integration":
 			w.Header().Set("Content-Type", "application/json")

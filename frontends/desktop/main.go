@@ -5,6 +5,7 @@ package main
 import (
 	"embed"
 	"log"
+	"os"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -14,6 +15,7 @@ var assets embed.FS
 
 func main() {
 	svc := newApp()
+	svc.pendingDeepLink = parseCLIDeepLink(os.Args)
 
 	app := application.New(application.Options{
 		Name:        "Virta",

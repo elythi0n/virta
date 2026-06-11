@@ -40,3 +40,10 @@ Source: "{#Root}\dist\virta-tui.exe"; DestDir: "{app}"; Flags: ignoreversion
 [Icons]
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\virta.exe"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\virta.exe"; Tasks: desktopicon
+
+[Registry]
+; Register virta:// as a URL protocol handler so the OS opens deep links like virta://install?url=...
+Root: HKLM; Subkey: "Software\Classes\virta";                          ValueType: string; ValueName: "";             ValueData: "Virta"; Flags: uninsdeletekey
+Root: HKLM; Subkey: "Software\Classes\virta";                          ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+Root: HKLM; Subkey: "Software\Classes\virta\DefaultIcon";              ValueType: string; ValueName: "";             ValueData: "{app}\virta.exe,0"
+Root: HKLM; Subkey: "Software\Classes\virta\shell\open\command";       ValueType: string; ValueName: "";             ValueData: """{app}\virta.exe"" ""%1"""

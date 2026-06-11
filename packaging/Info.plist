@@ -20,5 +20,16 @@
 	<string>11.0</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>lol.virta.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>virta</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
