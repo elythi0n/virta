@@ -64,6 +64,9 @@
 .kick {
   border-left-color: var(--virta-plat-kick);
 }
+.youtube {
+  border-left-color: var(--virta-plat-youtube);
+}
 .x {
   border-left-color: var(--virta-plat-x);
 }
@@ -163,6 +166,11 @@
 
 .action {
   font-style: italic;
+}
+
+.decoration {
+  font-weight: 500;
+  cursor: default;
 }
 
 /* Calm-mode combo count: how many identical messages this row folds in. */

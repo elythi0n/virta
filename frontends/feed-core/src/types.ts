@@ -1,6 +1,13 @@
 import type { Segment } from './segments';
 
-export type Platform = 'twitch' | 'kick' | 'x';
+export type Platform = 'twitch' | 'kick' | 'youtube' | 'x';
+
+// Display name for a platform key — brand casing where plain capitalization gets it wrong
+// ("youtube" → "YouTube"). Accepts any string so callers can pass daemon-provided keys.
+export function platformLabel(p: string): string {
+  if (p === 'youtube') return 'YouTube';
+  return p.charAt(0).toUpperCase() + p.slice(1);
+}
 
 export type MessageType =
   | 'chat'

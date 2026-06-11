@@ -39,6 +39,12 @@ function renderSegment(seg: Segment, i: number) {
           {seg.text}
         </a>
       );
+    case 'decoration':
+      return (
+        <span key={i} className={`${styles.decoration} virta-deco-${seg.decoType}`}>
+          {seg.text}
+        </span>
+      );
   }
 }
 

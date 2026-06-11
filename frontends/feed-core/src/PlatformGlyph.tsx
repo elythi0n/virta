@@ -7,6 +7,7 @@ import type { Platform } from './types';
 const COLOR: Record<Platform, string> = {
   twitch: 'var(--virta-plat-twitch)',
   kick: 'var(--virta-plat-kick)',
+  youtube: 'var(--virta-plat-youtube)',
   x: 'var(--virta-plat-x)',
 };
 
@@ -24,6 +25,12 @@ export default function PlatformGlyph({ platform, className }: { platform: Platf
       return (
         <svg className={className} style={style} data-platform="kick" viewBox="0 0 32 32" fill="currentColor" aria-hidden>
           <path d="M3 3h7v7h3V6.5h3V3h7v7h-3.5v3.5h-3V17h3v3.5H23V24h-7v-3.5h-3V17h-3v8H3V3Z" />
+        </svg>
+      );
+    case 'youtube':
+      return (
+        <svg className={className} style={style} data-platform="youtube" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+          <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814ZM9.545 15.568V8.432L15.818 12l-6.273 3.568Z" />
         </svg>
       );
     case 'x':
