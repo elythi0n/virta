@@ -62,11 +62,14 @@ type esConn interface {
 
 // session runs one EventSub WebSocket connection: it dispatches frames until the connection
 // drops or Twitch asks us to reconnect. onWelcome fires when the session id arrives (the cue to
-// create subscriptions, within Twitch's 10 s window); notifications become platform events.
+// create subscriptions, within Twitch's 10 s window); notifications become platform events;
+// onRevoke fires when Twitch revokes a subscription (scope lost, broadcaster gone) so the
+// supervisor can re-subscribe or degrade that channel.
 type session struct {
 	conn      esConn
 	emit      func(platform.Event)
 	onWelcome func(sessionID string)
+	onRevoke  func(subID, subType, broadcasterID string)
 }
 
 // run reads frames until the connection errors (returns reconnect="") or Twitch sends a
@@ -98,8 +101,11 @@ func (s *session) run(ctx context.Context) (reconnect string, err error) {
 				return sess.ReconnectURL, nil
 			}
 		case esRevocation:
-			// A subscription was revoked (e.g. token scope lost); the supervisor re-subscribes
-			// or surfaces it. Nothing to emit here.
+			if s.onRevoke != nil {
+				if sub, e := revocationFromPayload(env.Payload); e == nil {
+					s.onRevoke(sub.ID, sub.Type, sub.Condition.BroadcasterUserID)
+				}
+			}
 		}
 	}
 }

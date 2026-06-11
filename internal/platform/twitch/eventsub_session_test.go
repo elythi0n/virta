@@ -3,6 +3,7 @@ package twitch
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 
 	"github.com/elythi0n/virta/internal/platform"
@@ -39,9 +40,11 @@ func TestSubBudget_FillsConnectionsThenCaps(t *testing.T) {
 	}
 }
 
-// esFakeConn feeds scripted frames to the session and records writes.
+// esFakeConn feeds scripted frames to the session and records writes. Close is idempotent —
+// the supervisor closes conns it was handed, and tests close them too to simulate drops.
 type esFakeConn struct {
-	frames chan []byte
+	frames    chan []byte
+	closeOnce sync.Once
 }
 
 func newESConn() *esFakeConn { return &esFakeConn{frames: make(chan []byte, 16)} }
@@ -57,7 +60,10 @@ func (c *esFakeConn) Read(ctx context.Context) ([]byte, error) {
 	}
 }
 func (c *esFakeConn) Write(context.Context, []byte) error { return nil }
-func (c *esFakeConn) Close() error                        { close(c.frames); return nil }
+func (c *esFakeConn) Close() error {
+	c.closeOnce.Do(func() { close(c.frames) })
+	return nil
+}
 
 func TestSession_WelcomeNotificationReconnect(t *testing.T) {
 	conn := newESConn()

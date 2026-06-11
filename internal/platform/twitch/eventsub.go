@@ -80,6 +80,25 @@ func sessionFromPayload(payload json.RawMessage) (esSession, error) {
 	return p.Session, err
 }
 
+// esRevokedSub is the subscription object inside a revocation payload — enough to identify
+// which channel/topic Twitch turned off.
+type esRevokedSub struct {
+	ID        string `json:"id"`
+	Type      string `json:"type"`
+	Status    string `json:"status"`
+	Condition struct {
+		BroadcasterUserID string `json:"broadcaster_user_id"`
+	} `json:"condition"`
+}
+
+func revocationFromPayload(payload json.RawMessage) (esRevokedSub, error) {
+	var p struct {
+		Subscription esRevokedSub `json:"subscription"`
+	}
+	err := json.Unmarshal(payload, &p)
+	return p.Subscription, err
+}
+
 // eventFromNotification maps a notification's event payload to a platform Event by subscription
 // type. sentAt is the frame's timestamp, applied to chat messages. Returns ok=false for types we
 // don't surface.

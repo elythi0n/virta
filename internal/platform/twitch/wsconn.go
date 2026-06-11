@@ -72,3 +72,37 @@ func decodeFrame(data []byte) []string {
 }
 
 func (w *wsTransport) Close() error { return w.conn.CloseNow() }
+
+// esWSConn carries EventSub's JSON frames over a WebSocket — one frame, one message; no line
+// splitting like IRC.
+type esWSConn struct {
+	conn    *websocket.Conn
+	writeMu sync.Mutex
+}
+
+// DialEventSub opens an EventSub WebSocket. It is the production ESDialFunc, passed to Options
+// by the daemon wiring; tests use scripted fakes instead.
+func DialEventSub(ctx context.Context, url string) (esConn, error) {
+	conn, resp, err := websocket.Dial(ctx, url, nil)
+	if resp != nil && resp.Body != nil {
+		_ = resp.Body.Close()
+	}
+	if err != nil {
+		return nil, err
+	}
+	conn.SetReadLimit(1 << 20)
+	return &esWSConn{conn: conn}, nil
+}
+
+func (w *esWSConn) Read(ctx context.Context) ([]byte, error) {
+	_, data, err := w.conn.Read(ctx)
+	return data, err
+}
+
+func (w *esWSConn) Write(ctx context.Context, b []byte) error {
+	w.writeMu.Lock()
+	defer w.writeMu.Unlock()
+	return w.conn.Write(ctx, websocket.MessageText, b)
+}
+
+func (w *esWSConn) Close() error { return w.conn.CloseNow() }

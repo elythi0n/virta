@@ -40,6 +40,7 @@ type HelixClient struct {
 	chatModURL      string
 	chatSettingsURL string
 	automodURL      string
+	eventSubURL     string
 }
 
 // NewHelixClient builds a Helix client reading its app client id from clientID on each call.
@@ -56,6 +57,7 @@ func NewHelixClient(clientID func() string, hc *http.Client) *HelixClient {
 		chatModURL:      helixChatModURL,
 		chatSettingsURL: helixChatSettingsURL,
 		automodURL:      helixAutomodURL,
+		eventSubURL:     helixEventSubURL,
 	}
 }
 

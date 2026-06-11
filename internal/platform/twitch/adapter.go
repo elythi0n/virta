@@ -57,24 +57,34 @@ type Options struct {
 	ChannelsPerConn int           // max channels per connection before a new shard opens
 	BackoffBase     time.Duration // first reconnect delay
 	BackoffMax      time.Duration // reconnect delay ceiling
+	// ESDial opens EventSub WebSockets. nil disables the authenticated EventSub read path
+	// entirely (reads stay on IRC even when signed in) — which also keeps offline tests that
+	// call Authenticate from ever attempting a network dial.
+	ESDial ESDialFunc
 }
 
-// Adapter is an anonymous, read-only Twitch chat adapter. It distributes joined channels
-// across one or more self-healing connection shards.
+// Adapter is a Twitch chat adapter. Anonymous it reads over IRC, distributing joined channels
+// across one or more self-healing connection shards. Authenticated (with ESDial configured) it
+// migrates reads to EventSub per channel — richer events plus the AutoMod held queue — falling
+// back to IRC whenever a channel's EventSub subscriptions aren't live.
 type Adapter struct {
 	nick    string
 	dial    DialFunc
+	esDial  ESDialFunc
 	clk     clock.Clock
 	backoff backoff
 	perConn int
 
 	events chan platform.Event
+	recent recentIDs // platform-message-id dedupe across the IRC/EventSub overlap
 
 	mu       sync.Mutex
 	shards   []*shard
 	shardSeq uint64                // distinct per-shard jitter seed source
 	health   platform.HealthStatus // floor for initial-connect failures (no shard retained)
 	closed   bool
+	joined   map[string]bool // desired channel set, independent of which transport carries each
+	es       *esSupervisor   // nil until Authenticate starts the EventSub read path
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -166,17 +176,90 @@ func isAllDigits(s string) bool {
 }
 
 // Authenticate switches the adapter to authenticated mode for senderID, enabling Send. tokens and
-// helix are required; resolve turns a channel login into its broadcaster id. Idempotent; call
-// Deauthenticate to revert to anonymous read-only.
+// helix are required; resolve turns a channel login into its broadcaster id. When the adapter was
+// built with ESDial it also starts the EventSub supervisor, which migrates reads channel by
+// channel from IRC to EventSub (and back on failure). Idempotent; call Deauthenticate to revert
+// to anonymous read-only.
 func (a *Adapter) Authenticate(senderID string, tokens TokenFunc, helix *HelixClient, resolve BroadcasterResolver) {
 	if tokens == nil || helix == nil {
 		return
 	}
-	a.auth.Store(&twitchAuth{senderID: senderID, tokens: tokens, helix: helix, resolve: resolve, bid: map[string]string{}})
+	au := &twitchAuth{senderID: senderID, tokens: tokens, helix: helix, resolve: resolve, bid: map[string]string{}}
+	a.auth.Store(au)
+
+	if a.esDial == nil {
+		return
+	}
+	a.mu.Lock()
+	if a.closed || a.es != nil {
+		a.mu.Unlock()
+		return
+	}
+	es := newESSupervisor(a.ctx, a.esDial, helix, tokens, senderID,
+		func(ctx context.Context, login string) (string, error) { return au.broadcasterID(ctx, login) },
+		a.emit, a.onESState, a.clk, a.backoff)
+	a.es = es
+	slugs := make([]string, 0, len(a.joined))
+	for slug := range a.joined {
+		slugs = append(slugs, slug)
+	}
+	a.mu.Unlock()
+	for _, slug := range slugs {
+		es.join(slug)
+	}
 }
 
 // Deauthenticate drops the authenticated send path (e.g. on sign-out), reverting to read-only.
-func (a *Adapter) Deauthenticate() { a.auth.Store(nil) }
+// Channels reading over EventSub move back to IRC first, so the feed survives the sign-out.
+func (a *Adapter) Deauthenticate() {
+	a.mu.Lock()
+	es := a.es
+	a.es = nil
+	var rejoin []string
+	if es != nil {
+		for slug := range a.joined {
+			if es.channelUp(slug) {
+				rejoin = append(rejoin, slug)
+			}
+		}
+	}
+	a.mu.Unlock()
+	if es != nil {
+		es.close()
+	}
+	for _, slug := range rejoin {
+		_ = a.ircJoin(a.ctx, slug)
+	}
+	a.auth.Store(nil)
+}
+
+// ResolveID resolves a channel login to its numeric broadcaster id using the authenticated
+// Helix resolver. Returns an error if the adapter is not authenticated or resolution fails.
+// Used by the emote stage to populate ChannelRef.ID for third-party emote lookups.
+func (a *Adapter) ResolveID(ctx context.Context, slug string) (string, error) {
+	au := a.auth.Load()
+	if au == nil {
+		return "", fmt.Errorf("twitch: not authenticated")
+	}
+	return au.broadcasterID(ctx, strings.ToLower(slug))
+}
+
+// onESState is the supervisor's migration hook: a channel whose EventSub reads came up leaves
+// IRC; one whose EventSub reads went down rejoins IRC. Either direction is a transport swap —
+// the channel stays joined throughout.
+func (a *Adapter) onESState(slug string, up bool) {
+	a.mu.Lock()
+	stillJoined := a.joined[slug]
+	a.mu.Unlock()
+	if !stillJoined {
+		return
+	}
+	if up {
+		a.ircLeave(slug)
+	} else {
+		_ = a.ircJoin(a.ctx, slug)
+	}
+}
 
 // New creates an anonymous Twitch adapter. It does not connect until the first Join.
 func New(opts Options) *Adapter {
@@ -207,11 +290,13 @@ func New(opts Options) *Adapter {
 	return &Adapter{
 		nick:    nick,
 		dial:    dial,
+		esDial:  opts.ESDial,
 		clk:     clk,
 		backoff: bo,
 		perConn: perConn,
 		events:  make(chan platform.Event, 256),
 		health:  platform.HealthStatus{State: platform.HealthOK},
+		joined:  map[string]bool{},
 		ctx:     ctx,
 		cancel:  cancel,
 	}
@@ -231,10 +316,31 @@ func (a *Adapter) Capabilities() platform.Capabilities {
 	return c
 }
 
-// Join routes the channel to a shard with spare capacity, opening a new connection when all
-// existing shards are full. Anonymous mode is the only mode this adapter supports today.
+// Join registers the channel and connects its reads: IRC immediately (so the feed flows with no
+// wait), plus an EventSub subscription when authenticated — the supervisor's up-callback then
+// retires the channel's IRC membership.
 func (a *Adapter) Join(ctx context.Context, ch platform.ChannelRef, _ platform.ConnMode) error {
 	slug := strings.ToLower(ch.Slug)
+	a.mu.Lock()
+	if a.closed {
+		a.mu.Unlock()
+		return fmt.Errorf("twitch: adapter closed")
+	}
+	a.joined[slug] = true
+	es := a.es
+	a.mu.Unlock()
+	if err := a.ircJoin(ctx, slug); err != nil {
+		return err
+	}
+	if es != nil {
+		es.join(slug)
+	}
+	return nil
+}
+
+// ircJoin routes the channel to a shard with spare capacity, opening a new connection when all
+// existing shards are full.
+func (a *Adapter) ircJoin(ctx context.Context, slug string) error {
 	a.mu.Lock()
 	if a.closed {
 		a.mu.Unlock()
@@ -271,9 +377,22 @@ func (a *Adapter) Join(ctx context.Context, ch platform.ChannelRef, _ platform.C
 	return sh.join(ctx, slug)
 }
 
-// Leave parts the channel from whichever shard holds it.
+// Leave unregisters the channel from both transports.
 func (a *Adapter) Leave(ch platform.ChannelRef) error {
 	slug := strings.ToLower(ch.Slug)
+	a.mu.Lock()
+	delete(a.joined, slug)
+	es := a.es
+	a.mu.Unlock()
+	a.ircLeave(slug)
+	if es != nil {
+		es.leave(slug)
+	}
+	return nil
+}
+
+// ircLeave parts the channel from whichever shard holds it, if any.
+func (a *Adapter) ircLeave(slug string) {
 	a.mu.Lock()
 	var sh *shard
 	for _, candidate := range a.shards {
@@ -286,7 +405,6 @@ func (a *Adapter) Leave(ch platform.ChannelRef) error {
 	if sh != nil {
 		sh.leave(slug)
 	}
-	return nil
 }
 
 // Send posts a message to the channel via Helix when authenticated; it is unsupported on an
@@ -413,11 +531,19 @@ func (a *Adapter) Events() <-chan platform.Event { return a.events }
 func (a *Adapter) Health() platform.HealthStatus {
 	a.mu.Lock()
 	shards := append([]*shard(nil), a.shards...)
+	es := a.es
 	worst := a.health
 	a.mu.Unlock()
 	for _, sh := range shards {
 		if h := sh.healthStatus(); healthRank(h.State) > healthRank(worst.State) {
 			worst = h
+		}
+	}
+	// The EventSub side never worsens past degraded here: IRC fallback keeps reads flowing, so
+	// a down supervisor is a capability loss (held queue, richer events), not an outage.
+	if es != nil {
+		if h := es.healthStatus(); h.State != platform.HealthOK && healthRank(platform.HealthDegraded) > healthRank(worst.State) {
+			worst = platform.HealthStatus{State: platform.HealthDegraded, Reason: h.Reason, Detail: h.Detail}
 		}
 	}
 	return worst
@@ -445,9 +571,14 @@ func (a *Adapter) Close() error {
 	}
 	a.closed = true
 	shards := append([]*shard(nil), a.shards...)
+	es := a.es
+	a.es = nil
 	a.mu.Unlock()
 
 	a.cancel()
+	if es != nil {
+		es.close()
+	}
 	for _, sh := range shards {
 		sh.close()
 	}
@@ -456,12 +587,50 @@ func (a *Adapter) Close() error {
 }
 
 // emit sends an event unless the adapter is shutting down (avoids sending on a closed
-// channel during Close).
+// channel during Close). Chat messages are deduped by platform message id: during a per-channel
+// IRC→EventSub migration both transports briefly carry the same traffic, and the feed must not
+// show it twice.
 func (a *Adapter) emit(ev platform.Event) {
+	if me, ok := ev.(platform.MessageEvent); ok && me.Message.PlatformMessageID != "" {
+		if a.recent.seen(me.Message.PlatformMessageID) {
+			return
+		}
+	}
 	select {
 	case <-a.ctx.Done():
 	case a.events <- ev:
 	}
+}
+
+// recentIDs is a fixed-size set of recently emitted platform message ids — enough capacity to
+// cover the seconds-long transport overlap window without growing unbounded.
+type recentIDs struct {
+	mu    sync.Mutex
+	set   map[string]struct{}
+	order []string
+	next  int
+}
+
+const recentIDCap = 4096
+
+// seen records id and reports whether it was already present.
+func (r *recentIDs) seen(id string) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.set == nil {
+		r.set = make(map[string]struct{}, recentIDCap)
+		r.order = make([]string, recentIDCap)
+	}
+	if _, dup := r.set[id]; dup {
+		return true
+	}
+	if old := r.order[r.next]; old != "" {
+		delete(r.set, old)
+	}
+	r.order[r.next] = id
+	r.next = (r.next + 1) % recentIDCap
+	r.set[id] = struct{}{}
+	return false
 }
 
 var _ platform.Adapter = (*Adapter)(nil)
