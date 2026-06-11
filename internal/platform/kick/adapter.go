@@ -127,6 +127,16 @@ func (a *Adapter) Authenticate(tokens TokenFunc, api *APIClient, resolve Broadca
 	a.auth.Store(&kickAuth{tokens: tokens, api: api, resolve: resolve, bid: map[string]string{}})
 }
 
+// ResolveID resolves a channel slug to its numeric broadcaster id using the authenticated
+// resolver. Returns an error if the adapter is not authenticated or resolution fails.
+func (a *Adapter) ResolveID(ctx context.Context, slug string) (string, error) {
+	au := a.auth.Load()
+	if au == nil {
+		return "", fmt.Errorf("kick: not authenticated")
+	}
+	return au.broadcasterID(ctx, slug)
+}
+
 // Deauthenticate drops the authenticated path (e.g. on sign-out), reverting to read-only.
 func (a *Adapter) Deauthenticate() { a.auth.Store(nil) }
 
