@@ -62,7 +62,9 @@
 .theme-frosted-light.textShadow,
 .theme-solid-light.textShadow { --ts: 0 1px 2px rgba(255,255,255,.8); }
 
-/* Feed container: transparent bg so theme shows through */
+/* Feed container: transparent bg so theme shows through. The feed wrapper paints
+   an opaque bg-0 by default, which would block OBS transparency entirely. */
+.root :global([class*='feed']),
 .root :global([class*='viewport']) { background: transparent !important; }
 .theme-transparent :global([class*='row']),
 .theme-transparent :global([class*='event']) {

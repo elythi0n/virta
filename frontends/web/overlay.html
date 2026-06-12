@@ -7,6 +7,9 @@
     <style>
       /* Transparent root so OBS "Allow transparency" lets the stream show through. */
       html, body { margin: 0; background: transparent; overflow: hidden; }
+      /* No visible scrollbars anywhere in the overlay; inner views still scroll programmatically. */
+      * { scrollbar-width: none; }
+      ::-webkit-scrollbar { display: none; width: 0; height: 0; }
     </style>
   </head>
   <body>
