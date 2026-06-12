@@ -1,6 +1,7 @@
 # Virta — build pipeline. Everything is `make`; "CI" = `make ci` run locally.
 # No step requires a network or a remote.
 
+SHELL       := /bin/bash
 MODULE      := github.com/elythi0n/virta
 VERSION     ?= dev
 COMMIT      := $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
@@ -13,8 +14,13 @@ LDFLAGS     := -s -w \
 # Cross-compile matrix (the 6 shipped OS/arch targets).
 PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64
 
-.PHONY: all ci build run lint fmt fmt-check vet test test-race cover cross app daemon tui web serve fixtures \
-        tokens tokens-check apigen apigen-check test-live-twitch test-live-kick test-live-x test-live-llm soak docker clean tidy
+# Dev mode: daemon addr and shared token. Override on the command line if needed.
+DEV_ADDR  ?= 127.0.0.1:8799
+DEV_TOKEN ?= dev
+
+.PHONY: all ci build run dev db lint fmt fmt-check vet test test-race cover cross app daemon tui web serve fixtures \
+        tokens tokens-check apigen apigen-check test-live-twitch test-live-kick test-live-x test-live-llm soak docker clean tidy \
+        build-plugins
 
 all: ci
 
@@ -50,6 +56,26 @@ build:
 run:
 	go run -ldflags '$(LDFLAGS)' ./cmd/virtad
 
+## dev: daemon + Vite hot-reload in one terminal. Loads .env for VIRTA_TOKEN, VIRTA_LOGGING_ENABLED, etc.
+##      Run `make db` first to start Postgres. Open http://localhost:5173.
+##      Override: DEV_ADDR=host:port make dev
+dev:
+	@echo "→ daemon  http://$(DEV_ADDR)"
+	@echo "→ web UI  http://localhost:5173"
+	@set -a; [ -f .env ] && . ./.env; set +a; \
+		VIRTA_DB_DSN="postgres://virta:$${POSTGRES_PASSWORD}@localhost:5433/virta?sslmode=disable"; \
+		VIRTA_ADDR=$(DEV_ADDR) go run -ldflags '$(LDFLAGS)' ./cmd/virtad & \
+		GO_PID=$$!; \
+		trap "kill $$GO_PID 2>/dev/null" EXIT INT TERM; \
+		TOKEN=$${VIRTA_TOKEN:-$(DEV_TOKEN)}; \
+		cd frontends/web && npm install && \
+			VIRTA_DAEMON=http://$(DEV_ADDR) VIRTA_TOKEN=$$TOKEN npm run dev; \
+		wait $$GO_PID
+
+## db: start the Postgres container for local dev (exposes :5432 on localhost).
+db:
+	docker compose -f docker-compose.yml -f docker-compose.dev.yml up db -d
+
 ## fmt: format code.
 fmt:
 	gofmt -w .
@@ -59,21 +85,25 @@ fmt:
 fmt-check:
 	@out=$$(gofmt -l .); if [ -n "$$out" ]; then echo "unformatted files:"; echo "$$out"; exit 1; fi
 
-## vet: go vet.
+## vet: go vet (cmd/virta-overlay excluded — requires CGO/pkg-config not available on all hosts).
 vet:
-	go vet ./...
+	go vet $(shell go list ./... | grep -v 'cmd/virta-overlay')
 
 ## lint: golangci-lint (incl. depguard, forbidigo).
+## cmd/virta-overlay is excluded — it requires CGO/pkg-config not available on all hosts.
 lint:
-	golangci-lint run
+	$(shell go env GOPATH)/bin/golangci-lint run \
+		./internal/... ./cmd/virtad/... ./cmd/virta-tui/... \
+		./cmd/apigen/... ./cmd/tokengen/... ./cmd/healthcheck/... \
+		./examples/...
 
 ## test: unit/contract/integration tests (offline only — no network).
 test:
-	go test ./...
+	go test $(shell go list ./... | grep -v 'cmd/virta-overlay')
 
 ## test-race: tests with the race detector.
 test-race:
-	go test -race ./...
+	go test -race $(shell go list ./... | grep -v 'cmd/virta-overlay')
 
 ## cover: enforce coverage floors (core >=90% / overall >=80%).
 cover:
@@ -210,6 +240,17 @@ docker:
 ## tidy: go mod tidy.
 tidy:
 	go mod tidy
+
+## build-plugins: build all first-party plugin zips into plugins/*/dist/ and copy to dist/.
+## Install locally with: POST /v1/plugins/install {"url": "/absolute/path/to/plugins/<name>"}
+build-plugins:
+	@mkdir -p dist
+	@for p in alerts leaderboard polls vod-replay; do \
+		echo "  plugin $$p"; \
+		bash plugins/$$p/build.sh; \
+		cp plugins/$$p/dist/$$p.zip dist/; \
+	done
+	@echo "✓ plugins built"
 
 ## clean: remove build/test artifacts.
 clean:

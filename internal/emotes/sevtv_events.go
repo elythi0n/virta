@@ -6,12 +6,13 @@
 //
 // Protocol (v3): each client → server message is JSON {op, d}. After connecting, subscribe with
 // op 35 per channel. The server sends op 0 dispatches when an emote set changes. Opcodes:
-//   0  Dispatch (server → client): an emote set changed; refresh the affected channels.
-//   1  Hello    (server → client): session info; read heartbeat_interval but don't send heartbeats
-//              (the server initiates them with op 2).
-//   4  Reconnect (server → client): server wants us to redial (e.g. rolling restart).
-//  35  Subscribe (client → server): start listening for a channel's emote-set changes.
-//  36  Unsubscribe (client → server): stop listening.
+//
+//	 0  Dispatch (server → client): an emote set changed; refresh the affected channels.
+//	 1  Hello    (server → client): session info; read heartbeat_interval but don't send heartbeats
+//	            (the server initiates them with op 2).
+//	 4  Reconnect (server → client): server wants us to redial (e.g. rolling restart).
+//	35  Subscribe (client → server): start listening for a channel's emote-set changes.
+//	36  Unsubscribe (client → server): stop listening.
 package emotes
 
 import (
@@ -54,7 +55,7 @@ type SevenTVEvents struct {
 
 	mu       sync.Mutex
 	channels map[string]platform.ChannelRef // Key(ch) → ref (ID must be set at Subscribe time)
-	conn     *websocket.Conn               // nil when disconnected
+	conn     *websocket.Conn                // nil when disconnected
 }
 
 // NewSevenTVEvents builds the subscriber. Call Start() to begin the connection loop.

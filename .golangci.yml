@@ -107,6 +107,10 @@ linters:
       - path: 'internal/llm/'
         linters:
           - forbidigo
+      # Wordlist loader uses real time for disk cache TTL (file mod-time check).
+      - path: 'internal/filter/wordlist/'
+        linters:
+          - forbidigo
       # Streams resolver uses real time for thumbnail cache TTL.
       - path: 'internal/streams/'
         linters:

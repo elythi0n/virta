@@ -301,6 +301,26 @@ func TestAdapter_JoinIsIdempotent(t *testing.T) {
 	}
 }
 
+func TestAdapter_Health(t *testing.T) {
+	f := newFakeYouTube()
+	a := newTestAdapter(t, f)
+	h := a.Health()
+	if h.State != platform.HealthOK {
+		t.Errorf("initial health = %+v, want OK", h)
+	}
+}
+
+func TestResolveError(t *testing.T) {
+	cause := errors.New("network error")
+	re := &ResolveError{Reason: platform.ReasonChannelNotFound, Slug: "testchan", err: cause}
+	if re.Error() == "" {
+		t.Error("Error() returned empty string")
+	}
+	if re.Unwrap() != cause {
+		t.Error("Unwrap did not return the wrapped error")
+	}
+}
+
 func TestAdapter_CloseStopsWorkersAndClosesEvents(t *testing.T) {
 	f := newFakeYouTube()
 	f.set(func(f *fakeYouTube) {

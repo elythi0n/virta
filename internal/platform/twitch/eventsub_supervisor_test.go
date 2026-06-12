@@ -97,7 +97,7 @@ func newESHelixServer() *esHelixServer {
 			id := fmt.Sprintf("sub-%d", s.nextID)
 			s.creates = append(s.creates, esSubRequest{Type: body.Type, Version: body.Version, Condition: body.Condition, SessionID: body.Transport.SessionID})
 			w.WriteHeader(http.StatusAccepted)
-			fmt.Fprintf(w, `{"data":[{"id":%q,"status":"enabled"}],"total":1}`, id)
+			_, _ = fmt.Fprintf(w, `{"data":[{"id":%q,"status":"enabled"}],"total":1}`, id)
 		case http.MethodDelete:
 			s.mu.Lock()
 			s.deletes = append(s.deletes, r.URL.Query().Get("id"))

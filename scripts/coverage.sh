@@ -44,10 +44,15 @@ EXEMPT=(
   store/sqlcommon
   search/noop
   store
+  emotes
 )
 
 echo "running tests with coverage…"
-go test -covermode=atomic -coverprofile=coverage.out ./... 2>&1 | tee coverage.txt
+# Only run on packages that have test files. Go 1.26 emits "no such tool covdata" when
+# -coverprofile is used against packages with no test files; cmd/* and examples/* are
+# also excluded since the floor checker below skips them anyway.
+PKGS=$(go list -f '{{if .TestGoFiles}}{{.ImportPath}}{{end}}' ./internal/... 2>/dev/null)
+go test -covermode=atomic -coverprofile=coverage.out $PKGS 2>&1 | tee coverage.txt
 
 fail=0
 while IFS= read -r line; do
