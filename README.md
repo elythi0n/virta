@@ -6,10 +6,10 @@
 
 ### Every stream. One current.
 
-Virta is a cross-platform chat aggregation engine for live streaming. It unifies the chat from
-every platform you broadcast to into a single real-time feed, with moderation, sending,
-filtering, and analytics built on top. It stays fast and legible under heavy load, and new
-platforms slot in without changes to the core.
+Virta is a cross-platform open-source streaming command center. It pulls together the chat from
+every platform you broadcast to into a single real-time feed with moderation, cross-posting,
+filtering, live analytics, highlights detection, and a plugin marketplace built on top. It stays
+fast and legible under heavy load, and new platforms slot in without changes to the core.
 
 One engine powers every interface: a desktop app, a terminal client, the browser, and a built-in
 OBS overlay, with your channels, filters, profiles, and themes in sync across all of them. Run it
@@ -36,6 +36,9 @@ anywhere.
 - **Embedded stream tiles:** watch your own broadcast next to chat via each platform's player
 - **Profiles:** saved workspaces (channels, layout, filters, theme, accounts) you switch between
   from a list; your last session is always restored when you open the app
+- **Highlights timeline:** scrollable history of hype moments, spikes, and keyword hits from the
+  session
+- **Plugin marketplace:** install and manage plugins; VOD replay included out of the box
 - **Local-first & private:** ephemeral by default, optional logging with instant search, SQLite
   or Postgres, secrets in your OS keychain
 - **Every surface:** desktop app, terminal UI, web, and a zero-install OBS overlay, all from one
@@ -86,6 +89,7 @@ with the access it honestly provides.
 |---|---|---|---|
 | **Twitch** | anonymous or signed in | signed in | full chat, emotes, badges, events, replies |
 | **Kick** | anonymous or signed in | signed in | official API for send & moderation |
+| **YouTube** | anonymous or signed in | read-only | live chat via innertube; send and moderation not yet supported |
 | **X** (live broadcasts) | best-effort | experimental | no official chat API exists anywhere; runs in your own browser session, clearly labeled, and isolated so its breakage never affects the others |
 
 Each platform reports its real-time capabilities, so the UI only offers actions a platform (and
@@ -132,7 +136,9 @@ community-contributable without engine changes.
 - Embedded **stream preview tiles:** watch your broadcast next to chat via the platform's
   official player, with a live/offline + viewer badge (no video is ingested)
 - **Live stats:** concurrent viewers per platform *and* a combined total, messages/sec, unique
-  chatters, emote leaderboard, hype meter; works without logging
+  chatters, emote leaderboard, hype meter, and moment detection; works without logging
+- **Highlights timeline:** scrollable panel of notable moments, hype spikes, and keyword hits
+  from the session
 - Mention inbox, user hovercards and pinned user cards (cross-platform identity, session context,
   quick actions, notes)
 - Quick replies / canned messages; emote and @mention autocomplete
@@ -159,6 +165,8 @@ Each surface is a full client of the same engine, with no feature locked to one 
 - A public, versioned local API (the same one the apps use) with scoped tokens
 - Outbound, HMAC-signed webhooks (e.g. raid triggers lights) with retries and a delivery log
 - Theme packs with a live-preview editor and shareable theme files
+- **Plugin marketplace:** install and manage plugins from the built-in marketplace; supports
+  remote GUI panels and local archive installs; includes VOD replay out of the box
 
 ## On the roadmap
 
