@@ -80,20 +80,20 @@ services:
   # Ollama — optional. Runs local AI (Ask pane) without an external API key.
   # Set OLLAMA_URL=http://ollama:11434 in .env (or in Settings → Intelligence) to use it.
   # GPU passthrough: add `deploy: resources: reservations: devices:` (see Ollama Docker docs).
-  ollama:
-    image: ollama/ollama:latest
-    restart: unless-stopped
-    volumes:
-      - virta-ollama:/root/.ollama
-    healthcheck:
-      test:     ["CMD-SHELL", "ollama list || exit 1"]
-      interval: 10s
-      timeout:  5s
-      retries:  5
-      start_period: 30s
+  #ollama:
+  #  image: ollama/ollama:latest
+  #  restart: unless-stopped
+  #  volumes:
+  #    - virta-ollama:/root/.ollama
+  #  healthcheck:
+  #    test:     ["CMD-SHELL", "ollama list || exit 1"]
+  #    interval: 10s
+  #    timeout:  5s
+  #    retries:  5
+  #    start_period: 30s
 
 volumes:
   virta-data:
   virta-db:
   # virta-search:
-  virta-ollama:
+  #virta-ollama:
