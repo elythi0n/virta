@@ -239,6 +239,7 @@
   flex-wrap: wrap;
 }
 .installBar > :first-child { flex: 1; min-width: 0; }
+.hidden { display: none; }
 .installErr {
   width: 100%;
   margin: 0;

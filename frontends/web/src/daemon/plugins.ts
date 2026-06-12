@@ -1,4 +1,5 @@
 import { request } from './http';
+import { discover } from './discovery';
 
 export interface PluginPanelContrib {
   kind: string;
@@ -39,6 +40,24 @@ export function installPlugin(url: string): Promise<PluginInfo> {
     method: 'POST',
     body: JSON.stringify({ url }),
   });
+}
+
+export async function uploadPlugin(file: File): Promise<PluginInfo> {
+  const d = await discover();
+  if (!d) throw new Error('daemon not reachable');
+  const form = new FormData();
+  form.append('file', file);
+  const base = d.addr ? `http://${d.addr}` : '';
+  const res = await fetch(`${base}/v1/plugins/upload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${d.token}` },
+    body: form,
+  });
+  if (!res.ok) {
+    const detail = (await res.text().catch(() => '')).trim();
+    throw new Error(detail || `upload failed: ${res.status}`);
+  }
+  return res.json() as Promise<PluginInfo>;
 }
 
 export function uninstallPlugin(id: string): Promise<void> {

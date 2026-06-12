@@ -49,8 +49,8 @@ type InstallResult struct {
 //   - A direct HTTPS URL to a .zip or .tar.gz archive
 //   - A GitHub repo URL (github.com/user/repo → resolves to latest release .zip)
 //   - A GitHub release URL
-//   - A local archive (absolute path or file:// URL) — the dev loop for plugins being
-//     authored on this machine: build the zip, install it, no publishing required.
+//   - A local archive (absolute path or file:// URL)
+//   - A local directory containing virta-plugin.json (dev loop: no build step required)
 func (inst *Installer) Install(ctx context.Context, rawURL string) (*InstallResult, error) {
 	var (
 		data       []byte
@@ -58,6 +58,9 @@ func (inst *Installer) Install(ctx context.Context, rawURL string) (*InstallResu
 		archiveURL string
 	)
 	if local, ok := localArchivePath(rawURL); ok {
+		if fi, err := os.Stat(local); err == nil && fi.IsDir() {
+			return inst.installFromDir(local)
+		}
 		raw, err := os.ReadFile(local)
 		if err != nil {
 			return nil, fmt.Errorf("installer: read local archive: %w", err)
@@ -85,21 +88,63 @@ func (inst *Installer) Install(ctx context.Context, rawURL string) (*InstallResu
 		return nil, fmt.Errorf("installer: manifest invalid: %w", err)
 	}
 
-	// Reject built-in-only ID collisions.
 	if manifest.BuiltIn {
 		return nil, errors.New("installer: remote plugins may not declare built_in")
 	}
 
-	// Write to cache directory, keyed by plugin id + digest prefix.
+	return inst.writeToCache(manifest, files, digest)
+}
+
+// installFromDir installs a plugin directly from an unpacked source directory.
+// The directory must contain virta-plugin.json at its root; no build step required.
+func (inst *Installer) installFromDir(dir string) (*InstallResult, error) {
+	files := map[string][]byte{}
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return err
+		}
+		rel, _ := filepath.Rel(dir, path)
+		b, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		files[filepath.ToSlash(rel)] = b
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("installer: walk dir: %w", err)
+	}
+
+	raw, ok := files[ManifestFileName]
+	if !ok {
+		return nil, fmt.Errorf("installer: directory does not contain %s", ManifestFileName)
+	}
+	manifest, err := ParseManifest(raw)
+	if err != nil {
+		return nil, fmt.Errorf("installer: manifest: %w", err)
+	}
+	if err := manifest.Validate(); err != nil {
+		return nil, fmt.Errorf("installer: manifest invalid: %w", err)
+	}
+	if manifest.BuiltIn {
+		return nil, errors.New("installer: remote plugins may not declare built_in")
+	}
+
+	sum := sha256.Sum256(raw)
+	digest := hex.EncodeToString(sum[:])
+
+	return inst.writeToCache(manifest, files, digest)
+}
+
+// writeToCache writes plugin files into the cache directory keyed by plugin id + digest prefix.
+func (inst *Installer) writeToCache(manifest *Manifest, files map[string][]byte, digest string) (*InstallResult, error) {
 	installDir := filepath.Join(inst.cacheDir, manifest.ID+"@"+digest[:12])
 	if err := os.MkdirAll(installDir, 0o700); err != nil {
 		return nil, fmt.Errorf("installer: create dir: %w", err)
 	}
-	// canonInstall is the canonical form of installDir with a guaranteed trailing sep,
-	// so filepath.Abs + HasPrefix is immune to the "/home/user/plugins-evil" edge case.
+	// canonInstall with a trailing sep makes HasPrefix immune to the "/home/user/plugins-evil" edge case.
 	canonInstall := filepath.Clean(installDir) + string(os.PathSeparator)
 	for name, content := range files {
-		// Resolve the target path absolutely so symlinks and ".." cannot escape.
 		rel := filepath.Clean(name)
 		if rel == "." || strings.HasPrefix(rel, "..") {
 			continue // reject relative escapes
@@ -117,7 +162,6 @@ func (inst *Installer) Install(ctx context.Context, rawURL string) (*InstallResu
 			return nil, err
 		}
 	}
-
 	return &InstallResult{
 		Manifest:   manifest,
 		InstallDir: installDir,

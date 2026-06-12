@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Badge, Button, Dialog, Input, Text } from '@virta/ui-kit';
 import type { IconName } from '../Icon';
 import Icon from '../Icon';
-import { listPlugins, getPlugin, enablePlugin, disablePlugin, installPlugin, uninstallPlugin, putPluginConfig } from '../daemon/plugins';
+import { listPlugins, getPlugin, enablePlugin, disablePlugin, installPlugin, uploadPlugin, uninstallPlugin, putPluginConfig } from '../daemon/plugins';
 import type { PluginInfo, PluginDetail } from '../daemon/plugins';
 import { listMarketplace } from '../daemon/marketplace';
 import type { MarketplacePlugin } from '../daemon/marketplace';
@@ -41,6 +41,9 @@ export default function PluginsPanel() {
   const [installUrl, setInstallUrl] = useState('');
   const [installing, setInstalling] = useState(false);
   const [installErr, setInstallErr] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadErr, setUploadErr] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
   const [market, setMarket] = useState<MarketplacePlugin[]>([]);
   // Plugin settings dialog
   const [settingsPlugin, setSettingsPlugin] = useState<PluginDetail | null>(null);
@@ -93,6 +96,18 @@ export default function PluginsPanel() {
       reload();
     } catch { /* keep state */ } finally {
       setBusy(b => ({ ...b, [p.id]: false }));
+    }
+  }, [reload]);
+
+  const doUpload = useCallback(async (file: File) => {
+    setUploading(true); setUploadErr('');
+    try {
+      await uploadPlugin(file);
+      reload();
+    } catch (e) {
+      setUploadErr(e instanceof Error ? e.message : 'Upload failed');
+    } finally {
+      setUploading(false);
     }
   }, [reload]);
 
@@ -162,8 +177,8 @@ export default function PluginsPanel() {
 
       <div className={styles.installBar}>
         <Input
-          aria-label="Plugin Git URL"
-          placeholder="https://github.com/user/virta-plugin  (install from a Git URL)"
+          aria-label="Plugin URL or local path"
+          placeholder="https://github.com/user/virta-plugin"
           value={installUrl}
           onChange={e => setInstallUrl(e.currentTarget.value)}
           onKeyDown={e => e.key === 'Enter' && void doInstall()}
@@ -171,7 +186,21 @@ export default function PluginsPanel() {
         <Button variant="solid" size="sm" disabled={!installUrl.trim() || installing} onClick={() => void doInstall()}>
           {installing ? 'Installing…' : 'Install'}
         </Button>
-        {installErr && <p className={styles.installErr}>{installErr}</p>}
+        <Button variant="ghost" size="sm" disabled={uploading} onClick={() => fileRef.current?.click()}>
+          {uploading ? 'Loading…' : 'Load .zip'}
+        </Button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".zip"
+          className={styles.hidden}
+          onChange={e => {
+            const file = e.currentTarget.files?.[0];
+            if (file) void doUpload(file);
+            e.currentTarget.value = '';
+          }}
+        />
+        {(installErr || uploadErr) && <p className={styles.installErr}>{installErr || uploadErr}</p>}
       </div>
 
       <div className={styles.filterBar} role="tablist" aria-label="Filter plugins">

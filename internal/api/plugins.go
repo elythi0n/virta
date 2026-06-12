@@ -2,7 +2,10 @@ package api
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
+	"os"
+	"strings"
 )
 
 // PluginPanel is a panel contributed by a plugin (rendered by the generic sandboxed panel host).
@@ -105,6 +108,48 @@ func (s *Server) handleInstallPlugin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	info, err := s.plugins.Install(req.URL)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+	writeJSON(w, info)
+}
+
+func (s *Server) handleUploadPlugin(w http.ResponseWriter, r *http.Request) {
+	if s.plugins == nil {
+		http.Error(w, "plugin host unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	const maxSize = 32 << 20
+	r.Body = http.MaxBytesReader(w, r.Body, maxSize)
+	if err := r.ParseMultipartForm(maxSize); err != nil {
+		http.Error(w, "expected multipart/form-data with a file field", http.StatusBadRequest)
+		return
+	}
+	f, hdr, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "missing file field", http.StatusBadRequest)
+		return
+	}
+	defer func() { _ = f.Close() }()
+	if !strings.HasSuffix(strings.ToLower(hdr.Filename), ".zip") {
+		http.Error(w, "only .zip archives are supported", http.StatusBadRequest)
+		return
+	}
+	tmp, err := os.CreateTemp("", "virta-plugin-upload-*.zip")
+	if err != nil {
+		http.Error(w, "could not create temp file", http.StatusInternalServerError)
+		return
+	}
+	tmpPath := tmp.Name()
+	defer func() { _ = os.Remove(tmpPath) }()
+	if _, err := io.Copy(tmp, f); err != nil {
+		_ = tmp.Close()
+		http.Error(w, "could not write upload", http.StatusInternalServerError)
+		return
+	}
+	_ = tmp.Close()
+	info, err := s.plugins.Install(tmpPath)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 		return
