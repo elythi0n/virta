@@ -91,8 +91,10 @@ vet:
 
 ## lint: golangci-lint (incl. depguard, forbidigo).
 ## cmd/virta-overlay is excluded — it requires CGO/pkg-config not available on all hosts.
+## Tries PATH first (golangci-lint-action installs there); falls back to GOPATH/bin for local installs.
+GOLANGCI_LINT := $(shell command -v golangci-lint 2>/dev/null || echo $(shell go env GOPATH)/bin/golangci-lint)
 lint:
-	$(shell go env GOPATH)/bin/golangci-lint run \
+	$(GOLANGCI_LINT) run \
 		./internal/... ./cmd/virtad/... ./cmd/virta-tui/... \
 		./cmd/apigen/... ./cmd/tokengen/... ./cmd/healthcheck/... \
 		./examples/...
