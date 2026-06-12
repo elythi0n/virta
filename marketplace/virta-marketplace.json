@@ -10,7 +10,7 @@
       "publisher": "Virta",
       "icon": "list",
       "tags": ["stats", "leaderboard", "chatters"],
-      "install_url": "https://github.com/elythi0n/virta/releases/latest",
+      "install_url": "https://github.com/elythi0n/virta/releases/latest/download/leaderboard.zip",
       "verified": true
     },
     {
@@ -21,7 +21,7 @@
       "publisher": "Virta",
       "icon": "grid",
       "tags": ["polls", "voting", "engagement"],
-      "install_url": "https://github.com/elythi0n/virta/releases/latest",
+      "install_url": "https://github.com/elythi0n/virta/releases/latest/download/polls.zip",
       "verified": true
     },
     {
@@ -32,7 +32,7 @@
       "publisher": "Virta",
       "icon": "zap",
       "tags": ["alerts", "obs", "overlay", "animations"],
-      "install_url": "https://github.com/elythi0n/virta/releases/latest",
+      "install_url": "https://github.com/elythi0n/virta/releases/latest/download/alerts.zip",
       "verified": true
     },
     {
@@ -43,7 +43,7 @@
       "publisher": "Virta",
       "icon": "play",
       "tags": ["vod", "replay", "twitch", "chat"],
-      "install_url": "https://github.com/elythi0n/virta/releases/latest",
+      "install_url": "https://github.com/elythi0n/virta/releases/latest/download/vod-replay.zip",
       "verified": true
     }
   ]
