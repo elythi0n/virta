@@ -79,8 +79,19 @@ jobs:
           name: dist-windows
           path: dist/VirtaSetup-*.exe
 
+  plugins:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build plugin zips
+        run: make build-plugins
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-plugins
+          path: dist/*.zip
+
   release:
-    needs: [linux, macos, windows]
+    needs: [linux, macos, windows, plugins]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
