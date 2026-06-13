@@ -50,8 +50,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Install create-dmg
-        run: brew install create-dmg
+      - name: Install create-dmg and ImageMagick
+        run: brew install create-dmg imagemagick
       - name: Generate app icons
         run: make icons
       - name: Build DMG
