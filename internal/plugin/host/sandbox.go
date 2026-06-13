@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -51,7 +52,17 @@ func (g *GUIPlugin) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// - connect-src 'self' ws: wss: allows WS connections back to the same origin only
 	// - img-src 'self' data: allows self-hosted images and data URIs
 	// - font-src 'self' allows self-hosted fonts
-	// No network, no object/embed, no frame ancestors (prevents clickjacking).
+	//
+	// frame-ancestors controls who may embed this GUI. The host SPA passes its own origin as the
+	// ?host= query param; when the SPA is same-origin (daemon-served browser, or the dev proxy)
+	// 'self' covers it, but the Electron desktop shell serves the SPA from http://localhost:<port>
+	// and embeds us cross-origin, so we additionally allow that origin when it is loopback. We omit
+	// X-Frame-Options entirely in that case — it can only express SAMEORIGIN and would otherwise
+	// veto the cross-origin loopback embed that frame-ancestors just permitted.
+	frameAncestors := "'self'"
+	if host := loopbackEmbedOrigin(r.URL.Query().Get("host")); host != "" {
+		frameAncestors += " " + host
+	}
 	w.Header().Set("Content-Security-Policy",
 		"default-src 'none'; "+
 			"script-src 'self'; "+
@@ -59,13 +70,31 @@ func (g *GUIPlugin) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"connect-src 'self' ws: wss:; "+
 			"img-src 'self' data:; "+
 			"font-src 'self'; "+
-			"frame-ancestors 'self'",
+			"frame-ancestors "+frameAncestors,
 	)
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.Header().Set("X-Frame-Options", "SAMEORIGIN")
 	w.Header().Set("Cache-Control", "no-store") // plugin files change on update
 
 	g.fileServer.ServeHTTP(w, r)
+}
+
+// loopbackEmbedOrigin returns origin if it is a trusted same-machine HTTP(S) origin
+// (localhost, *.localhost, 127.0.0.1, ::1) that may embed a plugin GUI, or "" otherwise.
+// This lets the loopback desktop shell frame plugin GUIs cross-origin without opening the
+// door to arbitrary remote embedders.
+func loopbackEmbedOrigin(origin string) string {
+	if origin == "" {
+		return ""
+	}
+	u, err := url.Parse(origin)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
+		return ""
+	}
+	h := u.Hostname()
+	if h == "localhost" || strings.HasSuffix(h, ".localhost") || h == "127.0.0.1" || h == "::1" {
+		return origin
+	}
+	return ""
 }
 
 // IFrameAttribs returns the HTML attributes to set on the sandbox iframe in the host renderer.

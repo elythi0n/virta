@@ -14,14 +14,10 @@ import (
 // isLoopbackOrigin reports whether the given Origin header value is a trusted
 // same-machine origin. Allowed cases:
 //   - Exact match with the daemon's own http://host:port (standard same-origin)
-//   - Wails desktop app custom scheme (wails://) — process-local, always safe
-//   - Any loopback HTTP origin (localhost / *.localhost / 127.0.0.1 / ::1) — covers the
-//     Wails internal asset server and Windows WebView2's http://wails.localhost origin
+//   - Any loopback HTTP origin (localhost / *.localhost / 127.0.0.1 / ::1) — covers the Electron
+//     desktop shell, which serves its UI from http://localhost and connects the WebSocket here
 func isLoopbackOrigin(origin, daemonHost string) bool {
 	if origin == "http://"+daemonHost || origin == "https://"+daemonHost {
-		return true
-	}
-	if strings.HasPrefix(origin, "wails://") {
 		return true
 	}
 	u, err := url.Parse(origin)

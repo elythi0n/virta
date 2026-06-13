@@ -548,10 +548,10 @@ func crashDumps(runtimeDir string) []string {
 }
 
 // withCORS adds CORS headers and answers preflight requests. Two tiers:
-//   - Loopback origins (localhost, 127.0.0.1, ::1) and the Wails desktop app custom
-//     scheme (wails://) are always permitted — they can only reach this loopback server
-//     from the same machine, so the usual CSRF risk does not apply. This lets the Wails
-//     embedded webview call the daemon without a reverse proxy.
+//   - Loopback origins (localhost, *.localhost, 127.0.0.1, ::1) are always permitted — they can
+//     only reach this loopback server from the same machine, so the usual CSRF risk does not
+//     apply. This lets the Electron desktop shell (which serves its UI from http://localhost)
+//     call the daemon without a reverse proxy.
 //   - An explicit allowlist (s.corsOrigins) covers developer tools and integrations. A
 //     "*" entry opens it to any origin (an explicit opt-in; credentials ride the bearer
 //     token, not cookies).
@@ -583,15 +583,11 @@ func (s *Server) withCORS(next http.Handler) http.Handler {
 	})
 }
 
-// isLoopbackCORSOrigin reports whether origin is a trusted same-machine source that may
-// always bypass CORS — loopback HTTP/HTTPS addresses and the Wails desktop webview scheme.
-// On macOS/Linux the webview serves from the wails:// custom scheme; on Windows WebView2
-// serves from http://wails.localhost. The reserved .localhost TLD (RFC 6761) always resolves
-// to loopback, so any *.localhost host is same-machine and safe to permit.
+// isLoopbackCORSOrigin reports whether origin is a trusted same-machine source that may always
+// bypass CORS — any loopback HTTP/HTTPS address. The Electron desktop shell serves the UI from
+// http://localhost, and the reserved .localhost TLD (RFC 6761) always resolves to loopback, so any
+// *.localhost host is same-machine and safe to permit.
 func isLoopbackCORSOrigin(origin string) bool {
-	if strings.HasPrefix(origin, "wails://") {
-		return true
-	}
 	u, err := url.Parse(origin)
 	if err != nil {
 		return false

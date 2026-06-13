@@ -7,10 +7,7 @@ func TestIsLoopbackCORSOrigin(t *testing.T) {
 		origin string
 		want   bool
 	}{
-		{"wails://wails.localhost", true},          // macOS/Linux webview custom scheme
-		{"http://wails.localhost", true},           // Windows WebView2 origin — regression guard
-		{"https://wails.localhost", true},          // same, https variant
-		{"http://localhost", true},                 // bare localhost
+		{"http://localhost", true},                 // Electron desktop shell origin
 		{"http://localhost:5173", true},            // Vite dev server
 		{"http://127.0.0.1:8080", true},            // loopback IPv4
 		{"http://[::1]:8080", true},                // loopback IPv6
@@ -32,11 +29,9 @@ func TestIsLoopbackOrigin(t *testing.T) {
 		origin string
 		want   bool
 	}{
-		{"http://wails.localhost", true},  // Windows WebView2 — the /v1/stream 403 regression guard
-		{"wails://wails.localhost", true}, // macOS/Linux webview custom scheme
-		{"http://" + host, true},          // exact same-origin
-		{"https://" + host, true},         // exact same-origin, https
-		{"http://localhost", true},
+		{"http://" + host, true},   // exact same-origin
+		{"https://" + host, true},  // exact same-origin, https
+		{"http://localhost", true}, // Electron desktop shell origin
 		{"http://127.0.0.1:9000", true},
 		{"http://[::1]:9000", true},
 		{"http://app.localhost", true},         // any *.localhost is loopback per RFC 6761
