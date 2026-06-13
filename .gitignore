@@ -46,3 +46,8 @@ frontends/desktop/desktop
 # Web UI staged into the daemon for embedding; the .gitkeep placeholder is kept.
 internal/webui/dist/*
 !internal/webui/dist/.gitkeep
+
+# Generated app icons (produced by `make icons` / CI from assets/logo.png).
+frontends/desktop/build/appicon.ico
+frontends/desktop/build/appicon.icns
+frontends/desktop/rsrc.syso

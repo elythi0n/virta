@@ -23,6 +23,7 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir={#Root}\dist
 OutputBaseFilename=VirtaSetup-{#AppVersion}
+SetupIconFile={#Root}\frontends\desktop\build\appicon.ico
 WizardStyle=modern
 Compression=lzma2
 SolidCompression=yes

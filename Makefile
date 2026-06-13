@@ -203,6 +203,37 @@ app-appimage: app daemon tui
 	ARCH=x86_64 appimagetool dist/AppDir dist/Virta-$(VERSION).AppImage
 	@echo "✓ AppImage: dist/Virta-$(VERSION).AppImage"
 
+## icons: Generate appicon.icns (macOS) and appicon.ico (Windows) from assets/logo.png.
+## Requires ImageMagick (convert/magick). On macOS, iconutil is used for better .icns quality.
+## Output lands in frontends/desktop/build/ where app-dmg and package-windows.sh expect them.
+ICON_SRC := assets/logo.png
+ICON_OUT := frontends/desktop/build
+icons:
+	@command -v magick >/dev/null 2>&1 && MAGICK=magick || MAGICK=convert; \
+	command -v $$MAGICK >/dev/null 2>&1 || { echo "ImageMagick not found — install it first"; exit 1; }; \
+	mkdir -p $(ICON_OUT); \
+	echo "→ generating $(ICON_OUT)/appicon.ico"; \
+	$$MAGICK $(ICON_SRC) -define icon:auto-resize=256,128,64,48,32,16 $(ICON_OUT)/appicon.ico; \
+	echo "→ generating $(ICON_OUT)/appicon.icns"; \
+	if command -v iconutil >/dev/null 2>&1; then \
+		tmp=$$(mktemp -d); iconset=$$tmp/AppIcon.iconset; mkdir -p $$iconset; \
+		for s in 16 32 64 128 256 512; do \
+			$$MAGICK $(ICON_SRC) -resize $${s}x$${s} $$iconset/icon_$${s}x$${s}.png; \
+			$$MAGICK $(ICON_SRC) -resize $$((s*2))x$$((s*2)) $$iconset/icon_$${s}x$${s}@2x.png; \
+		done; \
+		iconutil -c icns $$iconset -o $(ICON_OUT)/appicon.icns; \
+		rm -rf $$tmp; \
+	else \
+		command -v png2icns >/dev/null 2>&1 || { echo "png2icns not found — install icnsutils (apt install icnsutils)"; exit 1; }; \
+		tmp=$$(mktemp -d); \
+		for s in 16 32 64 128 256 512 1024; do \
+			$$MAGICK $(ICON_SRC) -resize $${s}x$${s} $$tmp/icon_$${s}.png; \
+		done; \
+		png2icns $(ICON_OUT)/appicon.icns $$tmp/icon_*.png; \
+		rm -rf $$tmp; \
+	fi; \
+	echo "✓ icons written to $(ICON_OUT)/"
+
 ## app-dmg: macOS disk image. Requires xcode + create-dmg. Stages a Virta.app bundle first —
 ## the raw binary from `app` isn't double-clickable on macOS without one.
 app-dmg: app
@@ -211,6 +242,9 @@ app-dmg: app
 	@mkdir -p dist/dmg/Virta.app/Contents/MacOS dist/dmg/Virta.app/Contents/Resources
 	cp frontends/desktop/build/bin/virta dist/dmg/Virta.app/Contents/MacOS/virta
 	sed 's/__VERSION__/$(VERSION)/' packaging/Info.plist > dist/dmg/Virta.app/Contents/Info.plist
+	@if [ -f frontends/desktop/build/appicon.icns ]; then \
+		cp frontends/desktop/build/appicon.icns dist/dmg/Virta.app/Contents/Resources/AppIcon.icns; \
+	else echo "warning: frontends/desktop/build/appicon.icns not found — app will have no icon"; fi
 	create-dmg \
 		--volname "Virta" \
 		--background frontends/ui-kit/src/assets/virta-logo-512.png \

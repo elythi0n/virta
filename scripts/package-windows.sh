@@ -25,10 +25,20 @@ cp -r frontends/web/dist/. frontends/desktop/assets/
 find internal/webui/dist -mindepth 1 ! -name .gitkeep -delete
 cp -r frontends/web/dist/. internal/webui/dist/
 
+# Embed the app icon into the desktop .exe via a Win32 resource file (.syso).
+# rsrc generates a resource object that `go build` picks up automatically from the package dir.
+if [ -f frontends/desktop/build/appicon.ico ]; then
+  go install github.com/akavel/rsrc@latest
+  rsrc -ico frontends/desktop/build/appicon.ico -o frontends/desktop/rsrc.syso
+else
+  echo "warning: frontends/desktop/build/appicon.ico not found — exe will have no icon"
+fi
+
 # virtad embedded inside the desktop binary, then the desktop shell itself.
 CGO_ENABLED=0 go build -ldflags "$LDFLAGS" -o frontends/desktop/bin/virtad.exe ./cmd/virtad
 mkdir -p frontends/desktop/build/bin dist
 (cd frontends/desktop && go mod tidy && go build -ldflags '-s -w' -o build/bin/virta.exe .)
+rm -f frontends/desktop/rsrc.syso
 
 # Standalone extras the installer ships next to the app.
 CGO_ENABLED=0 go build -ldflags "$LDFLAGS" -o dist/virtad.exe ./cmd/virtad
