@@ -1,4 +1,4 @@
-<center><a href="https://virta.lol"><img height=128px src="./assets/logo.png" alt="Virta" /></a></center>
+<center><a href="https://virta.lol"><img src="./assets/banner.png" alt="Virta" /></a></center>
 
 # Virta
 
