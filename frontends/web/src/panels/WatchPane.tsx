@@ -32,6 +32,11 @@ function pageUrl(platform: string, slug: string): string | null {
   }
 }
 
+// The Twitch/Kick players need a Chromium-grade webview. Windows' WebView2 is Chromium and embeds
+// fine, but macOS/Linux Wails use WebKit(GTK), whose player can't decode the IVS stream. Detect
+// Chromium by the "Chrome/" UA token (present in WebView2 and real browsers, absent in WebKit).
+const isChromiumWebview = typeof navigator !== 'undefined' && /Chrome\//.test(navigator.userAgent);
+
 export default function WatchPane({ channel }: { channel?: string }) {
   const isDesktop = useIsDesktop();
 
@@ -55,10 +60,11 @@ export default function WatchPane({ channel }: { channel?: string }) {
     );
   }
 
-  // Two cases land on the channel page instead of an embed: the desktop app (wails:// origin),
-  // where Twitch's IVS player needs WebGPU that WebKitGTK lacks, and platforms without an
-  // embeddable player (YouTube). Both show a button that opens the page externally.
-  if (page && (isDesktop || !embed)) {
+  // Two cases land on the channel page instead of an embed: a WebKit-based desktop webview
+  // (macOS/Linux Wails), where Twitch's IVS player can't decode, and platforms without an
+  // embeddable player (YouTube). Windows' Chromium WebView2 keeps the embed. Both fallbacks show
+  // a button that opens the page externally.
+  if (page && ((isDesktop && !isChromiumWebview) || !embed)) {
     const plat = platformLabel(platform);
     return (
       <div className={styles.placeholder}>
