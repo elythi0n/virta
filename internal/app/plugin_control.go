@@ -96,12 +96,26 @@ func (c *pluginControl) Install(url string) (api.PluginInfo, error) {
 		)
 	}
 	ctx := context.Background()
+
+	// Capture the old install directory before replacing the registry entry, so we can
+	// delete the orphaned files after a successful upgrade.
+	var prevInstallDir string
+	if prev, err := c.reg.Get(result.Manifest.ID); err == nil && !prev.Manifest.BuiltIn {
+		prevInstallDir = prev.InstallDir
+	}
+
 	if err := c.reg.RegisterRemote(ctx, result.Manifest, result.InstallDir); err != nil {
 		return api.PluginInfo{}, err
 	}
 	if err := c.reg.Enable(ctx, result.Manifest.ID); err != nil {
 		return api.PluginInfo{}, err
 	}
+
+	// Best-effort cleanup of the old versioned directory (different digest = upgrade).
+	if prevInstallDir != "" && prevInstallDir != result.InstallDir && c.installer != nil {
+		_ = c.installer.Uninstall(prevInstallDir)
+	}
+
 	e, err := c.reg.Get(result.Manifest.ID)
 	if err != nil {
 		return api.PluginInfo{}, err
@@ -152,7 +166,9 @@ func (c *pluginControl) GetConfig(id string) (json.RawMessage, error) {
 }
 
 func (c *pluginControl) SetConfig(id string, cfg json.RawMessage) error {
-	return c.reg.SetConfig(context.Background(), id, cfg)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	return c.reg.SetConfig(ctx, id, cfg)
 }
 
 // ── HTTP bridge (api.PluginProxier) ─────────────────────────────────────────

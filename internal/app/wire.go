@@ -518,6 +518,24 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	pluginCtl := newPluginControl(pluginReg, pluginInstaller)
 	srv.SetPlugins(pluginCtl)
 	srv.SetOverlays(overlaysControl{plugins: pluginCtl, addr: srv.Addr})
+	// Stats is a frontend-only built-in panel — no DataSources or config, just enabled by default.
+	statsMeta := &pluginhost.Manifest{
+		ID:          "virta.stats",
+		Name:        "Stats",
+		Version:     "1.0.0",
+		Publisher:   "Virta",
+		Description: "Live stats: messages per second, unique chatters, top emotes, activity timelines.",
+		Tags:        []string{"analytics"},
+		Scopes:      []pluginhost.Scope{pluginhost.ScopeUI},
+		Contributes: pluginhost.Contributes{
+			Panels: []pluginhost.PanelContrib{{Kind: "stats", Title: "Stats", Icon: "stats"}},
+		},
+		BuiltIn: true,
+	}
+	if err := pluginReg.RegisterBuiltIn(statsMeta); err != nil {
+		log.Warn("stats plugin register failed", "err", err)
+	}
+
 	// Markets is a first-party built-in plugin — runs through the same DataSource seam.
 	marketsCfg := loadMarketsConfig(cfg)
 	marketsDS := markets.New(marketsCfg)

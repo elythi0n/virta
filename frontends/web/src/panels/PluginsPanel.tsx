@@ -23,7 +23,7 @@ const BUILT_IN_CATALOG: PluginInfo[] = [
   { id: 'virta.ask-ai',       name: 'Ask AI',        description: 'Ask questions about chat history using an AI agent: top fans, user stats.',          built_in: true, state: 'enabled',  tags: ['ai'],             version: '1.0.0', publisher: 'Virta' },
   { id: 'virta.stream',       name: 'Streams',       description: 'Grid of all joined channels with live thumbnails, viewer counts, and quick launch.', built_in: true, state: 'enabled',  tags: ['stream'],         version: '1.0.0', publisher: 'Virta' },
   { id: 'com.virta.markets',  name: 'Markets',       description: 'Real-time crypto price ticker and board via free exchange WebSockets.',               built_in: true, state: 'enabled',  tags: ['data', 'crypto'], version: '1.0.0', publisher: 'Virta', has_config: true },
-  { id: 'virta.stats',        name: 'Stats',         description: 'Live stats: messages per second, unique chatters, top emotes, activity timelines.',  built_in: true, state: 'disabled', tags: ['analytics'],      version: '0.0.0', publisher: 'Virta' },
+  { id: 'virta.stats',        name: 'Stats',         description: 'Live stats: messages per second, unique chatters, top emotes, activity timelines.',  built_in: true, state: 'enabled',  tags: ['analytics'],      version: '1.0.0', publisher: 'Virta' },
 ];
 
 const ICON_BY_ID: Record<string, IconName> = {
