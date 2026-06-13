@@ -71,6 +71,8 @@ type Server struct {
 	profanity         Profanity              // profanity masking toggle, installed via SetProfanity
 	marketplace       marketplaceCache       // in-memory cache for the plugin marketplace registry
 	overlays          Overlays               // overlay registry, installed via SetOverlays
+	signalRelay       *pluginSignalRelay     // in-memory relay for plugin test signals (Test button → OBS overlay)
+	hookStore         *pluginHookStore       // in-memory ring buffer for custom hook events (external tools → overlay)
 	hostedAuth        HostedAuth             // multi-user account surface (nil in local/desktop mode)
 	webui             http.Handler           // embedded web UI, installed via SetWebUI (nil = not served)
 	webuiIndexHTML    func() ([]byte, error) // reads index.html directly, bypassing the file server
@@ -116,6 +118,8 @@ func New(cfg Config) (*Server, error) {
 		corsOrigins:   cfg.CORSOrigins,
 		baseCtx:       ctx,
 		cancel:        cancel,
+		signalRelay:   newPluginSignalRelay(),
+		hookStore:     newPluginHookStore(),
 	}
 
 	mux := http.NewServeMux()
@@ -133,6 +137,10 @@ func New(cfg Config) (*Server, error) {
 	// Mounted outside the declarative route table so it can accept any HTTP method.
 	mux.Handle("/mcp", s.scoped(ScopeRead, http.HandlerFunc(s.handleMCP)))
 	mux.Handle("/mcp/", s.scoped(ScopeRead, http.HandlerFunc(s.handleMCP)))
+	// Plugin custom-alert webhook: public endpoint (no bearer token), authenticated by the
+	// per-plugin webhookSecret stored in plugin config. Registered before the scoped loop so
+	// it can't accidentally get wrapped by the auth middleware.
+	mux.HandleFunc("POST /v1/plugins/{id}/hook/{name}", s.handlePluginHookPost)
 	// Every authenticated endpoint is declared once in routes(), with the scope a non-root token
 	// needs; the same table drives the generated OpenAPI doc, so the contract can't drift.
 	for _, rt := range s.routes() {
@@ -481,6 +489,9 @@ func (s *Server) routes() []route {
 		{"GET", "/v1/plugins/{id}/config", ScopeRead, s.handleGetPluginConfig, "Get saved plugin configuration values"},
 		{"PUT", "/v1/plugins/{id}/config", ScopeAdmin, s.handlePutPluginConfig, "Save plugin configuration values"},
 		{"POST", "/v1/plugins/{id}/http", ScopeRead, s.handlePluginHTTP, "Bridged HTTP request for a plugin (manifest-declared endpoints only)"},
+		{"POST", "/v1/plugins/{id}/signal", ScopeAdmin, s.handlePluginSignalPost,    "Store a test signal for a plugin (panel → overlay relay)"},
+		{"GET",  "/v1/plugins/{id}/signal", ScopeRead,  s.handlePluginSignalGet,     "Poll for test signals for a plugin (overlay polling)"},
+		{"GET",  "/v1/plugins/{id}/hook/events", ScopeRead, s.handlePluginHookEvents, "Poll for custom alert events fired via the webhook endpoint"},
 		{"GET", "/v1/intel/models", ScopeRead, s.handleListModels, "List available AI models"},
 		{"POST", "/v1/intel/ask", ScopeRead, s.handleAsk, "Ask a question over logged chat (agent loop, NDJSON stream)"},
 		{"POST", "/v1/intel/title", ScopeRead, s.handleGenerateTitle, "Stream a short AI-generated title for a conversation"},
