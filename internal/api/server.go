@@ -585,6 +585,9 @@ func (s *Server) withCORS(next http.Handler) http.Handler {
 
 // isLoopbackCORSOrigin reports whether origin is a trusted same-machine source that may
 // always bypass CORS — loopback HTTP/HTTPS addresses and the Wails desktop webview scheme.
+// On macOS/Linux the webview serves from the wails:// custom scheme; on Windows WebView2
+// serves from http://wails.localhost. The reserved .localhost TLD (RFC 6761) always resolves
+// to loopback, so any *.localhost host is same-machine and safe to permit.
 func isLoopbackCORSOrigin(origin string) bool {
 	if strings.HasPrefix(origin, "wails://") {
 		return true
@@ -594,7 +597,7 @@ func isLoopbackCORSOrigin(origin string) bool {
 		return false
 	}
 	h := u.Hostname()
-	return h == "localhost" || h == "127.0.0.1" || h == "::1"
+	return h == "localhost" || strings.HasSuffix(h, ".localhost") || h == "127.0.0.1" || h == "::1"
 }
 
 func writeJSON(w http.ResponseWriter, v any) {
