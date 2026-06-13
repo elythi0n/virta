@@ -77,9 +77,9 @@ Enable logging: **Settings → Chat → Log messages**. History is only availabl
 
 ---
 
-## "No playable format" when watching a stream in the desktop app
+## A stream won't play in the desktop app
 
-WebKitGTK does not support the WebGPU/WebCodecs stack required by Twitch's IVS video player. Use the **"Watch on Twitch"** button to open the stream in your browser instead.
+Twitch and Kick play inline in the Electron app. If a player stays blank, check your network/login on that platform, or use the channel's pop-out player window. YouTube has no inline embed and always opens a pop-out window or your browser.
 
 ---
 

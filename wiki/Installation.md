@@ -111,7 +111,7 @@ sudo systemctl enable --now virtad
 
 ## Option 3 — Desktop app
 
-The native desktop application bundles `virtad` inside a Wails v3 window. It starts the daemon automatically — no terminal needed.
+The native desktop application bundles `virtad` alongside an Electron window. It starts the daemon automatically — no terminal needed.
 
 See [Desktop App](Desktop-App) for platform-specific instructions and limitations.
 
@@ -126,8 +126,9 @@ cd virta
 # Build the daemon only
 make daemon          # outputs dist/virtad
 
-# Build the full desktop app (requires Wails CLI and WebKit dev libs)
-make app             # outputs frontends/desktop/build/bin/virta
+# Build the full desktop app (requires Node.js + Go; no Wails CLI or WebKit libs)
+make app             # stages the Electron shell under frontends/desktop
+make app-run         # launch it
 ```
 
-Go 1.22+ is required. The web UI is pre-built in the repo; if you want to rebuild it: `make web`.
+Go 1.22+ and Node.js are required. The web UI is pre-built in the repo; if you want to rebuild it: `make web`.

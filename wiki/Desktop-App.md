@@ -1,6 +1,6 @@
 # Desktop App
 
-The Virta desktop app is a native window built with Wails v3. It bundles the `virtad` daemon inside the binary — no separate install, no terminal required. Open the app and it is ready.
+The Virta desktop app is a native window built with [Electron](https://www.electronjs.org). It bundles the `virtad` daemon alongside the app — no separate install, no terminal required. Open the app and it is ready.
 
 ---
 
@@ -8,10 +8,12 @@ The Virta desktop app is a native window built with Wails v3. It bundles the `vi
 
 | OS | Status | Notes |
 |---|---|---|
-| Linux (X11) | Supported | GTK3 + WebKitGTK. Tested on XFCE/xfwm4. |
-| Linux (Wayland) | Partial | Works via XWayland. Native Wayland window is pending. |
-| macOS | Supported | WKWebView. Universal binary (arm64 + amd64) in production builds. |
-| Windows | Supported | WebView2 (Edge). Requires the Edge WebView2 Runtime (included in Windows 11 and any recent Edge install). |
+| Windows | Supported | Bundled Chromium (Electron). No external runtime needed. |
+| macOS | Supported | Bundled Chromium. `.dmg` installer. |
+| Linux (X11) | Supported | AppImage. Bundled Chromium. |
+| Linux (Wayland) | Supported | Runs natively or via XWayland. |
+
+Because Electron ships its own Chromium, the renderer is identical on every platform — no per-OS webview quirks.
 
 ---
 
@@ -19,26 +21,26 @@ The Virta desktop app is a native window built with Wails v3. It bundles the `vi
 
 Grab the latest release from the [Releases](https://github.com/elythi0n/virta/releases) page:
 
-- **Linux**: `virta-linux-amd64.AppImage` or `virta-linux-amd64.tar.gz`
+- **Windows**: `Virta-Setup.exe`
 - **macOS**: `Virta.dmg`
-- **Windows**: `Virta-Setup.exe` or `Virta-portable.zip`
+- **Linux**: `Virta-x86_64.AppImage`
 
 ### Linux AppImage
 
 ```bash
-chmod +x virta-linux-amd64.AppImage
-./virta-linux-amd64.AppImage
+chmod +x Virta-x86_64.AppImage
+./Virta-x86_64.AppImage
 ```
 
 ### macOS
 
 Open the DMG, drag Virta to Applications.
 
-On first run macOS may block the app because it is not from the App Store. Open **System Settings → Privacy & Security** and click **Open Anyway**.
+On first run macOS may block the app because it is not signed/notarized yet. Open **System Settings → Privacy & Security** and click **Open Anyway**.
 
 ### Windows
 
-Run the installer or extract the portable zip. WebView2 Runtime is required — if it is not installed, the app will prompt you to download it.
+Run `Virta-Setup.exe`. The installer lets you choose the install location.
 
 ---
 
@@ -46,18 +48,18 @@ Run the installer or extract the portable zip. WebView2 Runtime is required — 
 
 When you launch the app:
 
-1. The daemon (`virtad`) is extracted to your OS cache directory and started as a child process.
-2. The app waits up to 15 seconds for the daemon to be ready.
-3. The embedded web UI loads and connects to the daemon automatically.
-4. Closing the app stops the daemon cleanly.
+1. The bundled daemon (`virtad`) is started as a child process into an app-private runtime directory.
+2. The app waits (up to 20s) for the daemon to advertise its address and pass a health check.
+3. A small loopback HTTP server serves the web UI over `http://localhost`, and the UI connects to the daemon automatically.
+4. Closing the app terminates the daemon — reliably, including on Windows.
 
-If a daemon is already running (e.g. from a previous session or a terminal), the app attaches to that instead of launching a new one.
+Each launch starts its own daemon; it does not attach to unrelated daemons left over from other tools.
 
 ---
 
 ## Data location
 
-The desktop app stores data in the standard OS locations:
+The daemon stores data in the standard OS locations:
 
 | OS | Data | Config |
 |---|---|---|
@@ -78,41 +80,42 @@ The desktop app uses a custom frameless titlebar. Window controls are in the top
 - **□** maximise / restore
 - **×** close
 
-The titlebar is draggable — click and drag to move the window. Window edges are draggable to resize.
+The titlebar is draggable — click and drag to move the window. Window edges resize.
 
 ---
 
 ## Opening streams
 
-Twitch and Kick streams cannot play directly inside the app window because WebKitGTK does not support the WebGPU/WebCodecs stack required by the Twitch IVS player. Clicking a stream card shows a **"Watch on Twitch/Kick"** button that opens the stream in your default browser.
+Twitch and Kick streams **play inline** in the app — the player iframe is embedded directly in the stream panel. The desktop shell serves the UI from `http://localhost` (so the players accept it as an embed parent) and strips the players' frame-blocking headers, which is what the move to Electron's bundled Chromium made possible.
 
-The chat feed, mentions, filter rules, and all other features work fully inside the app.
+YouTube has no inline embed, so its stream card opens a pop-out player window (or your browser).
+
+The chat feed, mentions, filter rules, analytics, and all other features run fully inside the app.
 
 ---
 
-## Developer tools (debug build)
+## Developer tools
 
-To inspect the UI or debug JavaScript:
-
-```bash
-make app-debug
-./frontends/desktop/build/bin/virta-debug
-```
-
-Then: **Settings → About → Open WebKit Inspector**.
-
-The standard `make app` build does not include DevTools.
+Press **F12** or **Ctrl+Shift+I** to open Chromium DevTools in any build (also available from **Settings → About**).
 
 ---
 
 ## Building from source
 
-```bash
-# Install Wails v3 CLI
-go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+Requires Node.js and Go (no Wails CLI, no WebKit/CGO).
 
-# Build (Linux with webkit2gtk-4.1)
+```bash
+# Stage the web build + daemon into the Electron shell and install its deps
 make app
+
+# Launch it (spawns its own daemon)
+make app-run
 ```
 
-The output is `frontends/desktop/build/bin/virta`.
+Package installers (run on the matching OS):
+
+```bash
+make app-win        # Windows: dist/Virta-Setup.exe
+make app-dmg        # macOS:   dist/Virta.dmg
+make app-appimage   # Linux:   dist/Virta-x86_64.AppImage
+```

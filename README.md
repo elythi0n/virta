@@ -2,7 +2,7 @@
 
 # Virta
 
-<a href="https://wails.io"><img src="https://img.shields.io/badge/desktop-Wails_v3-red?logo=go" alt="Built with Wails v3" /></a>
+<a href="https://www.electronjs.org"><img src="https://img.shields.io/badge/desktop-Electron-47848F?logo=electron&logoColor=white" alt="Built with Electron" /></a>
 
 ### Every stream. One current.
 
