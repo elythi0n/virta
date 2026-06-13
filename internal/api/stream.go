@@ -15,7 +15,8 @@ import (
 // same-machine origin. Allowed cases:
 //   - Exact match with the daemon's own http://host:port (standard same-origin)
 //   - Wails desktop app custom scheme (wails://) — process-local, always safe
-//   - Any loopback HTTP origin (localhost / 127.0.0.1 / ::1) — Wails internal asset server
+//   - Any loopback HTTP origin (localhost / *.localhost / 127.0.0.1 / ::1) — covers the
+//     Wails internal asset server and Windows WebView2's http://wails.localhost origin
 func isLoopbackOrigin(origin, daemonHost string) bool {
 	if origin == "http://"+daemonHost || origin == "https://"+daemonHost {
 		return true
@@ -28,7 +29,7 @@ func isLoopbackOrigin(origin, daemonHost string) bool {
 		return false
 	}
 	h := u.Hostname()
-	return h == "localhost" || h == "127.0.0.1" || h == "::1"
+	return h == "localhost" || strings.HasSuffix(h, ".localhost") || h == "127.0.0.1" || h == "::1"
 }
 
 const writeTimeout = 10 * time.Second
