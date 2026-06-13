@@ -1,0 +1,67 @@
+{
+  "name": "virta-desktop",
+  "version": "0.0.0",
+  "description": "Virta desktop shell (Electron): a native window hosting the web UI and supervising the virtad daemon.",
+  "private": true,
+  "author": "Virta",
+  "license": "UNLICENSED",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux"
+  },
+  "devDependencies": {
+    "electron": "^33.3.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.virta.Virta",
+    "productName": "Virta",
+    "copyright": "Virta",
+    "directories": {
+      "output": "../../dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**/*",
+      "resources/web/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/bin",
+        "to": "bin"
+      }
+    ],
+    "protocols": [
+      {
+        "name": "Virta",
+        "schemes": ["virta"]
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.social-networking",
+      "target": ["dmg"],
+      "identity": null,
+      "artifactName": "Virta.${ext}"
+    },
+    "win": {
+      "target": ["nsis"],
+      "artifactName": "Virta-Setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "Virta-Setup.${ext}"
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "category": "Network",
+      "artifactName": "Virta-x86_64.${ext}"
+    }
+  }
+}
