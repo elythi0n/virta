@@ -199,8 +199,10 @@ func (inst *Installer) resolveURL(ctx context.Context, rawURL string) (string, e
 		return "", fmt.Errorf("only HTTPS URLs are allowed (got %q)", u.Scheme)
 	}
 
-	// GitHub repo URL: resolve to latest release .zip
-	if u.Host == "github.com" && !strings.Contains(u.Path, "/releases/") && !strings.HasSuffix(u.Path, ".zip") && !strings.HasSuffix(u.Path, ".tar.gz") {
+	// GitHub repo URL: resolve to latest release .zip. Exclude any /releases path so a release
+	// page URL (with or without a trailing slash) falls through to the guidance error below
+	// rather than being misread as a repo named "releases".
+	if u.Host == "github.com" && !strings.Contains(u.Path, "/releases") && !strings.HasSuffix(u.Path, ".zip") && !strings.HasSuffix(u.Path, ".tar.gz") {
 		parts := strings.Split(strings.Trim(u.Path, "/"), "/")
 		if len(parts) < 2 {
 			return "", errors.New("invalid GitHub URL")
@@ -227,6 +229,16 @@ func (inst *Installer) resolveURL(ctx context.Context, rawURL string) (string, e
 		}
 		return rel.ZipballURL, nil
 	}
+
+	// A GitHub release *page* URL (…/releases, …/releases/latest, …/releases/tag/X) points to an
+	// HTML page, not a downloadable file, and a single release may carry several plugin zips — so
+	// it can't be resolved to one plugin. Steer the user to a concrete asset URL.
+	if u.Host == "github.com" && strings.Contains(u.Path, "/releases") &&
+		!strings.Contains(u.Path, "/download/") &&
+		!strings.HasSuffix(u.Path, ".zip") && !strings.HasSuffix(u.Path, ".tar.gz") {
+		return "", errors.New("that's a GitHub releases page, not a plugin file — use a direct asset URL like https://github.com/<owner>/<repo>/releases/latest/download/<plugin>.zip")
+	}
+
 	return rawURL, nil
 }
 

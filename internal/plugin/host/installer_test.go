@@ -39,6 +39,44 @@ func zipArchive(t *testing.T, entries map[string]string) []byte {
 // Both archive layouts must install with their relative structure intact: files at the
 // archive root (hand-rolled plugin zips) and files wrapped in a single top-level directory
 // (GitHub release zipballs).
+func TestResolveURL(t *testing.T) {
+	inst := NewInstaller(t.TempDir())
+	ctx := context.Background()
+
+	// Direct asset URLs pass straight through (no network) — these are what the marketplace uses.
+	passthrough := []string{
+		"https://github.com/elythi0n/virta/releases/latest/download/alerts.zip",
+		"https://github.com/elythi0n/virta/releases/download/v0.0.2-rc1/polls.zip",
+		"https://example.com/plugins/foo.tar.gz",
+	}
+	for _, u := range passthrough {
+		got, err := inst.resolveURL(ctx, u)
+		if err != nil {
+			t.Errorf("resolveURL(%q) unexpected error: %v", u, err)
+		}
+		if got != u {
+			t.Errorf("resolveURL(%q) = %q, want passthrough", u, got)
+		}
+	}
+
+	// Release *page* URLs are HTML, not artifacts, and ambiguous — they must fail with guidance.
+	pages := []string{
+		"https://github.com/elythi0n/virta/releases",
+		"https://github.com/elythi0n/virta/releases/latest",
+		"https://github.com/elythi0n/virta/releases/tag/v0.0.2-rc1",
+	}
+	for _, u := range pages {
+		if _, err := inst.resolveURL(ctx, u); err == nil {
+			t.Errorf("resolveURL(%q) = nil error, want a friendly error", u)
+		}
+	}
+
+	// Non-HTTPS is rejected.
+	if _, err := inst.resolveURL(ctx, "http://github.com/a/b/c.zip"); err == nil {
+		t.Error("resolveURL should reject non-HTTPS URLs")
+	}
+}
+
 func TestInstallArchiveLayouts(t *testing.T) {
 	layouts := map[string]map[string]string{
 		"root": {
