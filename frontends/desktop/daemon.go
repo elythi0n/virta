@@ -37,6 +37,9 @@ func (a *App) launchDaemon() error {
 	cmd := exec.Command(path)
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = os.Stderr
+	// On Windows the shell is a GUI app with no console; spawning the console-subsystem virtad.exe
+	// would otherwise pop a new console window. hideDaemonWindow sets CREATE_NO_WINDOW (no-op elsewhere).
+	hideDaemonWindow(cmd)
 	if err := cmd.Start(); err != nil {
 		return err
 	}

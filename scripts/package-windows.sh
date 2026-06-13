@@ -35,9 +35,11 @@ else
 fi
 
 # virtad embedded inside the desktop binary, then the desktop shell itself.
+# -H windowsgui marks the shell as a GUI app so Windows doesn't allocate a console window
+# (we build with plain `go build`, not `wails build`, so the flag isn't injected for us).
 CGO_ENABLED=0 go build -ldflags "$LDFLAGS" -o frontends/desktop/bin/virtad.exe ./cmd/virtad
 mkdir -p frontends/desktop/build/bin dist
-(cd frontends/desktop && go mod tidy && go build -ldflags '-s -w' -o build/bin/virta.exe .)
+(cd frontends/desktop && go mod tidy && go build -ldflags '-s -w -H windowsgui' -o build/bin/virta.exe .)
 rm -f frontends/desktop/rsrc.syso
 
 # Standalone extras the installer ships next to the app.
