@@ -133,3 +133,172 @@
 }
 .va-style-clean-light .va-badge { color: #5B8CFF; }
 .va-style-clean-light .va-tpl-author { color: #3D6CE0; }
+
+/* ── synthwave: deep magenta/violet grid vibe ── */
+.va-style-synthwave {
+  background: linear-gradient(160deg, #1A0533 0%, #2D0A5F 50%, #0D0028 100%);
+  border: 1px solid #CC29FF;
+  border-radius: 10px;
+  color: #F5D6FF;
+  box-shadow: 0 0 30px rgba(204, 41, 255, 0.45), inset 0 0 18px rgba(204, 41, 255, 0.12);
+}
+.va-style-synthwave .va-badge { color: #FF6BFF; text-shadow: 0 0 10px rgba(255, 107, 255, 0.8); }
+.va-style-synthwave .va-tpl-author { color: #CC29FF; }
+
+/* ── aurora: shifting northern-lights gradient ── */
+.va-style-aurora {
+  background: linear-gradient(135deg, rgba(0, 200, 140, 0.28), rgba(100, 120, 255, 0.28), rgba(200, 60, 220, 0.22));
+  border: 1px solid rgba(120, 220, 200, 0.38);
+  border-radius: 16px;
+  color: #E0FFF8;
+  backdrop-filter: blur(12px) saturate(1.4);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  box-shadow: 0 8px 32px rgba(0, 160, 120, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+.va-style-aurora .va-badge { color: #00E5C4; text-shadow: 0 0 8px rgba(0, 229, 196, 0.7); }
+.va-style-aurora .va-tpl-author { color: #7BE8D5; }
+
+/* ── fire: ember-to-gold heat ── */
+.va-style-fire {
+  background: linear-gradient(180deg, #1A0700 0%, #4A1200 50%, #7A2000 100%);
+  border: 2px solid #FF5A00;
+  border-radius: 8px;
+  color: #FFE0C0;
+  box-shadow: 0 0 28px rgba(255, 90, 0, 0.6), inset 0 -1px 20px rgba(255, 30, 0, 0.3);
+}
+.va-style-fire .va-badge { color: #FF9E00; text-shadow: 0 0 10px rgba(255, 158, 0, 0.9); }
+.va-style-fire .va-tpl-author { color: #FFCC44; }
+
+/* ── ocean: deep sea serenity ── */
+.va-style-ocean {
+  background: linear-gradient(180deg, #021830 0%, #033B5C 60%, #021830 100%);
+  border: 1px solid rgba(0, 180, 240, 0.5);
+  border-radius: 14px;
+  color: #C0EEFF;
+  box-shadow: 0 8px 28px rgba(0, 120, 200, 0.4), inset 0 1px 0 rgba(100, 220, 255, 0.2);
+}
+.va-style-ocean .va-badge { color: #00C8F0; text-shadow: 0 0 8px rgba(0, 200, 240, 0.7); }
+.va-style-ocean .va-tpl-author { color: #55D8FF; }
+
+/* ── sakura: soft pink blossom ── */
+.va-style-sakura {
+  background: linear-gradient(140deg, rgba(255, 180, 200, 0.22), rgba(255, 220, 235, 0.18));
+  border: 1px solid rgba(255, 160, 190, 0.5);
+  border-radius: 20px;
+  color: #3D1825;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 6px 24px rgba(220, 80, 120, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  background-color: rgba(255, 240, 246, 0.88);
+}
+.va-style-sakura .va-badge { color: #C84078; }
+.va-style-sakura .va-tpl-author { color: #A0204A; }
+
+/* ── midnight: ultra-dark slate with indigo accent ── */
+.va-style-midnight {
+  background: rgba(8, 10, 20, 0.96);
+  border: 1px solid #2A3060;
+  border-radius: 10px;
+  color: #C8D0F0;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(80, 100, 200, 0.2);
+}
+.va-style-midnight .va-badge { color: #6070E0; }
+.va-style-midnight .va-tpl-author { color: #8898FF; }
+
+/* ── cyber: sharp angles, acid yellow + teal ── */
+.va-style-cyber {
+  background: #0A0F18;
+  border: 2px solid #E8FF00;
+  border-radius: 4px;
+  color: #E8FF00;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  box-shadow: 0 0 24px rgba(232, 255, 0, 0.35), 4px 4px 0 #00FFEE;
+}
+.va-style-cyber .va-badge { color: #00FFEE; text-shadow: 0 0 8px rgba(0, 255, 238, 0.9); }
+.va-style-cyber .va-tpl-author { color: #FFFFFF; }
+
+/* ── sunset: amber → rose horizon ── */
+.va-style-sunset {
+  background: linear-gradient(135deg, #3A0A18 0%, #7A1A30 40%, #C04820 80%, #D47A00 100%);
+  border: 1px solid rgba(255, 140, 60, 0.5);
+  border-radius: 12px;
+  color: #FFE5C8;
+  box-shadow: 0 10px 32px rgba(180, 60, 30, 0.5);
+}
+.va-style-sunset .va-badge { color: #FFAD60; text-shadow: 0 0 8px rgba(255, 173, 96, 0.7); }
+.va-style-sunset .va-tpl-author { color: #FFD080; }
+
+/* ── neon-pink: hot pink broadcast energy ── */
+.va-style-neon-pink {
+  background: rgba(12, 2, 18, 0.9);
+  border: 2px solid #FF2D92;
+  border-radius: 10px;
+  color: #FFFFFF;
+  box-shadow: 0 0 22px rgba(255, 45, 146, 0.6), inset 0 0 16px rgba(255, 45, 146, 0.15);
+}
+.va-style-neon-pink .va-badge { color: #FF2D92; text-shadow: 0 0 10px rgba(255, 45, 146, 0.9); }
+.va-style-neon-pink .va-tpl-author { color: #FF80C2; }
+
+/* ── crystal: prismatic ice ── */
+.va-style-crystal {
+  background: linear-gradient(135deg, rgba(180, 220, 255, 0.22), rgba(220, 200, 255, 0.18), rgba(180, 255, 240, 0.2));
+  border: 1px solid rgba(200, 230, 255, 0.55);
+  border-radius: 18px;
+  color: #E8F4FF;
+  backdrop-filter: blur(14px) saturate(1.6) brightness(1.1);
+  -webkit-backdrop-filter: blur(14px) saturate(1.6) brightness(1.1);
+  box-shadow: 0 8px 28px rgba(100, 160, 255, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.7), inset 0 -1px 0 rgba(180, 200, 255, 0.3);
+}
+.va-style-crystal .va-badge { color: #A0C8FF; }
+.va-style-crystal .va-tpl-author { color: #C0D8FF; }
+
+/* ── vapor: vaporwave pastel dream ── */
+.va-style-vapor {
+  background: linear-gradient(140deg, #FF77E9 0%, #8B5CF6 50%, #38BDF8 100%);
+  border: none;
+  border-radius: 16px;
+  color: #FFFFFF;
+  box-shadow: 0 8px 32px rgba(139, 92, 246, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+.va-style-vapor .va-badge { color: rgba(255, 255, 255, 0.9); letter-spacing: 0.15em; }
+.va-style-vapor .va-tpl-author { color: #FFE6FF; }
+
+/* ── obsidian: volcanic glass — matte black + sharp ember edge ── */
+.va-style-obsidian {
+  background: linear-gradient(180deg, #0E0E0E 0%, #1A1010 100%);
+  border: 1px solid #3A1A1A;
+  border-radius: 6px;
+  color: #E8D8C8;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(200, 100, 50, 0.15);
+}
+.va-style-obsidian .va-badge { color: #C04020; letter-spacing: 0.1em; }
+.va-style-obsidian .va-tpl-author { color: #E06040; }
+
+/* ── media image inside alert card ── */
+.va-media {
+  display: block;
+  max-width: 100%;
+  max-height: 110px;
+  margin: 2px auto;
+  border-radius: 6px;
+  flex: none;
+}
+.va-has-media-bg {
+  overflow: hidden;
+}
+.va-has-media-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 0;
+}
+.va-has-media-bg .va-badge,
+.va-has-media-bg .va-text {
+  position: relative;
+  z-index: 1;
+}

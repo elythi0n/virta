@@ -49,7 +49,8 @@
   var rules = A.defaultRules();
   var instance = { id: "", name: "Legacy", types: [], position: rules.position };
   var instanceMissing = false;
-  var player = A.createPlayer(stage);
+  // Overlay player: sound + TTS both enabled; gap synced from config.
+  var player = A.createPlayer(stage, { gapMs: rules.gapMs, sound: true, tts: true });
 
   function setPosition(pos) {
     stage.className = "stage pos-" + (pos === "top" || pos === "center" ? pos : "bottom");
@@ -72,6 +73,7 @@
         // The daemon wraps saved values as {config:{...}}; tolerate an unwrapped object too.
         var values = (data && data.config) || data || {};
         rules = A.normalizeRules(values.rules);
+        player.setGap(rules.gapMs);
         if (overlayId) {
           var overlays = A.normalizeOverlays(values.overlays, rules);
           var found = null;
@@ -85,6 +87,24 @@
         hint(instanceMissing
           ? "Virta Alerts: this overlay was removed in the Alerts panel — copy a fresh URL."
           : "");
+
+        // Apply per-style CSS overrides saved via the panel code editor.
+        A.clearAllOverrides();
+        var styleOvr = (values.styleOverrides && typeof values.styleOverrides === "object") ? values.styleOverrides : {};
+        for (var sid in styleOvr) {
+          if (Object.prototype.hasOwnProperty.call(styleOvr, sid) && typeof styleOvr[sid] === "string" && styleOvr[sid]) {
+            try { A.setStyleOverride(sid, styleOvr[sid]); } catch (e) { /* invalid CSS is still set; browser ignores bad rules */ }
+          }
+        }
+        // Apply per-animation JS overrides.
+        var animOvr = (values.animOverrides && typeof values.animOverrides === "object") ? values.animOverrides : {};
+        for (var aid in animOvr) {
+          if (Object.prototype.hasOwnProperty.call(animOvr, aid) && typeof animOvr[aid] === "string" && animOvr[aid]) {
+            try { A.setCustomPreset(aid, animOvr[aid]); } catch (e) { console.warn("Virta Alerts anim override [" + aid + "]:", e); }
+          }
+        }
+        // Refresh custom event definitions so the hook poller uses the latest rules.
+        customEvents = Array.isArray(values.customEvents) ? values.customEvents : [];
       })
       .catch(function () { /* keep the last good rules; retry on the next tick */ });
   }
@@ -176,4 +196,90 @@
   }
 
   connect();
+
+  // ── Custom hook events (external integrations) ──────────────────────────────
+  // Poll every 2s for events fired via POST /v1/plugins/{id}/hook/{name}.
+  var hookLastMs = 0;
+  var customEvents = []; // refreshed from config on every fetchConfig()
+
+  function playHookEvent(event) {
+    var evtName = event.name; // lowercased by the daemon
+    var evtRule = null;
+    for (var i = 0; i < customEvents.length; i++) {
+      var ce = customEvents[i];
+      if (ce.name && ce.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") === evtName) {
+        evtRule = ce;
+        break;
+      }
+    }
+    if (!evtRule || evtRule.enabled === false) return;
+    var payload = {};
+    try { payload = JSON.parse(JSON.stringify(event.payload || {})); } catch (e) { /* ignore */ }
+    player.enqueue({
+      type: "custom",
+      author: (typeof payload.author === "string" ? payload.author : "") || "",
+      badge: evtRule.badge || evtName.toUpperCase(),
+      _ext: payload,
+    }, {
+      animation: evtRule.animation || "pop",
+      style: evtRule.style || "gradient-glass",
+      template: evtRule.template || "{author}",
+      durationMs: 6000,
+    });
+  }
+
+  function pollHookEvents() {
+    fetch("/v1/plugins/" + encodeURIComponent(PLUGIN_ID) + "/hook/events?since=" + hookLastMs, {
+      headers: { Authorization: "Bearer " + token },
+    })
+      .then(function (res) {
+        if (res.status === 204) return null;
+        if (!res.ok) return null;
+        return res.json();
+      })
+      .then(function (body) {
+        if (!body || !Array.isArray(body.events)) return;
+        body.events.forEach(function (e) {
+          if (typeof e.ts === "number" && e.ts > hookLastMs) hookLastMs = e.ts;
+          playHookEvent(e);
+        });
+      })
+      .catch(function () { /* silent — keep polling */ });
+  }
+
+  setInterval(pollHookEvents, 2000);
+
+  // ── Test relay (daemon polling) ─────────────────────────────────────────────
+  // The panel POSTs a signal via the bridge → daemon stores it in memory.
+  // We poll every 2s with ?since=<lastSeenMs> so only genuinely new signals fire.
+  // This works cross-process (Electron panel → OBS browser source) unlike localStorage.
+  var testLastMs = 0;
+
+  function pollTestSignal() {
+    fetch("/v1/plugins/" + encodeURIComponent(PLUGIN_ID) + "/signal?since=" + testLastMs, {
+      headers: { Authorization: "Bearer " + token },
+    })
+      .then(function (res) {
+        if (res.status === 204) return null; // nothing new
+        if (!res.ok) return null;
+        return res.json();
+      })
+      .then(function (body) {
+        if (!body) return;
+        // body: { ts: <unixMs>, payload: { data, rule, ts } }
+        if (typeof body.ts === "number") testLastMs = body.ts;
+        var obj = body.payload;
+        if (!obj || !obj.data) return;
+        if (!rules.enabled || instanceMissing) return;
+        var info = A.typeInfo(obj.data.type);
+        if (!info) return;
+        if (instance.types.length && instance.types.indexOf(obj.data.type) === -1) return;
+        var rule = obj.rule || rules.types[obj.data.type];
+        if (!rule || !rule.enabled) return;
+        player.flash(obj.data, rule);
+      })
+      .catch(function () { /* network errors are silent — keep polling */ });
+  }
+
+  setInterval(pollTestSignal, 2000);
 })();

@@ -28,6 +28,16 @@
         "type": "string",
         "title": "Overlay token",
         "description": "Auto-managed; used by the OBS overlay URL."
+      },
+      "styleOverrides": {
+        "type": "object",
+        "title": "Style CSS overrides",
+        "description": "Per-style CSS strings keyed by style ID, edited via the panel code editor."
+      },
+      "animOverrides": {
+        "type": "object",
+        "title": "Animation JS overrides",
+        "description": "Per-animation JS strings keyed by animation ID, edited via the panel code editor."
       }
     }
   }

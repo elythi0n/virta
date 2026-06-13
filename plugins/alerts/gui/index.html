@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Alerts</title>
     <link rel="stylesheet" href="alert-styles.css" />
+    <link rel="stylesheet" href="codemirror.min.css" />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
+    <!-- ── global header ────────────────────────────────────────────────── -->
     <header class="head">
       <span class="brand">Alerts</span>
       <label class="master">
@@ -15,47 +17,115 @@
         <span>Enabled</span>
       </label>
       <span id="status" class="status" aria-live="polite"></span>
+      <div class="head-actions">
+        <button id="btn-export" class="btn btn-small" type="button" title="Download config as JSON">Export</button>
+        <button id="btn-import" class="btn btn-small" type="button" title="Load config from a JSON file">Import</button>
+        <input id="import-file" type="file" accept=".json,application/json" style="display:none" />
+      </div>
     </header>
 
     <div id="notice" class="notice" hidden></div>
 
-    <main class="main">
-      <section class="preview-sec">
-        <div class="sec-label">
-          <span>Live preview</span>
-          <label class="pos-label">Position
-            <select id="position" class="select">
-              <option value="top">Top</option>
-              <option value="center">Center</option>
-              <option value="bottom">Bottom</option>
-            </select>
-          </label>
-        </div>
-        <div id="stage" class="stage pos-bottom" aria-label="Alert preview"></div>
-        <div class="preview-note">Tests and real incoming events both play here — the exact rendering the overlay uses.</div>
-      </section>
+    <!-- ── two-column editor layout ─────────────────────────────────────── -->
+    <div class="editor-layout">
 
-      <section class="overlays-sec">
-        <div class="sec-label">
-          <span>Overlays</span>
-          <button id="add-overlay" class="btn btn-small btn-add" type="button">+ Add overlay</button>
+      <!-- LEFT: live preview + type nav -->
+      <aside class="editor-left">
+        <!-- Live preview -->
+        <section class="preview-sec">
+          <div class="preview-label">
+            <span>Live preview</span>
+            <button id="preview-expand" class="preview-expand-btn" type="button" title="Expand preview">⤢</button>
+          </div>
+          <div id="stage" class="stage pos-bottom" aria-label="Alert preview"></div>
+          <div class="preview-controls">
+            <label class="ctrl-pair">
+              <span class="ctrl-label">Position</span>
+              <select id="position" class="select select-sm">
+                <option value="top">Top</option>
+                <option value="center">Center</option>
+                <option value="bottom">Bottom</option>
+              </select>
+            </label>
+            <label class="ctrl-pair">
+              <span class="ctrl-label">Gap</span>
+              <input id="gap-ms" type="number" class="input input-num input-sm" min="0" max="5000" step="50" title="Pause between consecutive alerts" />
+              <span class="ctrl-unit">ms</span>
+            </label>
+          </div>
+        </section>
+
+        <!-- Alert-type navigation -->
+        <div class="type-nav-wrap">
+          <div class="type-nav-header">Alert types</div>
+          <nav class="type-nav" id="type-nav"></nav>
         </div>
-        <div class="overlays-hint">
-          Each overlay is its own OBS browser source with its own URL. Filter it to specific
-          alert types — e.g. one overlay for raids, another for everything else.
-        </div>
-        <div id="overlays" class="overlays"></div>
+
+        <!-- Overlay URL fallback (shown when clipboard unavailable) -->
         <div id="url-fallback" class="url-fallback" hidden>
           <input id="overlay-url" class="input" readonly aria-label="Overlay URL" />
         </div>
         <div id="obs-hint" class="obs-hint" hidden>
-          OBS: add a Browser source, paste the URL, set 1920×1080 — the page background is transparent.
+          OBS: Browser source → paste URL → 1920×1080 — background is transparent.
         </div>
-      </section>
+      </aside>
 
-      <section id="cards" class="cards"></section>
-    </main>
+      <!-- RIGHT: type editor + overlays + custom events -->
+      <main class="editor-right" id="editor-right">
+        <!-- Single event-type editor (rebuilt when tab changes) -->
+        <div id="type-editor" class="type-editor"></div>
 
+        <!-- Overlays -->
+        <section class="right-sec">
+          <div class="right-sec-head" id="overlays-head">
+            <span class="right-sec-dot dot-overlay"></span>
+            <span class="right-sec-title">Overlays</span>
+            <button id="add-overlay" class="btn btn-small btn-add" type="button">+ Add</button>
+            <button class="right-sec-toggle" type="button" aria-label="Toggle overlays">▾</button>
+          </div>
+          <div class="right-sec-body" id="overlays-body">
+            <p class="sec-hint">Each overlay is its own OBS browser source with its own URL. Filter it to specific alert types.</p>
+            <div id="overlays" class="overlays"></div>
+          </div>
+        </section>
+
+        <!-- Custom events (webhook integrations) -->
+        <section class="right-sec">
+          <div class="right-sec-head" id="custom-events-head">
+            <span class="right-sec-dot dot-webhook"></span>
+            <span class="right-sec-title">Custom events</span>
+            <button id="add-custom-event" class="btn btn-small btn-add" type="button">+ Add event</button>
+            <button class="right-sec-toggle" type="button" aria-label="Toggle custom events">▾</button>
+          </div>
+          <div class="right-sec-body" id="custom-events-body">
+            <p class="sec-hint">
+              Fire named events from external tools via HTTP POST. Use <code>{author}</code>, <code>{text}</code>, or any field from the JSON body.
+            </p>
+            <div class="webhook-secret-row">
+              <span class="webhook-secret-label">Webhook secret</span>
+              <code id="webhook-secret-val" class="webhook-secret-val">—</code>
+              <button id="webhook-secret-copy" class="btn btn-small" type="button" title="Copy secret to clipboard">Copy</button>
+              <button id="webhook-secret-regen" class="btn btn-small" type="button" title="Generate a new secret (invalidates existing URLs)">Regenerate</button>
+            </div>
+            <div id="custom-events-list" class="custom-events-list"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- ── Full-panel picker modal ───────────────────────────────────────── -->
+    <div id="picker" class="picker">
+      <div class="picker-head">
+        <span id="picker-title" class="picker-title"></span>
+        <button id="picker-close" class="btn btn-small btn-rm" type="button">✕ Close</button>
+      </div>
+      <div id="picker-grid" class="picker-grid"></div>
+    </div>
+
+    <script src="codemirror.min.js"></script>
+    <script src="cm-mode-js.min.js"></script>
+    <script src="cm-mode-css.min.js"></script>
+    <script src="cm-closebrackets.min.js"></script>
     <script src="__virta.js"></script>
     <script src="animations.js"></script>
     <script src="app.js"></script>
