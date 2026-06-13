@@ -79,6 +79,15 @@ export function registerPanelContribution(c: PanelContribution): void {
   catalogListeners.forEach((l) => l());
 }
 
+export function removePanelContribution(kind: string): void {
+  const pi = PANELS.findIndex((p) => p.kind === kind);
+  if (pi >= 0) PANELS.splice(pi, 1);
+  const ci = PANEL_CATALOG.findIndex((p) => p.kind === kind);
+  if (ci >= 0) PANEL_CATALOG.splice(ci, 1);
+  catalogVersion += 1;
+  catalogListeners.forEach((l) => l());
+}
+
 export function subscribePanelCatalog(cb: () => void): () => void {
   catalogListeners.add(cb);
   return () => catalogListeners.delete(cb);

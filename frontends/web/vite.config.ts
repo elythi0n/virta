@@ -45,6 +45,13 @@ export default defineConfig({
   server: {
     // fs.allow opens the sibling ui-kit/ so the dev server can serve the shared tokens.css.
     fs: { allow: ['..'] },
-    proxy: DAEMON ? { '/v1': { target: DAEMON, changeOrigin: true, ws: true } } : undefined,
+    proxy: DAEMON
+      ? {
+          '/v1': { target: DAEMON, changeOrigin: true, ws: true },
+          // Plugin GUI assets are served by the daemon, not Vite. Without this proxy,
+          // /plugins/{id}/gui/ hits Vite's SPA catch-all and loads the host app in the iframe.
+          '/plugins': { target: DAEMON, changeOrigin: true },
+        }
+      : undefined,
   },
 });

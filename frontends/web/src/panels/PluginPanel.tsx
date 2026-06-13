@@ -197,6 +197,21 @@ export default function PluginPanel({ pluginId }: { pluginId: string }) {
             })
             .catch((e) => reply(undefined, errText(e, 'decorate failed')));
           break;
+        case 'test.relay':
+          // POST the test payload to the signal relay so OBS overlay browser sources receive it.
+          discover()
+            .then((d) => {
+              if (!d) throw new Error('daemon unreachable');
+              const base = d.addr ? `http://${d.addr}` : window.location.origin;
+              return fetch(`${base}/v1/plugins/${encodeURIComponent(pluginId)}/signal`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${d.token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(data.msg.payload ?? {}),
+              });
+            })
+            .then(() => reply({ ok: true }))
+            .catch((e) => reply(undefined, errText(e, 'test relay failed')));
+          break;
         default:
           reply(undefined, `unknown message type: ${data.msg.type}`);
       }
