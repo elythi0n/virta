@@ -271,10 +271,10 @@ function About() {
             className={styles.aboutDevBtn}
             onClick={() => void window.wails?.Window?.OpenDevTools?.()}
           >
-            Open WebKit Inspector
+            Open DevTools
           </button>
           <Text variant="meta" tone="subtle" as="p" className={styles.aboutDevHint}>
-            Opens DevTools for the main window. Use <code>make app-debug</code> to build with DevToolsEnabled.
+            Opens Chromium DevTools for the main window. You can also press <code>F12</code> or <code>Ctrl+Shift+I</code>.
           </Text>
         </div>
       )}
