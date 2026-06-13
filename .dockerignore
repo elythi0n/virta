@@ -18,11 +18,6 @@ frontends/web/dist/
 frontends/desktop/
 internal/webui/dist/
 
-# Ignore desktop + TUI build artefacts (server image doesn't need them).
-frontends/desktop/build/
-frontends/desktop/bin/
-frontends/desktop/assets/index.html
-
 # Database files, secrets, local overrides — never in the image.
 *.db
 *.db-wal

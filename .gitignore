@@ -34,20 +34,14 @@ frontends/*/dist/
 frontends/*/.vite/
 *.tsbuildinfo
 
-# Desktop shell (Wails) build inputs/outputs; the .gitkeep placeholders are kept.
-frontends/desktop/build/
-frontends/desktop/assets/*
-!frontends/desktop/assets/.gitkeep
-frontends/desktop/bin/*
-!frontends/desktop/bin/.gitkeep
-frontends/desktop/frontend/
-frontends/desktop/desktop
+# Desktop shell (Electron) staged build inputs; the .gitkeep placeholders are kept. The web build
+# and the virtad binary are copied in by `make app`; the icon is copied from the ui-kit logo.
+frontends/desktop/resources/web/*
+!frontends/desktop/resources/web/.gitkeep
+frontends/desktop/resources/bin/*
+!frontends/desktop/resources/bin/.gitkeep
+frontends/desktop/build/icon.png
 
 # Web UI staged into the daemon for embedding; the .gitkeep placeholder is kept.
 internal/webui/dist/*
 !internal/webui/dist/.gitkeep
-
-# Generated app icons (produced by `make icons` / CI from assets/logo.png).
-frontends/desktop/build/appicon.ico
-frontends/desktop/build/appicon.icns
-frontends/desktop/rsrc.syso

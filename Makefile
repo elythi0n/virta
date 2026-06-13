@@ -18,7 +18,8 @@ PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 win
 DEV_ADDR  ?= 127.0.0.1:8799
 DEV_TOKEN ?= dev
 
-.PHONY: all ci build run dev db lint fmt fmt-check vet test test-race cover cross app daemon tui web serve fixtures \
+.PHONY: all ci build run dev db lint fmt fmt-check vet test test-race cover cross app app-run app-dmg app-win app-appimage \
+        daemon tui web serve fixtures \
         tokens tokens-check apigen apigen-check test-live-twitch test-live-kick test-live-x test-live-llm soak docker clean tidy \
         build-plugins
 
@@ -145,125 +146,37 @@ daemon:
 serve: web daemon
 	./dist/virtad
 
-## app: one-click desktop bundle. No external CLI required — Wails v3 builds with plain go build.
-## Requires WebKit dev libraries: webkit2gtk-4.1 (GTK3) or webkitgtk-6.0 (GTK4).
+## app: build the web UI + virtad daemon and stage them into the Electron shell, then install its
+## deps. The shell (frontends/desktop) is an Electron app: it serves the web build over a loopback
+## HTTP server and spawns the bundled virtad. No CGO/webkit/pkg-config needed.
 app:
-	@command -v pkg-config >/dev/null 2>&1 || { echo "pkg-config not found — install pkg-config and webkit dev libraries"; exit 1; }
 	cd frontends/web && npm install && npm run build
-	@find frontends/desktop/assets -mindepth 1 ! -name .gitkeep -delete
-	cp -r frontends/web/dist/. frontends/desktop/assets/
+	@find frontends/desktop/resources/web -mindepth 1 ! -name .gitkeep -delete
+	@cp -r frontends/web/dist/. frontends/desktop/resources/web/
 	@find internal/webui/dist -mindepth 1 ! -name .gitkeep -delete
 	@cp -r frontends/web/dist/. internal/webui/dist/
+	@mkdir -p frontends/desktop/resources/bin frontends/desktop/build
 	@ext=""; [ "$$(go env GOOS)" = "windows" ] && ext=".exe"; \
-		CGO_ENABLED=0 go build -ldflags '$(LDFLAGS)' -o frontends/desktop/bin/virtad$$ext ./cmd/virtad
-	@mkdir -p frontends/desktop/build/bin
-	@cd frontends/desktop && go mod tidy && { \
-		gtk=""; \
-		if pkg-config --modversion webkit2gtk-4.1 >/dev/null 2>&1; then gtk="-tags gtk3"; \
-		elif pkg-config --modversion webkit2gtk-4.0 >/dev/null 2>&1; then gtk="-tags gtk3"; fi; \
-		echo "+ CGO_ENABLED=1 go build $$gtk -o build/bin/virta ."; \
-		CGO_ENABLED=1 go build $$gtk -ldflags '-s -w' -o build/bin/virta .; \
-	}
-	@echo "✓ desktop bundle: frontends/desktop/build/bin/virta"
+		CGO_ENABLED=0 go build -ldflags '$(LDFLAGS)' -o frontends/desktop/resources/bin/virtad$$ext ./cmd/virtad
+	@cp frontends/ui-kit/src/assets/virta-logo-512.png frontends/desktop/build/icon.png
+	cd frontends/desktop && npm install
+	@echo "✓ Electron shell staged: frontends/desktop (run 'make app-run' to launch)"
 
-## app-debug: same as app but with DevToolsEnabled per window and no binary stripping.
-## Launch the binary and go to Settings → About → Open WebKit Inspector.
-app-debug:
-	@command -v pkg-config >/dev/null 2>&1 || { echo "pkg-config not found — install pkg-config and webkit dev libraries"; exit 1; }
-	cd frontends/web && npm install && npm run build
-	@find frontends/desktop/assets -mindepth 1 ! -name .gitkeep -delete
-	cp -r frontends/web/dist/. frontends/desktop/assets/
-	@find internal/webui/dist -mindepth 1 ! -name .gitkeep -delete
-	@cp -r frontends/web/dist/. internal/webui/dist/
-	@ext=""; [ "$$(go env GOOS)" = "windows" ] && ext=".exe"; \
-		CGO_ENABLED=0 go build -ldflags '$(LDFLAGS)' -o frontends/desktop/bin/virtad$$ext ./cmd/virtad
-	@mkdir -p frontends/desktop/build/bin
-	@cd frontends/desktop && go mod tidy && { \
-		gtk=""; \
-		if pkg-config --modversion webkit2gtk-4.1 >/dev/null 2>&1; then gtk="-tags gtk3,devtools"; \
-		elif pkg-config --modversion webkit2gtk-4.0 >/dev/null 2>&1; then gtk="-tags gtk3,devtools"; fi; \
-		echo "+ CGO_ENABLED=1 go build $$gtk -o build/bin/virta-debug ."; \
-		CGO_ENABLED=1 go build $$gtk -o build/bin/virta-debug .; \
-	}
-	@echo "✓ debug bundle: frontends/desktop/build/bin/virta-debug  (Settings → About → Open WebKit Inspector)"
+## app-run: stage everything and launch the Electron shell in development (spawns its own daemon).
+app-run: app
+	cd frontends/desktop && npm start
 
-## app-appimage: Linux AppImage. Requires appimagetool + the app target's prerequisites.
-app-appimage: app daemon tui
-	@command -v appimagetool >/dev/null 2>&1 || { echo "appimagetool not found (https://appimage.github.io/appimagetool/)"; exit 1; }
-	@mkdir -p dist/AppDir/usr/bin dist/AppDir/usr/share/applications dist/AppDir/usr/share/icons/hicolor/512x512/apps
-	cp frontends/desktop/build/bin/virta dist/AppDir/usr/bin/virta
-	cp dist/virtad dist/AppDir/usr/bin/virtad
-	cp dist/virta-tui dist/AppDir/usr/bin/virta-tui
-	cp packaging/virta.desktop dist/AppDir/usr/share/applications/virta.desktop
-	cp frontends/ui-kit/src/assets/virta-logo-512.png dist/AppDir/usr/share/icons/hicolor/512x512/apps/virta.png
-	# appimagetool requires AppRun, a .desktop file, and an icon at the AppDir root.
-	cp packaging/virta.desktop dist/AppDir/virta.desktop
-	cp frontends/ui-kit/src/assets/virta-logo-512.png dist/AppDir/virta.png
-	ln -sf usr/bin/virta dist/AppDir/AppRun
-	ARCH=x86_64 appimagetool dist/AppDir dist/Virta-$(VERSION).AppImage
-	@echo "✓ AppImage: dist/Virta-$(VERSION).AppImage"
-
-## icons: Generate appicon.icns (macOS) and appicon.ico (Windows) from assets/logo.png.
-## Requires ImageMagick (convert/magick). On macOS, iconutil is used for better .icns quality.
-## Output lands in frontends/desktop/build/ where app-dmg and package-windows.sh expect them.
-ICON_SRC := assets/logo.png
-ICON_OUT := frontends/desktop/build
-icons:
-	@command -v magick >/dev/null 2>&1 && MAGICK=magick || MAGICK=convert; \
-	command -v $$MAGICK >/dev/null 2>&1 || { echo "ImageMagick not found — install it first"; exit 1; }; \
-	mkdir -p $(ICON_OUT); \
-	echo "→ generating $(ICON_OUT)/appicon.ico"; \
-	$$MAGICK $(ICON_SRC) -define icon:auto-resize=256,128,64,48,32,16 $(ICON_OUT)/appicon.ico; \
-	echo "→ generating $(ICON_OUT)/appicon.icns"; \
-	if command -v iconutil >/dev/null 2>&1; then \
-		tmp=$$(mktemp -d); iconset=$$tmp/AppIcon.iconset; mkdir -p $$iconset; \
-		for s in 16 32 64 128 256 512; do \
-			$$MAGICK $(ICON_SRC) -resize $${s}x$${s} $$iconset/icon_$${s}x$${s}.png; \
-			$$MAGICK $(ICON_SRC) -resize $$((s*2))x$$((s*2)) $$iconset/icon_$${s}x$${s}@2x.png; \
-		done; \
-		iconutil -c icns $$iconset -o $(ICON_OUT)/appicon.icns; \
-		rm -rf $$tmp; \
-	else \
-		command -v png2icns >/dev/null 2>&1 || { echo "png2icns not found — install icnsutils (apt install icnsutils)"; exit 1; }; \
-		tmp=$$(mktemp -d); \
-		for s in 16 32 64 128 256 512 1024; do \
-			$$MAGICK $(ICON_SRC) -resize $${s}x$${s} $$tmp/icon_$${s}.png; \
-		done; \
-		png2icns $(ICON_OUT)/appicon.icns $$tmp/icon_*.png; \
-		rm -rf $$tmp; \
-	fi; \
-	echo "✓ icons written to $(ICON_OUT)/"
-
-## app-dmg: macOS disk image. Requires xcode + create-dmg. Stages a Virta.app bundle first —
-## the raw binary from `app` isn't double-clickable on macOS without one.
+## app-dmg: macOS .dmg via electron-builder (output: dist/Virta.dmg). Run on macOS.
 app-dmg: app
-	@command -v create-dmg >/dev/null 2>&1 || { echo "create-dmg not found (brew install create-dmg)"; exit 1; }
-	@rm -rf dist/dmg
-	@mkdir -p dist/dmg/Virta.app/Contents/MacOS dist/dmg/Virta.app/Contents/Resources
-	cp frontends/desktop/build/bin/virta dist/dmg/Virta.app/Contents/MacOS/virta
-	sed 's/__VERSION__/$(VERSION)/' packaging/Info.plist > dist/dmg/Virta.app/Contents/Info.plist
-	@if [ -f frontends/desktop/build/appicon.icns ]; then \
-		cp frontends/desktop/build/appicon.icns dist/dmg/Virta.app/Contents/Resources/AppIcon.icns; \
-	else echo "warning: frontends/desktop/build/appicon.icns not found — app will have no icon"; fi
-	create-dmg \
-		--volname "Virta" \
-		--background frontends/ui-kit/src/assets/virta-logo-512.png \
-		--window-pos 200 120 \
-		--window-size 600 400 \
-		--icon-size 100 \
-		--icon "Virta.app" 175 120 \
-		--hide-extension "Virta.app" \
-		--app-drop-link 425 120 \
-		"dist/Virta-$(VERSION).dmg" \
-		"dist/dmg/"
-	@echo "✓ DMG: dist/Virta-$(VERSION).dmg"
+	cd frontends/desktop && npm run dist:mac
 
-## app-inno: Windows Inno Setup installer. Requires ISCC + running on Windows.
-## On Windows runners (no make) use scripts/package-windows.sh, which mirrors this.
-app-inno: app daemon tui
-	@command -v iscc >/dev/null 2>&1 || { echo "iscc not found (choco install innosetup)"; exit 1; }
-	MSYS2_ARG_CONV_EXCL="/D" iscc "/DAppVersion=$(VERSION)" packaging/virta.iss
-	@echo "✓ installer: dist/VirtaSetup-$(VERSION).exe"
+## app-win: Windows installer via electron-builder NSIS (output: dist/Virta-Setup.exe). Run on Windows.
+app-win: app
+	cd frontends/desktop && npm run dist:win
+
+## app-appimage: Linux AppImage via electron-builder (output: dist/Virta-x86_64.AppImage). Run on Linux.
+app-appimage: app
+	cd frontends/desktop && npm run dist:linux
 
 ## fixtures: regenerate golden fixtures by re-running normalization with -update.
 fixtures:
