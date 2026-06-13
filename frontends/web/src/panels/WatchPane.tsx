@@ -32,10 +32,23 @@ function pageUrl(platform: string, slug: string): string | null {
   }
 }
 
-// The Twitch/Kick players need a Chromium-grade webview. Windows' WebView2 is Chromium and embeds
-// fine, but macOS/Linux Wails use WebKit(GTK), whose player can't decode the IVS stream. Detect
-// Chromium by the "Chrome/" UA token (present in WebView2 and real browsers, absent in WebKit).
+// Whether the current webview is Chromium (WebView2 on Windows, or a real browser): present as the
+// "Chrome/" UA token, absent in WebKit(GTK) on macOS/Linux, whose player can't decode the streams.
 const isChromiumWebview = typeof navigator !== 'undefined' && /Chrome\//.test(navigator.userAgent);
+
+// canEmbed reports whether the platform's player iframe will actually render in this context.
+//   - No embeddable player (YouTube) → false.
+//   - In a browser → always true (https origin, no restrictions).
+//   - In a WebKit desktop webview → false (can't decode the IVS/HLS player).
+//   - Twitch in a desktop webview → false: Twitch sets frame-ancestors to https://<parent>, but
+//     the Wails webview is served over http://wails.localhost, so the embed is CSP-blocked. Kick
+//     has no such restriction and embeds fine in Chromium WebView2.
+function canEmbed(platform: string, hasEmbed: boolean, isDesktop: boolean): boolean {
+  if (!hasEmbed) return false;
+  if (!isDesktop) return true;
+  if (!isChromiumWebview) return false;
+  return platform !== 'twitch';
+}
 
 export default function WatchPane({ channel }: { channel?: string }) {
   const isDesktop = useIsDesktop();
@@ -60,27 +73,35 @@ export default function WatchPane({ channel }: { channel?: string }) {
     );
   }
 
-  // Two cases land on the channel page instead of an embed: a WebKit-based desktop webview
-  // (macOS/Linux Wails), where Twitch's IVS player can't decode, and platforms without an
-  // embeddable player (YouTube). Windows' Chromium WebView2 keeps the embed. Both fallbacks show
-  // a button that opens the page externally.
-  if (page && ((isDesktop && !isChromiumWebview) || !embed)) {
+  // When the embed can't render here (see canEmbed), show a button that opens the channel another
+  // way — covers YouTube, WebKit desktop webviews, and Twitch on the desktop.
+  if (page && !canEmbed(platform, !!embed, isDesktop)) {
     const plat = platformLabel(platform);
+    // On a Chromium desktop webview (Windows WebView2) the shell can open a native in-app player
+    // window via the bound App.OpenStreamWindow method — it loads the channel page top-level, so
+    // Twitch's player works despite the in-panel iframe being CSP-blocked. WebKit desktop webviews
+    // (macOS/Linux) can't decode the player even top-level, so those open the system browser.
+    const useNativeWindow = isDesktop && isChromiumWebview && !!window.wails?.Call;
     return (
       <div className={styles.placeholder}>
         <button
           type="button"
           className={styles.openBtn}
           onClick={() => {
-            if (window.wails?.Browser?.OpenURL) void window.wails.Browser.OpenURL(page);
-            else window.open(page, '_blank', 'noopener');
+            if (useNativeWindow) {
+              void window.wails!.Call!({ methodName: 'main.App.OpenStreamWindow', args: [platform, slug] });
+            } else if (window.wails?.Browser?.OpenURL) {
+              void window.wails.Browser.OpenURL(page);
+            } else {
+              window.open(page, '_blank', 'noopener');
+            }
           }}
         >
           <Icon name="popout" size={14} />
-          Watch {slug} on {plat}
+          {useNativeWindow ? `Open ${slug} player` : `Watch ${slug} on ${plat}`}
         </button>
         <Text variant="meta" tone="subtle" as="p" className={styles.desktopNote}>
-          {isDesktop ? 'Opens in your default browser.' : 'Opens in a new tab.'}
+          {useNativeWindow ? 'Opens in an in-app player window.' : isDesktop ? 'Opens in your default browser.' : 'Opens in a new tab.'}
         </Text>
       </div>
     );
