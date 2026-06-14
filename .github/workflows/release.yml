@@ -45,7 +45,7 @@ jobs:
         with:
           node-version: "22"
       - name: Build DMG (Electron)
-        run: make app-dmg
+        run: make app-dmg VERSION="$GITHUB_REF_NAME"
       - uses: actions/upload-artifact@v4
         with:
           name: dist-macos
@@ -71,7 +71,8 @@ jobs:
           mkdir -p frontends/desktop/resources/bin frontends/desktop/build
           CGO_ENABLED=0 go build -ldflags "-s -w" -o frontends/desktop/resources/bin/virtad.exe ./cmd/virtad
           cp frontends/ui-kit/src/assets/virta-logo-512.png frontends/desktop/build/icon.png
-          (cd frontends/desktop && npm install && npm run dist:win)
+          # electron-builder needs valid semver; strip the leading v from the tag (v0.0.3 → 0.0.3).
+          (cd frontends/desktop && npm install && npm run dist:win -- -c.extraMetadata.version="${GITHUB_REF_NAME#v}")
       - uses: actions/upload-artifact@v4
         with:
           name: dist-windows

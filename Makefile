@@ -11,6 +11,10 @@ LDFLAGS     := -s -w \
 	-X $(MODULE)/internal/buildinfo.Commit=$(COMMIT) \
 	-X $(MODULE)/internal/buildinfo.Date=$(DATE)
 
+# electron-builder needs a valid semver: strip a leading "v" from a tag (v0.0.3-rc1 → 0.0.3-rc1),
+# and fall back to 0.0.0 for the `dev` default (which isn't valid semver).
+EB_VERSION := $(if $(filter dev,$(VERSION)),0.0.0,$(patsubst v%,%,$(VERSION)))
+
 # Cross-compile matrix (the 6 shipped OS/arch targets).
 PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64
 
@@ -168,15 +172,15 @@ app-run: app
 
 ## app-dmg: macOS .dmg via electron-builder (output: dist/Virta.dmg). Run on macOS.
 app-dmg: app
-	cd frontends/desktop && npm run dist:mac
+	cd frontends/desktop && npm run dist:mac -- -c.extraMetadata.version=$(EB_VERSION)
 
 ## app-win: Windows installer via electron-builder NSIS (output: dist/Virta-Setup.exe). Run on Windows.
 app-win: app
-	cd frontends/desktop && npm run dist:win
+	cd frontends/desktop && npm run dist:win -- -c.extraMetadata.version=$(EB_VERSION)
 
 ## app-appimage: Linux AppImage via electron-builder (output: dist/Virta-x86_64.AppImage). Run on Linux.
 app-appimage: app
-	cd frontends/desktop && npm run dist:linux
+	cd frontends/desktop && npm run dist:linux -- -c.extraMetadata.version=$(EB_VERSION)
 
 ## fixtures: regenerate golden fixtures by re-running normalization with -update.
 fixtures:
