@@ -1,0 +1,100 @@
+.grid {
+  flex: 1;
+  min-height: 0;
+  align-content: start;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--virta-space-16);
+  padding: var(--virta-space-24);
+  overflow-y: auto;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-lg);
+  background: var(--virta-bg-1);
+  overflow: hidden;
+  transition: border-color var(--virta-motion-fast) ease, transform var(--virta-motion-fast) ease;
+}
+.card:hover {
+  border-color: var(--virta-text-2);
+  transform: translateY(-2px);
+}
+.thumb {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: var(--virta-space-8);
+  background:
+    radial-gradient(120% 120% at 80% 20%, color-mix(in srgb, var(--virta-accent) 30%, transparent), transparent 60%),
+    var(--virta-bg-0);
+}
+.thumb[data-source='twitch'] {
+  background:
+    radial-gradient(120% 120% at 80% 20%, color-mix(in srgb, var(--virta-plat-twitch) 34%, transparent), transparent 60%),
+    var(--virta-bg-0);
+}
+.len {
+  position: absolute;
+  top: var(--virta-space-8);
+  left: var(--virta-space-8);
+  font-family: var(--virta-font-mono);
+  font-size: var(--virta-type-meta-size);
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 1px 6px;
+  border-radius: var(--virta-radius-sm);
+}
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-4);
+  padding: var(--virta-space-12);
+}
+.title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  margin-top: var(--virta-space-4);
+}
+.actions > :first-child { margin-right: auto; }
+.del {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--virta-radius-sm);
+  background: none;
+  color: var(--virta-text-2);
+  cursor: pointer;
+  transition: color var(--virta-motion-fast) ease, background var(--virta-motion-fast) ease;
+}
+.del:hover {
+  color: var(--virta-danger);
+  background: color-mix(in srgb, var(--virta-danger) 12%, transparent);
+}
+
+.empty {
+  flex: 1;
+  min-height: 0;
+  max-width: 360px;
+  margin: 0 auto;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--virta-space-12);
+  color: var(--virta-text-2);
+  padding: var(--virta-space-32);
+}

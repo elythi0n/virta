@@ -18,6 +18,7 @@ declare global {
         OpenURL?(url: string): Promise<void>;
       };
       OpenStreamWindow?(platform: string, slug: string): Promise<void>;
+      twitchGql?(body: unknown): Promise<unknown>;
     };
   }
 }

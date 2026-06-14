@@ -1,4 +1,4 @@
-export type IconName = 'sources' | 'panels' | 'settings' | 'chat' | 'stream' | 'mods' | 'stats' | 'x' | 'popout' | 'search' | 'chevron-down' | 'plus' | 'text-size' | 'plugins' | 'mentions' | 'filter' | 'gift' | 'eye' | 'eye-off' | 'collapse' | 'trash' | 'clock' | 'ban' | 'reply' | 'zap' | 'flame' | 'check' | 'list' | 'grid' | 'star' | 'megaphone' | 'user-plus' | 'user' | 'arrow-up' | 'win-minimise' | 'win-maximise' | 'win-close';
+export type IconName = 'sources' | 'panels' | 'settings' | 'chat' | 'stream' | 'mods' | 'stats' | 'x' | 'popout' | 'search' | 'chevron-down' | 'plus' | 'text-size' | 'plugins' | 'mentions' | 'filter' | 'gift' | 'eye' | 'eye-off' | 'collapse' | 'trash' | 'clock' | 'ban' | 'reply' | 'zap' | 'flame' | 'check' | 'list' | 'grid' | 'star' | 'megaphone' | 'user-plus' | 'user' | 'arrow-up' | 'win-minimise' | 'win-maximise' | 'win-close' | 'studio' | 'scissors' | 'play' | 'pause' | 'download';
 
 // Stroke icons on a 24px grid (Lucide geometry). Inner markup only; the wrapper sets sizing,
 // stroke, and currentColor so a single icon adapts to any context.
@@ -42,6 +42,13 @@ const PATHS: Record<IconName, string> = {
   'win-maximise': '<rect x="4" y="4" width="16" height="16" rx="1"/>',
   'win-close': '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
   clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  studio:
+    '<path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9"/><path d="m12.4 3.4 3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>',
+  scissors:
+    '<circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/>',
+  play: '<polygon points="6 3 20 12 6 21 6 3"/>',
+  pause: '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
+  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>',
   ban: '<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',
   eye: '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
   'eye-off':

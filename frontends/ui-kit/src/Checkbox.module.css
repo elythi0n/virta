@@ -1,0 +1,95 @@
+.root {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  position: relative;
+}
+.withLabel {
+  cursor: pointer;
+  align-items: flex-start;
+}
+.root[data-disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Real input, visually hidden but covering the box for click/focus semantics. */
+.input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  width: 18px;
+  height: 18px;
+  opacity: 0;
+  cursor: inherit;
+}
+.withLabel .input {
+  inset: auto;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.box {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-sm);
+  background: var(--virta-bg-0);
+  color: transparent;
+  display: grid;
+  place-items: center;
+  transition:
+    background var(--virta-motion-fast) ease,
+    border-color var(--virta-motion-fast) ease,
+    color var(--virta-motion-fast) ease;
+}
+.tick {
+  width: 14px;
+  height: 14px;
+}
+.tick path {
+  stroke-dasharray: 16;
+  stroke-dashoffset: 16;
+  transition: stroke-dashoffset var(--virta-motion-base) ease;
+}
+
+.input:hover + .box {
+  border-color: var(--virta-text-2);
+}
+.input:checked + .box {
+  background: var(--virta-accent);
+  border-color: var(--virta-accent);
+  color: #fff;
+}
+.input:checked + .box .tick path {
+  stroke-dashoffset: 0;
+}
+.input:indeterminate + .box {
+  background: var(--virta-accent);
+  border-color: var(--virta-accent);
+}
+.input:focus-visible + .box {
+  outline: 2px solid var(--virta-accent);
+  outline-offset: 2px;
+}
+
+.labelText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-top: 1px;
+}
+.label {
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  line-height: var(--virta-type-ui-line);
+  color: var(--virta-text-0);
+}
+.hint {
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  line-height: var(--virta-type-meta-line);
+  color: var(--virta-text-2);
+}

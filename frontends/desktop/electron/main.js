@@ -101,9 +101,10 @@ async function bootstrap() {
   });
 }
 
-// installPlayerHeaderRewrite strips frame-blocking response headers (CSP frame-ancestors,
-// X-Frame-Options) from Twitch/Kick player responses so their iframes render inside the panel.
-// Scoped to those hosts only; everything else passes through untouched.
+// installPlayerHeaderRewrite adjusts response headers for stream-platform hosts so the renderer can
+// use them: it strips frame-blocking headers (CSP frame-ancestors, X-Frame-Options) so player
+// iframes embed, and adds permissive CORS headers so the renderer can fetch platform data APIs
+// (e.g. Twitch VOD comments) directly. Scoped to those hosts only; everything else is untouched.
 function installPlayerHeaderRewrite() {
   const isPlayerHost = (urlStr) => {
     let host = '';
@@ -131,11 +132,19 @@ function installPlayerHeaderRewrite() {
       if (
         lower === 'content-security-policy' ||
         lower === 'content-security-policy-report-only' ||
-        lower === 'x-frame-options'
+        lower === 'x-frame-options' ||
+        // Drop any existing CORS headers so ours below are authoritative (no duplicates).
+        lower === 'access-control-allow-origin' ||
+        lower === 'access-control-allow-headers' ||
+        lower === 'access-control-allow-methods'
       ) {
         delete headers[key];
       }
     }
+    // Credential-less fetches, so a wildcard origin is valid and avoids echoing a per-request value.
+    headers['Access-Control-Allow-Origin'] = ['*'];
+    headers['Access-Control-Allow-Headers'] = ['Authorization, Client-Id, Content-Type'];
+    headers['Access-Control-Allow-Methods'] = ['GET, POST, OPTIONS'];
     callback({ responseHeaders: headers });
   });
 }
@@ -204,6 +213,16 @@ ipcMain.handle('browser:openExternal', (_event, url) => {
 });
 ipcMain.handle('streams:open', (_event, platform, slug) => {
   openStreamWindow(platform, slug);
+});
+// Twitch public GQL proxy from the main process — no CORS, no plugin needed. Used for VOD chat.
+ipcMain.handle('twitch:gql', async (_event, body) => {
+  const res = await fetch('https://gql.twitch.tv/gql', {
+    method: 'POST',
+    headers: { 'Client-Id': 'kimne78kx3ncx6brgo4mv6wki5h1ko', 'Content-Type': 'application/json' },
+    body: typeof body === 'string' ? body : JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Twitch GQL ${res.status}`);
+  return res.json();
 });
 
 // ── Shutdown ─────────────────────────────────────────────────────────────────

@@ -1,0 +1,324 @@
+.studio {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--virta-bg-0);
+  overflow: hidden;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.header {
+  flex: none;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-24);
+  padding: 0 var(--virta-space-16);
+  border-bottom: 1px solid var(--virta-line);
+  background: var(--virta-bg-1);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  color: var(--virta-text-0);
+}
+.headerRight {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-16);
+}
+.autoMode {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  cursor: pointer;
+}
+
+.presetTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  height: 32px;
+  min-width: 130px;
+  padding: 0 var(--virta-space-8) 0 var(--virta-space-12);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-sm);
+  background: var(--virta-bg-0);
+  color: var(--virta-text-0);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  cursor: pointer;
+  transition: border-color var(--virta-motion-fast) ease;
+}
+.presetTrigger:hover { border-color: var(--virta-text-2); }
+.presetTrigger > span {
+  margin-right: auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.presetMenu {
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  padding: var(--virta-space-4);
+}
+.presetMenuHead {
+  padding: var(--virta-space-8) var(--virta-space-8) var(--virta-space-4);
+  letter-spacing: 0.06em;
+}
+.presetRow {
+  display: flex;
+  align-items: center;
+  border-radius: var(--virta-radius-sm);
+}
+.presetRow:hover { background: var(--virta-bg-2); }
+.presetActive { background: color-mix(in srgb, var(--virta-accent) 10%, transparent); }
+.presetName {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  min-width: 0;
+  height: 32px;
+  padding: 0 var(--virta-space-8);
+  border: 0;
+  background: none;
+  color: var(--virta-text-0);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  text-align: left;
+  cursor: pointer;
+}
+.presetName > span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.presetDel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 32px;
+  border: 0;
+  background: none;
+  color: var(--virta-text-2);
+  cursor: pointer;
+  border-radius: var(--virta-radius-sm);
+  transition: color var(--virta-motion-fast) ease, background var(--virta-motion-fast) ease;
+}
+.presetDel:hover:not(:disabled) {
+  color: var(--virta-danger);
+  background: color-mix(in srgb, var(--virta-danger) 12%, transparent);
+}
+.presetDel:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ── Workspace ──────────────────────────────────────────────────────────── */
+.workspace {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 340px;
+}
+.main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: var(--virta-space-16);
+  gap: var(--virta-space-4);
+}
+
+.stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  border-radius: var(--virta-radius-lg);
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--virta-line);
+}
+.video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  /* pointer-events is set inline per mode: interactive while watching, click-through while editing
+     the overlay so the chat box can be dragged over the (cross-origin) player. */
+}
+.video iframe {
+  width: 100% !important;
+  height: 100% !important;
+  border: 0;
+}
+/* Above the video; pointer-events set inline per mode (catches drags only in edit mode). */
+.overlayLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+/* Edit-mode affordance: a soft accent ring around the stage + a hint badge. */
+.editing {
+  outline: 2px solid var(--virta-accent);
+  outline-offset: -2px;
+}
+.editBadge {
+  position: absolute;
+  top: var(--virta-space-12);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  padding: var(--virta-space-4) var(--virta-space-12);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--virta-accent) 90%, black);
+  color: #fff;
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  pointer-events: none;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+.chatStatus {
+  position: absolute;
+  bottom: var(--virta-space-12);
+  right: var(--virta-space-12);
+  z-index: 3;
+  padding: var(--virta-space-4) var(--virta-space-12);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  color: var(--virta-text-1);
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-meta-size);
+  pointer-events: none;
+}
+
+/* ── Transport ──────────────────────────────────────────────────────────── */
+.transport {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-12);
+  padding: var(--virta-space-4) var(--virta-space-8);
+}
+.playBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid var(--virta-line);
+  background: var(--virta-bg-2);
+  color: var(--virta-text-0);
+  cursor: pointer;
+  transition: background var(--virta-motion-fast) ease, border-color var(--virta-motion-fast) ease;
+}
+.playBtn:hover {
+  background: var(--virta-bg-1);
+  border-color: var(--virta-accent);
+}
+.timecode {
+  font-family: var(--virta-font-mono);
+  font-size: var(--virta-type-ui-size);
+  color: var(--virta-text-0);
+  font-variant-numeric: tabular-nums;
+}
+.dim { color: var(--virta-text-2); }
+.spacer { flex: 1; }
+
+/* ── Right rail ─────────────────────────────────────────────────────────── */
+.rail {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-left: 1px solid var(--virta-line);
+  background: var(--virta-bg-1);
+}
+.railScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--virta-space-16);
+}
+.railActions {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-8);
+  padding: var(--virta-space-16);
+  border-top: 1px solid var(--virta-line);
+  background: var(--virta-bg-0);
+}
+.actionRow {
+  display: flex;
+  gap: var(--virta-space-8);
+}
+.actionRow > * { flex: 1; }
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-4);
+  position: relative;
+  padding-top: var(--virta-space-8);
+}
+.progressBar {
+  height: 3px;
+  border-radius: 999px;
+  background: var(--virta-accent);
+  transition: width 120ms linear;
+}
+
+/* ── Loader (empty state) ───────────────────────────────────────────────── */
+.loader {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: var(--virta-space-32);
+}
+.loaderCard {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--virta-space-12);
+  text-align: center;
+  padding: var(--virta-space-32);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-lg);
+  background: var(--virta-bg-1);
+  color: var(--virta-text-0);
+}
+.loaderRow {
+  display: flex;
+  gap: var(--virta-space-8);
+  width: 100%;
+  margin-top: var(--virta-space-8);
+}
+.loaderRow > :first-child { flex: 1; }
+.or {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  color: var(--virta-text-2);
+  font-size: var(--virta-type-meta-size);
+}
+.or::before, .or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--virta-line);
+}
+.or span { padding: 0 var(--virta-space-12); }
+.error { color: var(--virta-danger); }
+
+@media (max-width: 980px) {
+  .workspace { grid-template-columns: 1fr; }
+  .rail { display: none; }
+}

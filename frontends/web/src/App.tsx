@@ -9,8 +9,9 @@ import ShortcutHelp from './shell/ShortcutHelp';
 import NewFeedDialog from './shell/NewFeedDialog';
 import { CommandPalette, TooltipProvider, matchesShortcut, type CommandAction } from '@virta/ui-kit';
 import type { Density } from '@virta/feed-core';
-import { PANEL_CATALOG, type ViewId } from './shell/views';
+import { PANEL_CATALOG, isToolView, type ViewId } from './shell/views';
 import { panelCatalogVersion, subscribePanelCatalog } from './panels/registry';
+import StudioView from './studio/StudioView';
 import { syncPluginPanels } from './panels/pluginPanels';
 import { loadLayout, saveLayoutDebounced } from './shell/layout';
 import { ActionsProvider } from './actions';
@@ -212,6 +213,19 @@ export default function App() {
 
   const selectView = useCallback(
     (view: ViewId) => {
+      // Tool views (Studio) take over the main area and have no side bar of their own — switch to
+      // them and collapse the rail; re-selecting returns to the panels workspace.
+      if (isToolView(view)) {
+        setActiveView((cur) => (cur === view ? 'panels' : view));
+        setSidebarOpen(false);
+        return;
+      }
+      // Leaving a tool view back to a primary view re-opens its side bar.
+      if (isToolView(activeView)) {
+        setActiveView(view);
+        setSidebarOpen(true);
+        return;
+      }
       // Re-selecting the active view toggles the side bar, matching VS Code's activity bar.
       if (view === activeView) {
         setSidebarOpen((open) => !open);
@@ -354,6 +368,7 @@ export default function App() {
       { id: 'open-settings', title: 'Open Settings', group: 'Open', shortcut: 'mod+,', perform: openSettings },
       { id: 'view-panels', title: 'Show Panels', group: 'View', perform: () => { setActiveView('panels'); setSidebarOpen(true); } },
       { id: 'view-streams', title: 'Show Streams', group: 'View', perform: () => { setActiveView('streams'); setSidebarOpen(true); } },
+      { id: 'view-studio', title: 'Open Studio', group: 'View', keywords: ['vod', 'clip', 'replay', 'review'], perform: () => { setActiveView('studio'); setSidebarOpen(false); } },
       { id: 'toggle-sidebar', title: 'Toggle Side Bar', group: 'View', keywords: ['hide', 'show'], shortcut: 'mod+b', perform: () => setSidebarOpen((o) => !o) },
       { id: 'theme-system', title: 'Appearance: Follow system', group: 'Preferences', perform: () => setMode('system') },
       { id: 'theme-dark', title: 'Appearance: Dark', group: 'Preferences', perform: () => setMode('dark') },
@@ -419,9 +434,12 @@ export default function App() {
               onNewFeed={() => setNewFeedOpen(true)}
               hidden={!sidebarOpen}
             />
-            <div className="dock-host">
+            {/* The dock stays mounted but hidden under a tool view so its layout/state survive a
+                round-trip to Studio and back. */}
+            <div className="dock-host" hidden={isToolView(activeView)}>
               <Dock onReady={onReady} />
             </div>
+            {activeView === 'studio' && <StudioView />}
           </div>
         </div>
           <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} actions={actions} placeholder="Search commands…" />

@@ -1,0 +1,98 @@
+.overlay {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: none;
+  font-size: calc(13px * var(--ov-scale, 1));
+  line-height: 1.32;
+  border-radius: var(--virta-radius-md);
+  overflow: hidden;
+}
+
+/* Lines pin to the bottom (newest last), chat-style, and clip to the box. */
+.lines {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: calc(3px * var(--ov-scale, 1));
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.line {
+  animation: ov-in var(--ov-fade, 180ms) ease both;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+.noAnim { animation: none; }
+@keyframes ov-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+.time {
+  color: rgba(255, 255, 255, 0.45);
+  font-variant-numeric: tabular-nums;
+  margin-right: 6px;
+  font-size: 0.82em;
+}
+.name {
+  font-weight: 600;
+  margin-right: 6px;
+}
+.name-mono { font-family: var(--virta-font-mono); color: #d6dbe6; }
+.name-bold { color: #fff; font-weight: 700; }
+.name::after { content: ':'; color: rgba(255, 255, 255, 0.4); font-weight: 400; }
+.name-hidden { display: none; }
+.body { color: #f2f4f8; }
+
+.shadow .line {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85), 0 0 1px rgba(0, 0, 0, 0.9);
+}
+
+/* ── Themes ─────────────────────────────────────────────────────────────── */
+.theme-glass {
+  background: rgba(14, 15, 18, var(--ov-bg-alpha, 0.55));
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.theme-solid {
+  background: rgba(14, 15, 18, var(--ov-bg-alpha, 0.85));
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.theme-shadow {
+  background: linear-gradient(to top, rgba(0, 0, 0, calc(var(--ov-bg-alpha, 0.6) + 0.2)), transparent);
+}
+.theme-outline { background: transparent; }
+.theme-outline .line {
+  text-shadow: 0 0 3px #000, 0 0 3px #000, 0 1px 2px #000;
+}
+.theme-minimal { background: transparent; }
+
+/* ── Editable: draggable box + corner handles ───────────────────────────── */
+.editable {
+  pointer-events: auto;
+  cursor: move;
+  outline: 1px dashed rgba(255, 255, 255, 0.25);
+  outline-offset: -1px;
+  transition: outline-color var(--virta-motion-fast) ease;
+}
+.editable:hover {
+  outline-color: var(--virta-accent);
+}
+.handle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: var(--virta-accent);
+  border: 2px solid #fff;
+  border-radius: 3px;
+  pointer-events: auto;
+  opacity: 0;
+  transition: opacity var(--virta-motion-fast) ease;
+}
+.editable:hover .handle { opacity: 1; }
+.handle-nw { top: -7px; left: -7px; cursor: nwse-resize; }
+.handle-ne { top: -7px; right: -7px; cursor: nesw-resize; }
+.handle-sw { bottom: -7px; left: -7px; cursor: nesw-resize; }
+.handle-se { bottom: -7px; right: -7px; cursor: nwse-resize; }

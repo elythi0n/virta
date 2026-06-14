@@ -1,0 +1,70 @@
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 18px;
+  background: transparent;
+  cursor: pointer;
+  margin: 0;
+}
+.slider:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Track — WebKit */
+.slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--virta-accent) var(--slider-fill, 0%),
+    var(--virta-bg-0) var(--slider-fill, 0%)
+  );
+  border: 1px solid var(--virta-line);
+}
+/* Track — Firefox */
+.slider::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--virta-bg-0);
+  border: 1px solid var(--virta-line);
+}
+.slider::-moz-range-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--virta-accent);
+}
+
+/* Thumb — WebKit */
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -6px;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--virta-text-0);
+  border: 2px solid var(--virta-accent);
+  transition: transform var(--virta-motion-fast) ease;
+}
+.slider:active::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+/* Thumb — Firefox */
+.slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--virta-text-0);
+  border: 2px solid var(--virta-accent);
+}
+
+.slider:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid var(--virta-accent);
+  outline-offset: 2px;
+}
+.slider:focus-visible::-moz-range-thumb {
+  outline: 2px solid var(--virta-accent);
+  outline-offset: 2px;
+}

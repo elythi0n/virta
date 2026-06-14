@@ -15,6 +15,15 @@ export type { DotStatus } from './StatusDot';
 export { default as Segmented } from './Segmented';
 export type { SegmentedOption } from './Segmented';
 
+export { default as Checkbox } from './Checkbox';
+
+export { default as Switch } from './Switch';
+
+export { default as Slider } from './Slider';
+
+export { default as Tabs } from './Tabs';
+export type { TabItem } from './Tabs';
+
 export { default as Select } from './Select';
 export type { SelectOption, SelectGroup } from './Select';
 

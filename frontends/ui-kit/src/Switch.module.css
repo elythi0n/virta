@@ -1,0 +1,61 @@
+.root {
+  position: relative;
+  display: inline-flex;
+  width: 34px;
+  height: 20px;
+  flex: none;
+}
+.root[data-disabled] {
+  opacity: 0.5;
+}
+
+.input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+.input:disabled {
+  cursor: not-allowed;
+}
+
+.track {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--virta-bg-0);
+  border: 1px solid var(--virta-line);
+  transition:
+    background var(--virta-motion-fast) ease,
+    border-color var(--virta-motion-fast) ease;
+}
+.thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--virta-text-2);
+  transition:
+    transform var(--virta-motion-fast) ease,
+    background var(--virta-motion-fast) ease;
+}
+
+.input:hover + .track {
+  border-color: var(--virta-text-2);
+}
+.input:checked + .track {
+  background: var(--virta-accent);
+  border-color: var(--virta-accent);
+}
+.input:checked + .track .thumb {
+  background: #fff;
+  transform: translateX(14px);
+}
+.input:focus-visible + .track {
+  outline: 2px solid var(--virta-accent);
+  outline-offset: 2px;
+}

@@ -20,4 +20,7 @@ contextBridge.exposeInMainWorld('virta', {
   },
   // Open a native pop-out player window for a channel (used for YouTube and the detached player).
   OpenStreamWindow: (platform, slug) => ipcRenderer.invoke('streams:open', platform, slug),
+  // Fetch Twitch's public GQL from the main process (no CORS, no plugin dependency) — used by the
+  // Studio to pull VOD chat. Takes the GQL request body, returns the parsed JSON response.
+  twitchGql: (body) => ipcRenderer.invoke('twitch:gql', body),
 });
