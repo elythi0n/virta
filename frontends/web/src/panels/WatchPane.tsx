@@ -69,7 +69,7 @@ export default function WatchPane({ channel }: { channel?: string }) {
   // OpenStreamWindow method (loads the page top-level); the browser opens a new tab.
   if (page && !canEmbed(!!embed)) {
     const plat = platformLabel(platform);
-    const useNativeWindow = isDesktop && !!window.wails?.Call;
+    const useNativeWindow = isDesktop && !!window.virta?.OpenStreamWindow;
     return (
       <div className={styles.placeholder}>
         <button
@@ -77,9 +77,9 @@ export default function WatchPane({ channel }: { channel?: string }) {
           className={styles.openBtn}
           onClick={() => {
             if (useNativeWindow) {
-              void window.wails!.Call!({ methodName: 'main.App.OpenStreamWindow', args: [platform, slug] });
-            } else if (window.wails?.Browser?.OpenURL) {
-              void window.wails.Browser.OpenURL(page);
+              void window.virta!.OpenStreamWindow!(platform, slug);
+            } else if (window.virta?.Browser?.OpenURL) {
+              void window.virta.Browser.OpenURL(page);
             } else {
               window.open(page, '_blank', 'noopener');
             }

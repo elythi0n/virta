@@ -202,13 +202,8 @@ ipcMain.handle('app:quit', () => app.quit());
 ipcMain.handle('browser:openExternal', (_event, url) => {
   if (typeof url === 'string' && /^https?:\/\//.test(url)) shell.openExternal(url);
 });
-ipcMain.handle('call', (_event, opts) => {
-  if (opts && opts.methodName === 'main.App.OpenStreamWindow') {
-    const [platform, slug] = opts.args || [];
-    openStreamWindow(platform, slug);
-    return { ok: true };
-  }
-  throw new Error(`unknown bound method: ${opts && opts.methodName}`);
+ipcMain.handle('streams:open', (_event, platform, slug) => {
+  openStreamWindow(platform, slug);
 });
 
 // ── Shutdown ─────────────────────────────────────────────────────────────────

@@ -269,7 +269,7 @@ function About() {
           <button
             type="button"
             className={styles.aboutDevBtn}
-            onClick={() => void window.wails?.Window?.OpenDevTools?.()}
+            onClick={() => void window.virta?.Window?.OpenDevTools?.()}
           >
             Open DevTools
           </button>

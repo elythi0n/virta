@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { useWailsResize } from './shell/useWailsResize';
 import type { DockviewApi, DockviewReadyEvent } from 'dockview';
 import Dock from './dock/Dock';
 import ActivityBar from './shell/ActivityBar';
@@ -56,7 +55,6 @@ function loadMode(): ThemeMode {
 }
 
 export default function App() {
-  useWailsResize(); // frameless window edge resize for Wails v3 on Linux
   const [activeView, setActiveView] = useState<ViewId>('panels');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mode, setModeState] = useState<ThemeMode>(loadMode);
