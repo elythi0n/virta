@@ -16,6 +16,11 @@ type OBSWSController interface {
 	GetSources(ctx context.Context) ([]obsws.SourceInfo, error)
 	GetScenes(ctx context.Context) (obsws.SceneList, error)
 	TestSource(ctx context.Context, sourceName, value string) error
+	// Broadcast lifecycle — Deck's "Go live" closes the loop by triggering OBS start/stop
+	// after metadata syncs across platforms.
+	StartStream(ctx context.Context) error
+	StopStream(ctx context.Context) error
+	StreamStatus(ctx context.Context) (obsws.StreamStatus, error)
 }
 
 // SetOBSWS installs the OBS WebSocket controller.
@@ -111,6 +116,43 @@ func (s *Server) handlePostOBSTestSource(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) handlePostOBSStreamStart(w http.ResponseWriter, r *http.Request) {
+	if s.obsws == nil {
+		http.Error(w, "OBS WebSocket integration unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	if err := s.obsws.StartStream(r.Context()); err != nil {
+		http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) handlePostOBSStreamStop(w http.ResponseWriter, r *http.Request) {
+	if s.obsws == nil {
+		http.Error(w, "OBS WebSocket integration unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	if err := s.obsws.StopStream(r.Context()); err != nil {
+		http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) handleGetOBSStreamStatus(w http.ResponseWriter, r *http.Request) {
+	if s.obsws == nil {
+		http.Error(w, "OBS WebSocket integration unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	st, err := s.obsws.StreamStatus(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		return
+	}
+	writeJSON(w, st)
 }
 
 func (s *Server) handlePostOBSDetect(w http.ResponseWriter, r *http.Request) {

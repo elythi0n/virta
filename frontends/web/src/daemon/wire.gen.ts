@@ -93,6 +93,36 @@ export interface ChatSettings {
   slow_seconds: number;
 }
 
+export interface DeckCategory {
+  id: string;
+  name: string;
+  platform: string;
+  box_art?: string;
+}
+
+export interface DeckChannelState {
+  channel: string;
+  title?: string;
+  category?: string;
+  category_id?: string;
+  tags?: string[];
+  status: string;
+  reason?: string;
+}
+
+export interface DeckInfo {
+  title?: string;
+  category?: string;
+  category_ids?: Record<string, string>;
+  tags?: string[];
+}
+
+export interface DeckResult {
+  channel: string;
+  status: string;
+  reason?: string;
+}
+
 export interface DeviceSession {
   id: string;
   user_code: string;

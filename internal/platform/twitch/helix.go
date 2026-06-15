@@ -27,6 +27,14 @@ const (
 	helixAutomodURL      = "https://api.twitch.tv/helix/moderation/automod/message"
 )
 
+// Broadcaster control endpoints. Channels patches title/category/tags on a broadcaster's stream;
+// search-categories resolves a free-text game name to a numeric id (the patch refuses anything
+// else).
+const (
+	helixChannelsURL         = "https://api.twitch.tv/helix/channels"
+	helixSearchCategoriesURL = "https://api.twitch.tv/helix/search/categories"
+)
+
 // HelixClient sends chat over Twitch's Helix API on behalf of an authenticated account. The
 // HTTP client and URL are injectable so the request shaping and drop-reason handling are tested
 // offline; live sends are tracked in live-debt.
@@ -41,6 +49,9 @@ type HelixClient struct {
 	chatSettingsURL string
 	automodURL      string
 	eventSubURL     string
+
+	channelsURL         string
+	searchCategoriesURL string
 }
 
 // NewHelixClient builds a Helix client reading its app client id from clientID on each call.
@@ -49,15 +60,17 @@ func NewHelixClient(clientID func() string, hc *http.Client) *HelixClient {
 		hc = &http.Client{Timeout: 15 * time.Second}
 	}
 	return &HelixClient{
-		clientID:        clientID,
-		http:            hc,
-		sendURL:         helixSendURL,
-		usersURL:        helixUsersURL,
-		bansURL:         helixBansURL,
-		chatModURL:      helixChatModURL,
-		chatSettingsURL: helixChatSettingsURL,
-		automodURL:      helixAutomodURL,
-		eventSubURL:     helixEventSubURL,
+		clientID:            clientID,
+		http:                hc,
+		sendURL:             helixSendURL,
+		usersURL:            helixUsersURL,
+		bansURL:             helixBansURL,
+		chatModURL:          helixChatModURL,
+		chatSettingsURL:     helixChatSettingsURL,
+		automodURL:          helixAutomodURL,
+		eventSubURL:         helixEventSubURL,
+		channelsURL:         helixChannelsURL,
+		searchCategoriesURL: helixSearchCategoriesURL,
 	}
 }
 

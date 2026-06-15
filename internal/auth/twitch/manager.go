@@ -15,14 +15,16 @@ import (
 )
 
 // DefaultScopes are the scopes the app requests: read chat, send chat, read the user's emotes,
-// and the moderator scopes behind the typed moderation actions (ban/timeout, delete/clear,
-// chat-mode settings, and approving or denying AutoMod-held messages). A user who is not a
-// moderator of a channel simply can't perform those actions there; granting the scopes does not
-// confer power, it only lets the app act where the account already has it.
+// manage the broadcaster's own stream metadata (Deck — title/category/tags), and the moderator
+// scopes behind the typed moderation actions (ban/timeout, delete/clear, chat-mode settings, and
+// approving or denying AutoMod-held messages). A user who is not a moderator of a channel simply
+// can't perform those actions there; granting the scopes does not confer power, it only lets the
+// app act where the account already has it.
 var DefaultScopes = []string{
 	"user:read:chat",
 	"user:write:chat",
 	"user:read:emotes",
+	"channel:manage:broadcast",
 	"moderator:manage:banned_users",
 	"moderator:manage:chat_messages",
 	"moderator:manage:chat_settings",

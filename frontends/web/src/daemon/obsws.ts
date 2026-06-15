@@ -68,3 +68,22 @@ export function testOBSSource(sourceName: string, value: string): Promise<void> 
 export function detectOBS(): Promise<{ detected: boolean }> {
   return request<{ detected: boolean }>('/v1/obsws/detect', { method: 'POST', body: JSON.stringify({}) });
 }
+
+export interface OBSStreamStatus {
+  active: boolean;
+  reconnecting?: boolean;
+  duration_ms?: number;
+  bytes_sent?: number;
+}
+
+export function getOBSStreamStatus(): Promise<OBSStreamStatus> {
+  return request<OBSStreamStatus>('/v1/obsws/stream/status');
+}
+
+export function startOBSStream(): Promise<void> {
+  return request('/v1/obsws/stream/start', { method: 'POST' });
+}
+
+export function stopOBSStream(): Promise<void> {
+  return request('/v1/obsws/stream/stop', { method: 'POST' });
+}

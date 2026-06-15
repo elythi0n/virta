@@ -12,6 +12,7 @@ import type { Density } from '@virta/feed-core';
 import { PANEL_CATALOG, isToolView, type ViewId } from './shell/views';
 import { panelCatalogVersion, subscribePanelCatalog } from './panels/registry';
 import StudioView from './studio/StudioView';
+import DeckView from './deck/DeckView';
 import { syncPluginPanels } from './panels/pluginPanels';
 import { loadLayout, saveLayoutDebounced } from './shell/layout';
 import { ActionsProvider } from './actions';
@@ -369,6 +370,7 @@ export default function App() {
       { id: 'view-panels', title: 'Show Panels', group: 'View', perform: () => { setActiveView('panels'); setSidebarOpen(true); } },
       { id: 'view-streams', title: 'Show Streams', group: 'View', perform: () => { setActiveView('streams'); setSidebarOpen(true); } },
       { id: 'view-studio', title: 'Open Studio', group: 'View', keywords: ['vod', 'clip', 'replay', 'review'], perform: () => { setActiveView('studio'); setSidebarOpen(false); } },
+      { id: 'view-deck', title: 'Open Deck', group: 'View', keywords: ['broadcast', 'go live', 'title', 'category', 'tags'], perform: () => { setActiveView('deck'); setSidebarOpen(false); } },
       { id: 'toggle-sidebar', title: 'Toggle Side Bar', group: 'View', keywords: ['hide', 'show'], shortcut: 'mod+b', perform: () => setSidebarOpen((o) => !o) },
       { id: 'theme-system', title: 'Appearance: Follow system', group: 'Preferences', perform: () => setMode('system') },
       { id: 'theme-dark', title: 'Appearance: Dark', group: 'Preferences', perform: () => setMode('dark') },
@@ -440,6 +442,7 @@ export default function App() {
               <Dock onReady={onReady} />
             </div>
             {activeView === 'studio' && <StudioView />}
+            {activeView === 'deck' && <DeckView />}
           </div>
         </div>
           <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} actions={actions} placeholder="Search commands…" />

@@ -483,6 +483,57 @@ func (a *Adapter) Moderate(ctx context.Context, action platform.ModAction) error
 	}
 }
 
+// GetChannelInfo reads the broadcaster's current title/category/tags so the Deck can pre-fill
+// its form with what the streamer already has live. Unsupported without auth.
+func (a *Adapter) GetChannelInfo(ctx context.Context, slug string) (ChannelInfo, error) {
+	au := a.auth.Load()
+	if au == nil {
+		return ChannelInfo{}, platform.ErrUnsupported
+	}
+	bid, err := au.broadcasterID(ctx, strings.ToLower(slug))
+	if err != nil {
+		return ChannelInfo{}, err
+	}
+	tok, err := au.tokens(ctx)
+	if err != nil {
+		return ChannelInfo{}, err
+	}
+	return au.helix.GetChannelInfo(ctx, tok, bid)
+}
+
+// UpdateChannelInfo patches the broadcaster's stream title, category, and tags via Helix. The
+// token must carry channel:manage:broadcast; without auth this reports unsupported. Slug is
+// resolved to a broadcaster id so callers don't need to know the numeric form.
+func (a *Adapter) UpdateChannelInfo(ctx context.Context, slug string, patch ChannelInfoPatch) error {
+	au := a.auth.Load()
+	if au == nil {
+		return platform.ErrUnsupported
+	}
+	bid, err := au.broadcasterID(ctx, strings.ToLower(slug))
+	if err != nil {
+		return err
+	}
+	tok, err := au.tokens(ctx)
+	if err != nil {
+		return err
+	}
+	return au.helix.UpdateChannelInfo(ctx, tok, bid, patch)
+}
+
+// SearchCategories resolves a free-text game query to Helix category matches. Returns the top
+// matches in relevance order; the caller picks one and feeds its id into UpdateChannelInfo.
+func (a *Adapter) SearchCategories(ctx context.Context, query string) ([]Category, error) {
+	au := a.auth.Load()
+	if au == nil {
+		return nil, platform.ErrUnsupported
+	}
+	tok, err := au.tokens(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return au.helix.SearchCategories(ctx, tok, query)
+}
+
 // twitchMaxTimeout is Twitch's ceiling for a timeout (14 days, in seconds).
 const twitchMaxTimeout = 1_209_600
 

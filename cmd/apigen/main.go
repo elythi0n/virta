@@ -50,6 +50,10 @@ func roots() []reflect.Type {
 		reflect.TypeOf(api.ModelItem{}),
 		reflect.TypeOf(api.AskEvent{}),
 		reflect.TypeOf(api.IntelConfig{}),
+		reflect.TypeOf(api.DeckInfo{}),
+		reflect.TypeOf(api.DeckResult{}),
+		reflect.TypeOf(api.DeckCategory{}),
+		reflect.TypeOf(api.DeckChannelState{}),
 	}
 }
 

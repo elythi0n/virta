@@ -185,6 +185,91 @@ func (c *APIClient) Unban(ctx context.Context, accessToken, broadcasterUserID, u
 	return err
 }
 
+// ChannelInfoPatch is the broadcaster fields Kick's public API lets us patch. Empty fields are
+// omitted from the request body so a partial update only touches what the caller specified.
+// Note: Kick has no tag-list endpoint (tags are managed in the dashboard), so only title and
+// category are exposed here.
+type ChannelInfoPatch struct {
+	Title      string `json:"stream_title,omitempty"`
+	CategoryID int64  `json:"category_id,omitempty"`
+}
+
+// Category is a Kick game/category entry returned by the search endpoint.
+type Category struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+	Slug string `json:"slug,omitempty"`
+}
+
+// ChannelInfo is the broadcaster's currently-set stream info returned by GET /channels. Only
+// fields the Deck cares about — Kick exposes more, but we'd ignore the rest.
+type ChannelInfo struct {
+	BroadcasterUserID int64    `json:"broadcaster_user_id"`
+	Slug              string   `json:"slug"`
+	StreamTitle       string   `json:"stream_title"`
+	Category          Category `json:"category"`
+}
+
+// GetChannelInfo reads the broadcaster's currently-set stream metadata. Returns an empty
+// ChannelInfo (no error) when Kick has no row for the broadcaster id, so a fresh account doesn't
+// fail the pre-fill.
+func (c *APIClient) GetChannelInfo(ctx context.Context, accessToken, broadcasterUserID string) (ChannelInfo, error) {
+	bid, err := numericID(broadcasterUserID)
+	if err != nil {
+		return ChannelInfo{}, fmt.Errorf("kick: get channel: %w", err)
+	}
+	raw, err := c.do(ctx, http.MethodGet, c.base+"/channels?broadcaster_user_id="+strconv.FormatInt(bid, 10), accessToken, nil)
+	if err != nil {
+		return ChannelInfo{}, err
+	}
+	var body struct {
+		Data []ChannelInfo `json:"data"`
+	}
+	if err := json.Unmarshal(raw, &body); err != nil {
+		return ChannelInfo{}, fmt.Errorf("kick: decode channel: %w", err)
+	}
+	if len(body.Data) == 0 {
+		return ChannelInfo{}, nil
+	}
+	return body.Data[0], nil
+}
+
+// UpdateChannelInfo patches the authenticated broadcaster's stream title and/or category. The
+// channel is implied by the access token, so no broadcaster id is needed.
+func (c *APIClient) UpdateChannelInfo(ctx context.Context, accessToken string, patch ChannelInfoPatch) error {
+	body := map[string]any{}
+	if patch.Title != "" {
+		body["stream_title"] = patch.Title
+	}
+	if patch.CategoryID > 0 {
+		body["category_id"] = patch.CategoryID
+	}
+	if len(body) == 0 {
+		return nil
+	}
+	_, err := c.do(ctx, http.MethodPatch, c.base+"/channels", accessToken, body)
+	return err
+}
+
+// SearchCategories returns categories matching query. The caller picks one and feeds its id back
+// into UpdateChannelInfo as CategoryID.
+func (c *APIClient) SearchCategories(ctx context.Context, accessToken, query string) ([]Category, error) {
+	if query == "" {
+		return nil, nil
+	}
+	raw, err := c.do(ctx, http.MethodGet, c.base+"/categories?q="+url.QueryEscape(query), accessToken, nil)
+	if err != nil {
+		return nil, err
+	}
+	var out struct {
+		Data []Category `json:"data"`
+	}
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, fmt.Errorf("kick: decode categories response: %w", err)
+	}
+	return out.Data, nil
+}
+
 // Moderate executes a typed moderation action against the official API. Kick has no
 // chat-settings endpoints (slow mode and the like), so only bans, timeouts, and message
 // deletion are supported; anything else reports unsupported rather than guessing.
