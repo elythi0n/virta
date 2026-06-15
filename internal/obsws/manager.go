@@ -320,10 +320,10 @@ func (m *Manager) GetScenes(ctx context.Context) (SceneList, error) {
 
 // StreamStatus is OBS's live broadcast state, returned by GetStreamStatus.
 type StreamStatus struct {
-	Active       bool   `json:"active"`
-	Reconnecting bool   `json:"reconnecting,omitempty"`
-	DurationMs   int64  `json:"duration_ms,omitempty"`
-	BytesSent    int64  `json:"bytes_sent,omitempty"`
+	Active       bool  `json:"active"`
+	Reconnecting bool  `json:"reconnecting,omitempty"`
+	DurationMs   int64 `json:"duration_ms,omitempty"`
+	BytesSent    int64 `json:"bytes_sent,omitempty"`
 }
 
 // StartStream begins broadcasting in the connected OBS. Errors when OBS isn't connected, or

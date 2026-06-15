@@ -20,9 +20,9 @@ type ChannelInfoPatch struct {
 
 // Category is a Helix game/category entry returned by the search endpoint.
 type Category struct {
-	ID         string `json:"id"`
-	Name       string `json:"name"`
-	BoxArtURL  string `json:"box_art_url,omitempty"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	BoxArtURL string `json:"box_art_url,omitempty"`
 }
 
 // ChannelInfo is the broadcaster's currently-set stream info returned by GET /helix/channels.

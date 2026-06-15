@@ -26,12 +26,12 @@ type Deck interface {
 // DeckChannelState is one target's currently-live stream metadata, as served by
 // GET /v1/deck/channel-info.
 type DeckChannelState struct {
-	Channel    string   `json:"channel"`             // "platform:slug"
+	Channel    string   `json:"channel"` // "platform:slug"
 	Title      string   `json:"title,omitempty"`
-	Category   string   `json:"category,omitempty"`  // display name
+	Category   string   `json:"category,omitempty"` // display name
 	CategoryID string   `json:"category_id,omitempty"`
 	Tags       []string `json:"tags,omitempty"`
-	Status     string   `json:"status"`              // ok | excluded | error
+	Status     string   `json:"status"` // ok | excluded | error
 	Reason     string   `json:"reason,omitempty"`
 }
 
@@ -73,7 +73,7 @@ func (s *Server) SetDeck(d Deck) { s.deck = d }
 
 // deckUpdateRequest is the POST /v1/deck/channel-info body.
 type deckUpdateRequest struct {
-	Channels []string    `json:"channels"`
+	Channels []string `json:"channels"`
 	Info     DeckInfo `json:"info"`
 }
 
