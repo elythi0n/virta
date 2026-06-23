@@ -8,10 +8,11 @@
   --dv-group-view-background-color: var(--virta-bg-0);
   --dv-paneview-active-outline-color: var(--virta-accent);
 
-  /* Tab strip */
+  /* Tab strip — 36px so titles get vertical breathing room; no inter-tab dividers (the
+     active-tab bg + a single bottom border carry the structure instead — much smoother). */
   --dv-tabs-and-actions-container-background-color: var(--virta-bg-1);
-  --dv-tabs-and-actions-container-height: 34px;
-  --dv-tab-divider-color: var(--virta-line);
+  --dv-tabs-and-actions-container-height: 36px;
+  --dv-tab-divider-color: transparent;
   --dv-separator-border: var(--virta-line);
   --dv-paneview-header-border-color: var(--virta-line);
 
@@ -37,15 +38,37 @@
   --dv-floating-box-shadow: 0 8px 24px rgb(0 0 0 / 0.4);
 }
 
-/* Accent underline on the focused tab, our own affordance over the base mechanics. */
+/* Active-tab styling: a quiet 1.5px accent bar at the bottom + a subtle warm-up of the tab
+   background so the focused tab reads as "lifted out of the strip". Smoother than a hard
+   contrast underline — borrowed from marketbubble's "soft pill" tab feel.
+   The bar sits inside the tab so it doesn't double up with the strip's bottom hairline. */
+.dockview-theme-virta .dv-active-group .tab.active-tab {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--virta-accent) 4%, var(--virta-bg-0)),
+      var(--virta-bg-0)
+    );
+}
 .dockview-theme-virta .dv-active-group .tab.active-tab::after {
   content: '';
   position: absolute;
-  left: 0;
-  right: 0;
+  left: 8px;
+  right: 8px;
   bottom: 0;
-  height: 2px;
+  height: 1.5px;
+  border-radius: 2px;
   background: var(--virta-accent);
+}
+/* Inactive group's visible tab gets the same subtle bg lift but no accent bar — the user reads
+   "this tab is focused in its group, but the group isn't focused". */
+.dockview-theme-virta .dv-inactive-group .tab.active-tab {
+  background: color-mix(in srgb, var(--virta-bg-0) 90%, var(--virta-bg-2));
+}
+
+/* Background tabs hover toward the active bg color so the strip feels responsive. */
+.dockview-theme-virta .tab:not(.active-tab):hover {
+  background: color-mix(in srgb, var(--virta-bg-0) 60%, var(--virta-bg-1));
 }
 
 /*

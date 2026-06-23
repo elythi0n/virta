@@ -1,0 +1,73 @@
+.pane {
+  height: 100%;
+  overflow: auto;
+  padding: var(--virta-space-16);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--virta-space-12);
+  align-content: start;
+  background: var(--virta-bg-0);
+}
+
+.idle {
+  grid-column: 1 / -1;
+  margin: auto;
+  max-width: 280px;
+  padding: var(--virta-space-24);
+  border: 1px dashed var(--virta-line);
+  border-radius: var(--virta-radius-md);
+  text-align: center;
+  color: var(--virta-text-1);
+}
+.idleTitle {
+  font-family: var(--virta-font-ui);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--virta-text-0);
+  margin-bottom: 6px;
+}
+.idleHint {
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--virta-text-2);
+}
+
+.metric {
+  padding: var(--virta-space-12);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-md);
+  background: var(--virta-bg-1);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.metricLabel {
+  font-family: var(--virta-font-ui);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--virta-text-2);
+  font-weight: 600;
+}
+.metricValue {
+  font-family: var(--virta-font-mono);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--virta-text-0);
+  letter-spacing: -0.01em;
+}
+.metricUnit {
+  font-family: var(--virta-font-ui);
+  font-size: 11px;
+  color: var(--virta-text-2);
+}
+
+.warn {
+  grid-column: 1 / -1;
+  padding: var(--virta-space-8) var(--virta-space-12);
+  border: 1px solid color-mix(in srgb, var(--virta-warn) 40%, var(--virta-line));
+  border-radius: var(--virta-radius-md);
+  background: color-mix(in srgb, var(--virta-warn) 10%, var(--virta-bg-1));
+  color: var(--virta-text-0);
+  font-size: 12px;
+}

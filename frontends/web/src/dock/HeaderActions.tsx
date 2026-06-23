@@ -1,9 +1,15 @@
-import { useState, useSyncExternalStore } from 'react';
+import { useMemo, useState, useSyncExternalStore } from 'react';
 import type { IDockviewHeaderActionsProps } from 'dockview';
 import { Popover, Tooltip } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { PANEL_CATALOG } from '../shell/views';
-import { panelCatalogVersion, subscribePanelCatalog } from '../panels/registry';
+import {
+  PANEL_GROUPS,
+  panelCatalogVersion,
+  subscribePanelCatalog,
+  type PanelContribution,
+  type PanelGroup,
+} from '../panels/registry';
 import { useTheme } from '../theme';
 import { useIsDesktop } from '../shell/useIsDesktop';
 import styles from './HeaderActions.module.css';
@@ -31,6 +37,20 @@ export default function HeaderActions(props: IDockviewHeaderActionsProps) {
     });
   };
 
+  // Group the catalog so the popover renders section headers (Chat / Stream / Broadcast / Tools)
+  // instead of one long flat list. Anything without a group falls into "Plugins" at the bottom,
+  // which is where third-party contributions end up by default.
+  const sections = useMemo(() => {
+    const by: Record<PanelGroup, PanelContribution[]> = {
+      Chat: [], Stream: [], Broadcast: [], Tools: [], Plugins: [],
+    };
+    for (const p of PANEL_CATALOG) {
+      const g = (p.group ?? 'Plugins') as PanelGroup;
+      (by[g] ?? by.Plugins).push(p);
+    }
+    return PANEL_GROUPS.filter((g) => by[g].length > 0).map((g) => ({ group: g, items: by[g] }));
+  }, []);
+
   const popOut = () => {
     void props.containerApi.addPopoutGroup(props.group, {
       onDidOpen: ({ window }) => {
@@ -52,13 +72,24 @@ export default function HeaderActions(props: IDockviewHeaderActionsProps) {
         }
       >
         <div className={styles.menu} role="menu" aria-label="Add a tab">
-          {PANEL_CATALOG.map((p) => (
-            <button key={p.kind} type="button" className={styles.menuItem} onClick={() => addPanel(p.kind, p.title)}>
-              <span className={styles.menuGlyph}>
-                <Icon name={p.icon} size={15} />
-              </span>
-              {p.title}
-            </button>
+          {sections.map((s, idx) => (
+            <div key={s.group} className={styles.section}>
+              {idx > 0 && <div className={styles.separator} role="presentation" />}
+              <div className={styles.sectionLabel} role="presentation">{s.group}</div>
+              {s.items.map((p) => (
+                <button
+                  key={p.kind}
+                  type="button"
+                  className={styles.menuItem}
+                  onClick={() => addPanel(p.kind, p.title)}
+                >
+                  <span className={styles.menuGlyph}>
+                    <Icon name={p.icon} size={15} />
+                  </span>
+                  {p.title}
+                </button>
+              ))}
+            </div>
           ))}
         </div>
       </Popover>

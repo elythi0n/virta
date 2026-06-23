@@ -11,14 +11,22 @@ import (
 	"github.com/elythi0n/virta/internal/api"
 	"github.com/elythi0n/virta/internal/store"
 	"github.com/elythi0n/virta/internal/uikit"
+	"github.com/elythi0n/virta/internal/userctx"
 )
 
-// themeControl manages built-in and custom themes, satisfying api.Themes. Custom themes are
-// persisted in the settings repo (scope "themes.<id>") as raw .vtheme JSON, loaded at construction.
+// themeControl manages built-in and custom themes, satisfying api.Themes.
+//
+// Built-in themes (loaded from ui-kit tokens.json) are global — they're code, not user data.
+// Custom themes a user imports via .vtheme are persisted in the settings repo (scope
+// "themes.<id>") and live in a per-user in-memory map so user A can't list/export/delete user
+// B's custom themes. Single-user mode keeps the empty user_id, so existing themes continue to
+// load as before.
 type themeControl struct {
 	mu       sync.RWMutex
 	tokens   *uikit.Tokens
-	custom   map[string][]byte // id → .vtheme JSON
+	// custom maps user_id → { theme_id → .vtheme JSON }. Two users can independently import a
+	// theme with the same id without colliding.
+	custom   map[string]map[string][]byte
 	settings store.SettingsRepo
 }
 
@@ -34,20 +42,42 @@ func newThemeControl(settings store.SettingsRepo) api.Themes {
 		// Fallback: an empty token set — built-ins won't list but import still works.
 		tok, _ = uikit.Load([]byte(`{"font":{"ui":"Geist Variable","mono":"Geist Mono Variable"},"type":{},"space":[],"radius":{"sm":5,"md":6,"lg":8},"motion":{"fast":120,"base":160},"platform":{},"themes":{"graphite-dark":{"appearance":"dark","color":{}}}}`))
 	}
-	c := &themeControl{tokens: tok, custom: map[string][]byte{}, settings: settings}
-	// Load any previously-persisted custom themes.
-	if all, err := settings.All(context.Background()); err == nil {
-		for _, s := range all {
-			if strings.HasPrefix(s.Scope, "themes.") {
-				id := strings.TrimPrefix(s.Scope, "themes.")
-				c.custom[id] = s.Data
-			}
+	c := &themeControl{tokens: tok, custom: map[string]map[string][]byte{}, settings: settings}
+	// Reload persisted custom themes across every user. EachUser yields '' for the single-user
+	// namespace, which carries every theme a pre-hosted install ever imported.
+	_ = settings.EachUser(context.Background(), func(userID string) error {
+		all, err := settings.AllForUser(context.Background(), userID)
+		if err != nil {
+			return nil
 		}
-	}
+		for _, s := range all {
+			if !strings.HasPrefix(s.Scope, "themes.") {
+				continue
+			}
+			if len(s.Data) == 0 || string(s.Data) == "null" {
+				continue
+			}
+			id := strings.TrimPrefix(s.Scope, "themes.")
+			c.userThemes(userID)[id] = s.Data
+		}
+		return nil
+	})
 	return c
 }
 
-func (c *themeControl) List() []api.ThemeInfo {
+// userThemes returns the per-user custom-theme map, creating an empty one on first access.
+// Caller must hold c.mu (write lock for mutations).
+func (c *themeControl) userThemes(userID string) map[string][]byte {
+	m, ok := c.custom[userID]
+	if !ok {
+		m = map[string][]byte{}
+		c.custom[userID] = m
+	}
+	return m
+}
+
+func (c *themeControl) List(ctx context.Context) []api.ThemeInfo {
+	user := userctx.FromContext(ctx)
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	var list []api.ThemeInfo
@@ -55,7 +85,7 @@ func (c *themeControl) List() []api.ThemeInfo {
 		th := c.tokens.Themes[name]
 		list = append(list, api.ThemeInfo{ID: name, Name: name, Appearance: th.Appearance})
 	}
-	for id, data := range c.custom {
+	for id, data := range c.custom[user] {
 		var vt struct {
 			Name       string `json:"name"`
 			Base       string `json:"base"`
@@ -68,7 +98,8 @@ func (c *themeControl) List() []api.ThemeInfo {
 	return list
 }
 
-func (c *themeControl) Import(data []byte) (api.ThemeInfo, error) {
+func (c *themeControl) Import(ctx context.Context, data []byte) (api.ThemeInfo, error) {
+	user := userctx.FromContext(ctx)
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	theme, warnings, err := c.tokens.LoadVTheme(data)
@@ -81,8 +112,8 @@ func (c *themeControl) Import(data []byte) (api.ThemeInfo, error) {
 	if id == "" {
 		return api.ThemeInfo{}, fmt.Errorf("vtheme has no name")
 	}
-	c.custom[id] = data
-	_ = c.settings.Put(context.Background(), store.Setting{Scope: "themes." + id, Data: data})
+	c.userThemes(user)[id] = data
+	_ = c.settings.Put(ctx, store.Setting{Scope: "themes." + id, Data: data})
 	warnStrs := make([]string, len(warnings))
 	for i, w := range warnings {
 		warnStrs[i] = w.Key + ": " + w.Message
@@ -91,13 +122,15 @@ func (c *themeControl) Import(data []byte) (api.ThemeInfo, error) {
 	return api.ThemeInfo{ID: id, Name: vt.Name, Base: vt.Base, Appearance: vt.Appearance, Warnings: warnStrs}, nil
 }
 
-func (c *themeControl) Export(id string) ([]byte, error) {
+func (c *themeControl) Export(ctx context.Context, id string) ([]byte, error) {
+	user := userctx.FromContext(ctx)
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	if data, ok := c.custom[id]; ok {
+	if data, ok := c.custom[user][id]; ok {
 		return data, nil
 	}
-	// Export a built-in: marshal it as a full .vtheme with no overrides.
+	// Export a built-in: built-ins are global, so any user can export them. Marshal as a full
+	// .vtheme with no overrides.
 	th, ok := c.tokens.Themes[id]
 	if !ok {
 		return nil, fmt.Errorf("theme %q not found", id)
@@ -105,13 +138,14 @@ func (c *themeControl) Export(id string) ([]byte, error) {
 	return uikit.MarshalVTheme(id, id, th.Appearance, th.Color, th.Color)
 }
 
-func (c *themeControl) Delete(id string) error {
+func (c *themeControl) Delete(ctx context.Context, id string) error {
+	user := userctx.FromContext(ctx)
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if _, ok := c.custom[id]; !ok {
+	if _, ok := c.custom[user][id]; !ok {
 		return fmt.Errorf("custom theme %q not found (built-ins cannot be deleted)", id)
 	}
-	delete(c.custom, id)
-	_ = c.settings.Put(context.Background(), store.Setting{Scope: "themes." + id, Data: []byte("null")})
+	delete(c.custom[user], id)
+	_ = c.settings.Put(ctx, store.Setting{Scope: "themes." + id, Data: []byte("null")})
 	return nil
 }

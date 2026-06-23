@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Input, Segmented, Text } from '@virta/ui-kit';
+import { Button, EmptyState, Input, Segmented, Text } from '@virta/ui-kit';
 import { listFilters, saveFilters } from '../daemon';
 import type { FilterRule } from '../daemon/wire.gen';
 import styles from './FiltersPanel.module.css';
@@ -95,20 +95,15 @@ export default function FiltersPanel() {
   };
 
   if (status === 'loading') {
-    return (
-      <div className={styles.empty}>
-        <Text variant="meta" tone="subtle">Loading filters…</Text>
-      </div>
-    );
+    return <EmptyState title="Loading filters…" />;
   }
 
   if (status === 'offline') {
     return (
-      <div className={styles.empty}>
-        <Text variant="ui" tone="subtle">
-          Not connected to a daemon. Filters apply to the active profile.
-        </Text>
-      </div>
+      <EmptyState
+        title="Not connected"
+        hint="Filters apply to the active profile — start the daemon to edit them."
+      />
     );
   }
 
@@ -178,15 +173,15 @@ export default function FiltersPanel() {
 
             <div className={styles.platforms} role="group" aria-label="Platforms">
               {PLATFORMS.map((p) => (
-                <button
+                <Button
                   key={p}
-                  type="button"
-                  className={`${styles.chip} ${r.platforms.includes(p) ? styles.chipOn : ''}`}
+                  variant="ghost"
+                  size="sm"
                   aria-pressed={r.platforms.includes(p)}
                   onClick={() => togglePlatform(r.id, p)}
                 >
                   {p}
-                </button>
+                </Button>
               ))}
             </div>
           </div>

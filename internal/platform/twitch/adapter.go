@@ -534,6 +534,34 @@ func (a *Adapter) SearchCategories(ctx context.Context, query string) ([]Categor
 	return au.helix.SearchCategories(ctx, tok, query)
 }
 
+// SearchChannels resolves a free-text query to channel listings (live or offline). Used by the
+// Discovery surface to find streamers by name; the caller picks one and adds them as a channel.
+func (a *Adapter) SearchChannels(ctx context.Context, query string, first int, liveOnly bool) (ChannelSearchPage, error) {
+	au := a.auth.Load()
+	if au == nil {
+		return ChannelSearchPage{}, platform.ErrUnsupported
+	}
+	tok, err := au.tokens(ctx)
+	if err != nil {
+		return ChannelSearchPage{}, err
+	}
+	return au.helix.SearchChannels(ctx, tok, query, first, liveOnly)
+}
+
+// TopStreams returns the currently-live channels by viewer count, paginated via cursor. gameID
+// optionally narrows to one category; empty means all.
+func (a *Adapter) TopStreams(ctx context.Context, first int, after, gameID string) (StreamsPage, error) {
+	au := a.auth.Load()
+	if au == nil {
+		return StreamsPage{}, platform.ErrUnsupported
+	}
+	tok, err := au.tokens(ctx)
+	if err != nil {
+		return StreamsPage{}, err
+	}
+	return au.helix.GetTopStreams(ctx, tok, first, after, gameID)
+}
+
 // twitchMaxTimeout is Twitch's ceiling for a timeout (14 days, in seconds).
 const twitchMaxTimeout = 1_209_600
 

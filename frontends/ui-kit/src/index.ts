@@ -6,6 +6,14 @@ export type { ButtonVariant, ButtonSize } from './Button';
 
 export { default as Input } from './Input';
 
+export { default as Textarea } from './Textarea';
+
+export { default as Section } from './Section';
+
+export { default as Field } from './Field';
+
+export { default as EmptyState } from './EmptyState';
+
 export { default as Badge } from './Badge';
 export type { BadgeTone } from './Badge';
 

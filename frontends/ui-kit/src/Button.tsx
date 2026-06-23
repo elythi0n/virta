@@ -3,7 +3,7 @@ import type { ComponentPropsWithoutRef } from 'react';
 import styles from './Button.module.css';
 
 export type ButtonVariant = 'solid' | 'ghost' | 'subtle';
-export type ButtonSize = 'sm' | 'md';
+export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon' | 'icon-sm' | 'icon-lg';
 
 type ButtonProps = {
   variant?: ButtonVariant;

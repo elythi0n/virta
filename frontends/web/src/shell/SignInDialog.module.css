@@ -24,11 +24,3 @@
   letter-spacing: 0.18em;
   text-align: center;
 }
-
-.error {
-  margin: 0;
-  color: var(--virta-danger);
-  font-family: var(--virta-font-ui);
-  font-size: var(--virta-type-ui-size);
-  line-height: var(--virta-type-ui-line);
-}

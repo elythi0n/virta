@@ -202,9 +202,10 @@ export default function App() {
     if (api.panels.length === 0) {
       const add = (id: string, kind: string, title: string, position?: Parameters<DockviewApi['addPanel']>[0]['position']) =>
         api.addPanel({ id, component: 'panel', params: { kind }, title, position });
-      // A representative default workspace: feed + mod queue as tabs, stats over stream beside it.
+      // Default Panels workspace = the "general/viewing" mode: a chat feed plus stats and the
+      // streams overview. Broadcaster tools (mod queue, celebrations, OBS, encoder health) live
+      // in Broadcast; the user adds them here via "+" if they also moderate other channels.
       add('feed', 'feed', 'Chat');
-      add('mods', 'mods', 'Mod queue', { referencePanel: 'feed', direction: 'within' });
       add('stats', 'stats', 'Stats', { referencePanel: 'feed', direction: 'right' });
       add('stream', 'stream', 'Stream', { referencePanel: 'stats', direction: 'below' });
     }
@@ -241,26 +242,36 @@ export default function App() {
   const openPanel = useCallback((kind: string, title: string) => {
     const api = apiRef.current;
     if (!api) return;
+    // Tool views (Studio, Deck) hide the dock — leave the tool view so the panel is visible.
+    if (isToolView(activeView)) {
+      setActiveView('panels');
+      setSidebarOpen(true);
+    }
     const existing = api.getPanel(kind);
     if (existing) {
       existing.api.setActive(); // focus an already-open panel instead of duplicating it
       return;
     }
     api.addPanel({ id: kind, component: 'panel', params: { kind }, title });
-  }, []);
+  }, [activeView]);
 
   // Settings opens as its own dock panel (not a side-bar pane): it needs room for many
-  // categories. Re-invoking focuses the existing panel.
+  // categories. Re-invoking focuses the existing panel. When invoked from a tool view (Studio,
+  // Deck) the dock is hidden — leave the tool view first so the panel is actually visible.
   const openSettings = useCallback(() => {
     const api = apiRef.current;
     if (!api) return;
+    if (isToolView(activeView)) {
+      setActiveView('panels');
+      setSidebarOpen(true);
+    }
     const existing = api.getPanel('settings');
     if (existing) {
       existing.api.setActive();
       return;
     }
     api.addPanel({ id: 'settings', component: 'settings', title: 'Settings' });
-  }, []);
+  }, [activeView]);
 
   // Open a feed scoped to a channel set as a new panel. The id is stable and unique (not derived
   // from the set) so the feed stays the same panel when its channels are later edited from the tab.
@@ -370,7 +381,7 @@ export default function App() {
       { id: 'view-panels', title: 'Show Panels', group: 'View', perform: () => { setActiveView('panels'); setSidebarOpen(true); } },
       { id: 'view-streams', title: 'Show Streams', group: 'View', perform: () => { setActiveView('streams'); setSidebarOpen(true); } },
       { id: 'view-studio', title: 'Open Studio', group: 'View', keywords: ['vod', 'clip', 'replay', 'review'], perform: () => { setActiveView('studio'); setSidebarOpen(false); } },
-      { id: 'view-deck', title: 'Open Deck', group: 'View', keywords: ['broadcast', 'go live', 'title', 'category', 'tags'], perform: () => { setActiveView('deck'); setSidebarOpen(false); } },
+      { id: 'view-deck', title: 'Open Broadcast', group: 'View', keywords: ['deck', 'go live', 'title', 'category', 'tags'], perform: () => { setActiveView('deck'); setSidebarOpen(false); } },
       { id: 'toggle-sidebar', title: 'Toggle Side Bar', group: 'View', keywords: ['hide', 'show'], shortcut: 'mod+b', perform: () => setSidebarOpen((o) => !o) },
       { id: 'theme-system', title: 'Appearance: Follow system', group: 'Preferences', perform: () => setMode('system') },
       { id: 'theme-dark', title: 'Appearance: Dark', group: 'Preferences', perform: () => setMode('dark') },

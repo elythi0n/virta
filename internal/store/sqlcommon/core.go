@@ -129,7 +129,9 @@ func (r settingsRepo) Get(ctx context.Context, scope string) (store.Setting, err
 	var s store.Setting
 	var data string
 	var updated int64
-	err := r.c.queryRow(ctx, `SELECT scope, data, updated_at FROM settings WHERE scope = ?`, scope).
+	err := r.c.queryRow(ctx,
+		`SELECT scope, data, updated_at FROM settings WHERE scope = ? AND user_id = ?`,
+		scope, uid(ctx)).
 		Scan(&s.Scope, &data, &updated)
 	if errors.Is(err, sql.ErrNoRows) {
 		return store.Setting{}, store.ErrNotFound
@@ -142,16 +144,21 @@ func (r settingsRepo) Get(ctx context.Context, scope string) (store.Setting, err
 	return s, nil
 }
 
+// Put writes a setting scoped to the user_id in ctx. In hosted mode that's the signed-in user;
+// in single-user mode uid(ctx) returns '' which matches the rows the daemon has always written.
+// The PK is (user_id, scope) post-0006 so two users can each own the same scope independently.
 func (r settingsRepo) Put(ctx context.Context, s store.Setting) error {
 	_, err := r.c.exec(ctx,
-		`INSERT INTO settings (scope, data, updated_at) VALUES (?, ?, ?)
-		 ON CONFLICT(scope) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`,
-		s.Scope, string(s.Data), tsStore(r.c.clk.Now()))
+		`INSERT INTO settings (user_id, scope, data, updated_at) VALUES (?, ?, ?, ?)
+		 ON CONFLICT(user_id, scope) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`,
+		uid(ctx), s.Scope, string(s.Data), tsStore(r.c.clk.Now()))
 	return err
 }
 
 func (r settingsRepo) All(ctx context.Context) ([]store.Setting, error) {
-	rows, err := r.c.query(ctx, `SELECT scope, data, updated_at FROM settings ORDER BY scope`)
+	rows, err := r.c.query(ctx,
+		`SELECT scope, data, updated_at FROM settings WHERE user_id = ? ORDER BY scope`,
+		uid(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -169,6 +176,54 @@ func (r settingsRepo) All(ctx context.Context) ([]store.Setting, error) {
 		out = append(out, s)
 	}
 	return out, rows.Err()
+}
+
+// AllForUser returns every setting that belongs to the given user_id, regardless of the user_id
+// in ctx. It's the load-at-startup hook for controllers (webhooks, themes) that need to rehydrate
+// per-user in-memory state across every user without holding a session. Hostile callers can't
+// reach it from the API surface — it's internal to the wiring layer.
+func (r settingsRepo) AllForUser(ctx context.Context, userID string) ([]store.Setting, error) {
+	rows, err := r.c.query(ctx,
+		`SELECT scope, data, updated_at FROM settings WHERE user_id = ? ORDER BY scope`,
+		userID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []store.Setting
+	for rows.Next() {
+		var s store.Setting
+		var data string
+		var updated int64
+		if err := rows.Scan(&s.Scope, &data, &updated); err != nil {
+			return nil, err
+		}
+		s.Data = json.RawMessage(data)
+		s.UpdatedAt = tsLoad(updated)
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
+// EachUser walks every distinct user_id with at least one settings row. Used by startup-time
+// rehydrators (webhooks, themes) to load per-user state without enumerating users via the auth
+// store. Yields '' for the single-user namespace; the callback decides what to do with it.
+func (r settingsRepo) EachUser(ctx context.Context, fn func(userID string) error) error {
+	rows, err := r.c.query(ctx, `SELECT DISTINCT user_id FROM settings`)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var u string
+		if err := rows.Scan(&u); err != nil {
+			return err
+		}
+		if err := fn(u); err != nil {
+			return err
+		}
+	}
+	return rows.Err()
 }
 
 // ---- profiles ----
@@ -798,9 +853,9 @@ func (r momentRepo) Add(ctx context.Context, m platform.Moment) error {
 		return fmt.Errorf("sqlcommon: marshal excerpt: %w", err)
 	}
 	_, err = r.c.exec(ctx,
-		`INSERT INTO moments (`+momentCols+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO moments (`+momentCols+`, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		m.ID, m.Channel.Key(), string(m.Channel.Platform), m.Channel.Slug,
-		tsStore(m.StartedAt), tsStore(m.EndedAt), m.PeakRate, m.Baseline, string(ex))
+		tsStore(m.StartedAt), tsStore(m.EndedAt), m.PeakRate, m.Baseline, string(ex), uid(ctx))
 	return err
 }
 
@@ -810,8 +865,8 @@ func (r momentRepo) List(ctx context.Context, q store.MomentQuery) ([]platform.M
 		limit = 100
 	}
 	query := `SELECT ` + momentCols + ` FROM moments`
-	var args []any
-	var conds []string
+	args := []any{uid(ctx)}
+	conds := []string{`user_id = ?`}
 	if q.Channel != "" {
 		conds = append(conds, `channel_key = ?`)
 		args = append(args, q.Channel)
@@ -820,9 +875,7 @@ func (r momentRepo) List(ctx context.Context, q store.MomentQuery) ([]platform.M
 		conds = append(conds, `id < ?`)
 		args = append(args, q.Before)
 	}
-	if len(conds) > 0 {
-		query += ` WHERE ` + strings.Join(conds, ` AND `)
-	}
+	query += ` WHERE ` + strings.Join(conds, ` AND `)
 	query += ` ORDER BY id DESC LIMIT ?`
 	args = append(args, limit)
 
@@ -850,7 +903,8 @@ func (r momentRepo) List(ctx context.Context, q store.MomentQuery) ([]platform.M
 }
 
 func (r momentRepo) Delete(ctx context.Context, id string) error {
-	res, err := r.c.exec(ctx, `DELETE FROM moments WHERE id = ?`, id)
+	res, err := r.c.exec(ctx,
+		`DELETE FROM moments WHERE id = ? AND user_id = ?`, id, uid(ctx))
 	if err != nil {
 		return err
 	}

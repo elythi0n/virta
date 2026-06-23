@@ -1,0 +1,244 @@
+.pane {
+  height: 100%;
+  overflow: auto;
+  padding: var(--virta-space-16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-16);
+  background: var(--virta-bg-0);
+}
+
+/* ── Channels ───────────────────────────────────────────────────────────── */
+.channelGrid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--virta-space-8);
+}
+.channelCard {
+  position: relative;
+  padding: var(--virta-space-8) var(--virta-space-12) var(--virta-space-8) var(--virta-space-16);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-md);
+  background: var(--virta-bg-0);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--virta-space-12);
+  cursor: pointer;
+  transition: border-color var(--virta-motion-fast) ease, background var(--virta-motion-fast) ease;
+  overflow: hidden;
+}
+.channelCard::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--platform-color, var(--virta-accent));
+  opacity: 0.7;
+}
+.channelCard:hover {
+  border-color: color-mix(in srgb, var(--platform-color, var(--virta-accent)) 50%, var(--virta-line));
+  background: color-mix(in srgb, var(--platform-color, var(--virta-accent)) 5%, var(--virta-bg-0));
+}
+.channelCardActive {
+  border-color: color-mix(in srgb, var(--platform-color, var(--virta-accent)) 60%, var(--virta-line));
+  background: color-mix(in srgb, var(--platform-color, var(--virta-accent)) 7%, var(--virta-bg-0));
+}
+.channelCardActive::before {
+  opacity: 1;
+}
+
+.channelCheck {
+  margin-top: 2px;
+}
+.channelBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.channelTop {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  min-width: 0;
+}
+.channelLogin {
+  color: var(--virta-text-0);
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+.channelPlatform {
+  font-family: var(--virta-font-ui);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: var(--platform-color, var(--virta-text-2));
+  background: color-mix(in srgb, var(--platform-color, var(--virta-text-2)) 14%, transparent);
+  padding: 2px 6px;
+  border-radius: 4px;
+  align-self: flex-start;
+}
+.channelHint {
+  color: var(--virta-text-1);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.livePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: var(--virta-radius-sm);
+  background: color-mix(in srgb, var(--virta-danger) 14%, transparent);
+  color: color-mix(in srgb, var(--virta-danger) 80%, var(--virta-text-0));
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.liveDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--virta-danger);
+  animation: stream-info-pulse 1.6s ease-in-out infinite;
+}
+.liveOff {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--virta-text-2) 50%, transparent);
+}
+@keyframes stream-info-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+:global([data-reduce-motion="1"]) .liveDot { animation: none; }
+
+/* ── OBS toggle ─────────────────────────────────────────────────────────── */
+.obsToggle {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-12);
+  padding: var(--virta-space-12) var(--virta-space-16);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-md);
+  background: var(--virta-bg-0);
+  cursor: pointer;
+}
+.obsToggle[data-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.obsToggleBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.obsToggleTitle {
+  font-family: var(--virta-font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--virta-text-0);
+}
+.obsToggleHint {
+  font-family: var(--virta-font-ui);
+  font-size: 12px;
+  color: var(--virta-text-2);
+}
+
+/* ── Banner ─────────────────────────────────────────────────────────────── */
+.banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--virta-space-12);
+  padding: var(--virta-space-12) var(--virta-space-16);
+  border: 1px solid color-mix(in srgb, var(--virta-warn) 40%, var(--virta-line));
+  border-radius: var(--virta-radius-md);
+  background: color-mix(in srgb, var(--virta-warn) 8%, var(--virta-bg-1));
+  color: var(--virta-text-0);
+}
+.bannerBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* ── Results ────────────────────────────────────────────────────────────── */
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-8);
+}
+.resultsHead {
+  font-family: var(--virta-font-ui);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--virta-text-2);
+  font-weight: 600;
+}
+.resultList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-4);
+}
+.resultRow {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  padding: var(--virta-space-8) var(--virta-space-12);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-sm);
+  background: var(--virta-bg-0);
+}
+.resultChannel {
+  font-family: var(--virta-font-ui);
+  color: var(--virta-text-0);
+  font-weight: 500;
+  flex: 1;
+}
+.resultReason {
+  margin-left: auto;
+  max-width: 60%;
+  text-align: right;
+}
+.resultPending {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 22px;
+}
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid color-mix(in srgb, var(--virta-text-2) 30%, transparent);
+  border-top-color: var(--virta-text-0);
+  border-radius: 50%;
+  animation: stream-info-spin 0.75s linear infinite;
+}
+@keyframes stream-info-spin {
+  to { transform: rotate(360deg); }
+}
+:global([data-reduce-motion="1"]) .spinner { animation: none; }

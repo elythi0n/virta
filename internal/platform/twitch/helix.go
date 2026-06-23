@@ -52,6 +52,9 @@ type HelixClient struct {
 
 	channelsURL         string
 	searchCategoriesURL string
+
+	searchChannelsURL string
+	streamsURL        string
 }
 
 // NewHelixClient builds a Helix client reading its app client id from clientID on each call.
@@ -71,6 +74,8 @@ func NewHelixClient(clientID func() string, hc *http.Client) *HelixClient {
 		eventSubURL:         helixEventSubURL,
 		channelsURL:         helixChannelsURL,
 		searchCategoriesURL: helixSearchCategoriesURL,
+		searchChannelsURL:   helixSearchChannelsURL,
+		streamsURL:          helixStreamsURL,
 	}
 }
 

@@ -16,11 +16,10 @@
   border-bottom: 1px solid var(--virta-line);
 }
 
+/* Streamers strip: now a single-line meta text — "twitch shroud · kick forsen". The toolbar
+   stays chrome; the strip carries content density without competing with the controls. */
 .streamers {
   flex: 1 1 auto;
-  display: flex;
-  align-items: center;
-  gap: var(--virta-space-4);
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
@@ -28,26 +27,25 @@
 .streamers::-webkit-scrollbar {
   display: none;
 }
-.streamer {
-  flex: none;
+.streamerList {
   display: inline-flex;
   align-items: center;
-  gap: var(--virta-space-4);
-  height: 22px;
-  padding: 0 var(--virta-space-8);
-  border: 1px solid var(--virta-line);
-  border-radius: var(--virta-radius-sm);
-  background: var(--virta-bg-0);
-  color: var(--virta-text-1);
-  font-family: var(--virta-font-ui);
-  font-size: var(--virta-type-meta-size);
-  font-weight: 600;
+  gap: var(--virta-space-6);
   white-space: nowrap;
+}
+.streamer {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 .streamerGlyph {
   width: 12px;
   height: 12px;
   flex: none;
+}
+.streamerSep {
+  color: var(--virta-text-2);
+  margin: 0 2px;
 }
 
 .controls {
@@ -55,40 +53,18 @@
   align-items: center;
   gap: var(--virta-space-8);
 }
-.iconBtn {
+
+.calmBtn {
   position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 26px;
-  border: 1px solid var(--virta-line);
-  border-radius: var(--virta-radius-sm);
-  background: var(--virta-bg-0);
-  color: var(--virta-text-2);
-  cursor: pointer;
-  transition:
-    border-color var(--virta-motion-fast) ease,
-    background var(--virta-motion-fast) ease,
-    color var(--virta-motion-fast) ease;
-}
-.iconBtn:hover {
-  border-color: var(--virta-text-2);
-  background: var(--virta-bg-2);
-  color: var(--virta-text-0);
-}
-.iconBtn[aria-pressed='true'] {
-  border-color: transparent;
-  background: var(--virta-accent);
-  color: var(--virta-bg-0);
 }
 
-/* Count of messages calm mode is currently thinning under overload (an amber overlay so it reads
-   on both the idle and the pressed-accent calm button). */
+/* A small overlay count badge for calm-mode buttons — sits on top of the icon button. Borrows the
+   amber warn color so it reads as "throttling under load" against either the idle or pressed
+   ghost-button background. */
 .calmCount {
   position: absolute;
-  top: -5px;
-  right: -5px;
+  top: -4px;
+  right: -4px;
   min-width: 14px;
   height: 14px;
   padding: 0 3px;
@@ -117,41 +93,6 @@
   min-width: 120px;
   height: 28px;
 }
-.quick {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--virta-space-4);
-  flex-wrap: wrap;
-}
-.chip {
-  height: 24px;
-  padding: 0 var(--virta-space-8);
-  border: 1px solid var(--virta-line);
-  border-radius: var(--virta-radius-sm);
-  background: var(--virta-bg-0);
-  color: var(--virta-text-2);
-  font-family: var(--virta-font-ui);
-  font-size: var(--virta-type-meta-size);
-  font-weight: 600;
-  cursor: pointer;
-  transition:
-    border-color var(--virta-motion-fast) ease,
-    background var(--virta-motion-fast) ease,
-    color var(--virta-motion-fast) ease;
-}
-.chip:hover {
-  border-color: var(--virta-text-2);
-  color: var(--virta-text-0);
-}
-.chipOn {
-  border-color: transparent;
-  background: var(--virta-accent);
-  color: var(--virta-bg-0);
-}
-.chipOn:hover {
-  border-color: transparent;
-  color: var(--virta-bg-0);
-}
 
 .feedWrap {
   position: relative;
@@ -159,31 +100,15 @@
   min-height: 0;
 }
 
-/* Calm-mode backlog: a floating pill showing how many messages are held back, click to catch up. */
+/* Calm-mode backlog: a floating button showing how many messages are held back. The Button
+   component carries the look; we only position it floating over the feed. */
 .pendingPill {
   position: absolute;
   left: 50%;
   bottom: var(--virta-space-12);
   transform: translateX(-50%);
-  display: inline-flex;
-  align-items: center;
-  padding: var(--virta-space-4) var(--virta-space-12);
-  border: 1px solid transparent;
-  border-radius: var(--virta-radius-md);
-  background: var(--virta-accent);
-  color: var(--virta-bg-0);
-  font-family: var(--virta-font-ui);
-  font-size: var(--virta-type-meta-size);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
   box-shadow: 0 6px 16px -6px rgb(0 0 0 / 0.6);
-  cursor: pointer;
-  transition: filter var(--virta-motion-fast) ease;
 }
-.pendingPill:hover {
-  filter: brightness(1.08);
-}
-
 
 /* Author-focus banner: shown while the view is filtered to a single chatter. */
 .focusBar {
@@ -193,17 +118,4 @@
   padding: var(--virta-space-4) var(--virta-space-12);
   border-bottom: 1px solid var(--virta-line);
   background: var(--virta-bg-1);
-}
-.focusClear {
-  border: 0;
-  padding: 1px var(--virta-space-8);
-  border-radius: var(--virta-radius-sm);
-  background: var(--virta-bg-2);
-  color: var(--virta-text-1);
-  font-family: var(--virta-font-ui);
-  font-size: var(--virta-type-meta-size);
-  cursor: pointer;
-}
-.focusClear:hover {
-  color: var(--virta-text-0);
 }

@@ -8,7 +8,7 @@ import {
   type FeedMessage,
   type Platform,
 } from '@virta/feed-core';
-import { Button, ContextMenu, Dialog, Text } from '@virta/ui-kit';
+import { Button, ContextMenu, Dialog, EmptyState, Text } from '@virta/ui-kit';
 import Icon, { type IconName } from '../Icon';
 import { channelKey, useChannels, useDaemonStream } from '../daemon';
 import styles from './CelebrationsPane.module.css';
@@ -95,17 +95,12 @@ export default function CelebrationsPane({ panelId }: Props) {
     <>
       <ContextMenu items={[{ kind: 'item', label: 'Filtering…', onSelect: () => setFilterOpen(true) }]} trigger={<div className={styles.root}>
         {events.length === 0 ? (
-          <div className={styles.empty}>
-            <Text variant="ui" tone="subtle">
-              Subs, gifts, raids, and announcements will celebrate here. Right-click to filter.
-            </Text>
-          </div>
+          <EmptyState
+            title="No celebrations yet"
+            hint="Subs, gifts, raids, and announcements will land here. Right-click to filter."
+          />
         ) : visible.length === 0 ? (
-          <div className={styles.empty}>
-            <Text variant="meta" tone="subtle">
-              Nothing matches this pane's filter.
-            </Text>
-          </div>
+          <EmptyState title="Nothing matches this pane's filter" />
         ) : (
           <div className={styles.pane}>
             {visible.map((m) => {

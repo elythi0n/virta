@@ -489,16 +489,20 @@ export default function FeedPanel({ channels, panelId }: Props) {
       <div className={styles.toolbar}>
         <div className={styles.streamers}>
           {targets.length === 0 ? (
-            <Text variant="meta" tone="subtle">
-              No channels
-            </Text>
+            <Text variant="meta" tone="subtle">No channels</Text>
           ) : (
-            targets.map((t) => (
-              <span key={t} className={styles.streamer}>
-                <PlatformGlyph platform={t.split(':')[0] as Platform} className={styles.streamerGlyph} />
-                {t.split(':')[1] ?? t}
-              </span>
-            ))
+            <Text variant="meta" tone="subtle" className={styles.streamerList}>
+              {targets.map((t, i) => {
+                const [p, slug] = t.split(':');
+                return (
+                  <span key={t} className={styles.streamer}>
+                    {i > 0 && <span className={styles.streamerSep}>·</span>}
+                    <PlatformGlyph platform={p as Platform} className={styles.streamerGlyph} />
+                    {slug ?? t}
+                  </span>
+                );
+              })}
+            </Text>
           )}
         </div>
         <div className={styles.controls}>
@@ -526,27 +530,28 @@ export default function FeedPanel({ channels, panelId }: Props) {
             }
             side="bottom"
           >
-            <button
-              type="button"
-              className={styles.iconBtn}
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className={styles.calmBtn}
               aria-label="Calm mode"
               aria-pressed={calmActive}
               onClick={toggleCalm}
             >
               <Icon name="collapse" size={16} />
               {calmActive && thinned > 0 && <span className={styles.calmCount}>{thinned}</span>}
-            </button>
+            </Button>
           </Tooltip>
           <Tooltip content={hud ? 'Preview only' : 'Show controls'} side="bottom">
-            <button
-              type="button"
-              className={styles.iconBtn}
+            <Button
+              variant="ghost"
+              size="icon-sm"
               aria-label={hud ? 'Hide chat controls' : 'Show chat controls'}
               aria-pressed={!hud}
               onClick={toggleHud}
             >
               <Icon name={hud ? 'eye' : 'eye-off'} size={16} />
-            </button>
+            </Button>
           </Tooltip>
           {modChannel && (
             <ChatSettingsControl
@@ -572,19 +577,12 @@ export default function FeedPanel({ channels, panelId }: Props) {
             }
           }}
         />
-        <div className={styles.quick} role="group" aria-label="Quick filters">
-          {QUICK_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              className={`${styles.chip} ${quick === f.value ? styles.chipOn : ''}`}
-              aria-pressed={quick === f.value}
-              onClick={() => setQuick(f.value)}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+        <Segmented
+          ariaLabel="Quick filters"
+          value={quick}
+          onValueChange={(v) => setQuick(v as QuickFilter)}
+          options={QUICK_FILTERS}
+        />
       </div>
       )}
       {authorFocus && (
@@ -592,9 +590,10 @@ export default function FeedPanel({ channels, panelId }: Props) {
           <Text variant="meta" tone="subtle">
             Showing only <strong>{authorFocus}</strong>
           </Text>
-          <button type="button" className={styles.focusClear} onClick={() => setAuthorFocus(null)}>
-            Clear ×
-          </button>
+          <Button variant="ghost" size="sm" onClick={() => setAuthorFocus(null)}>
+            <Icon name="x" size={12} />
+            Clear
+          </Button>
         </div>
       )}
       <div className={styles.feedWrap}>
@@ -611,9 +610,9 @@ export default function FeedPanel({ channels, panelId }: Props) {
           wrapRow={wrapRow}
         />
         {calmActive && pendingCount > 0 && (
-          <button type="button" className={styles.pendingPill} onClick={flushPending}>
+          <Button variant="solid" size="sm" className={styles.pendingPill} onClick={flushPending}>
             +{pendingCount} paused · show
-          </button>
+          </Button>
         )}
       </div>
       {hud && <Composer targets={targets} chatters={chatters} replyTo={replyTo} onCancelReply={() => setReplyTo(null)} />}

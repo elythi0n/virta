@@ -33,7 +33,7 @@ func TestDelivery_HMACAndHeaders(t *testing.T) {
 	defer srv.Close()
 
 	mgr := NewManager(nil, srv.Client())
-	mgr.Register(Endpoint{ID: "e1", Name: "test", URL: srv.URL, Events: []string{"event.raid"}, Active: true}, secret)
+	mgr.Register("e1", Endpoint{ID: "e1", Name: "test", URL: srv.URL, Events: []string{"event.raid"}, Active: true}, secret)
 	defer mgr.Close()
 
 	d := Delivery{ID: "d1", Type: "event.raid", CreatedAt: time.Now(), Data: []byte(`{"platform":"twitch"}`)}
@@ -71,7 +71,7 @@ func TestDelivery_EventFiltering(t *testing.T) {
 	defer srv.Close()
 
 	mgr := NewManager(nil, srv.Client())
-	mgr.Register(Endpoint{ID: "e1", Name: "raids only", URL: srv.URL, Events: []string{"event.raid"}, Active: true}, "")
+	mgr.Register("e1", Endpoint{ID: "e1", Name: "raids only", URL: srv.URL, Events: []string{"event.raid"}, Active: true}, "")
 	defer mgr.Close()
 
 	// Raid should match.
@@ -101,7 +101,7 @@ func TestAutoPauseAndResume(t *testing.T) {
 	t.Cleanup(func() { initialBackoff = orig })
 	// Simulate sustained failure by pointing at a closed port (immediate connection refused).
 	mgr := NewManager(nil, &http.Client{Timeout: 50 * time.Millisecond})
-	mgr.Register(Endpoint{ID: "e1", Name: "fail", URL: "http://127.0.0.1:1", Events: []string{"event.raid"}, Active: true}, "")
+	mgr.Register("e1", Endpoint{ID: "e1", Name: "fail", URL: "http://127.0.0.1:1", Events: []string{"event.raid"}, Active: true}, "")
 	defer mgr.Close()
 
 	// Feed 10 deliveries; each fails immediately (connection refused, no retry sleep for very

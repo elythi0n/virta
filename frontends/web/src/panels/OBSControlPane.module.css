@@ -1,0 +1,224 @@
+.pane {
+  height: 100%;
+  overflow: auto;
+  padding: var(--virta-space-16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-16);
+  background: var(--virta-bg-0);
+}
+
+.emptyState {
+  margin: auto;
+  max-width: 320px;
+  padding: var(--virta-space-24);
+  border: 1px dashed var(--virta-line);
+  border-radius: var(--virta-radius-md);
+  text-align: center;
+  color: var(--virta-text-1);
+}
+.emptyTitle {
+  font-family: var(--virta-font-ui);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--virta-text-0);
+  margin-bottom: 6px;
+}
+.emptyHint {
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--virta-text-2);
+}
+
+/* ── Status row ─────────────────────────────────────────────────────────── */
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-12);
+  flex-wrap: wrap;
+}
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-family: var(--virta-font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--virta-line);
+}
+.statusReady {
+  background: color-mix(in srgb, var(--virta-ok) 12%, var(--virta-bg-1));
+  color: color-mix(in srgb, var(--virta-ok) 85%, var(--virta-text-0));
+  border-color: color-mix(in srgb, var(--virta-ok) 40%, var(--virta-line));
+}
+.statusLive {
+  background: color-mix(in srgb, var(--virta-danger) 14%, var(--virta-bg-1));
+  color: color-mix(in srgb, var(--virta-danger) 85%, var(--virta-text-0));
+  border-color: color-mix(in srgb, var(--virta-danger) 50%, var(--virta-line));
+}
+.statusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.statusLive .statusDot {
+  animation: obs-pulse 1.6s ease-in-out infinite;
+}
+@keyframes obs-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+:global([data-reduce-motion="1"]) .statusDot { animation: none; }
+
+.duration {
+  font-family: var(--virta-font-mono);
+  font-size: 13px;
+  color: var(--virta-text-0);
+  letter-spacing: 0.02em;
+}
+.version {
+  margin-left: auto;
+  font-family: var(--virta-font-ui);
+  font-size: 11px;
+  color: var(--virta-text-2);
+}
+
+/* ── Big start/stop ─────────────────────────────────────────────────────── */
+.bigButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--virta-space-12);
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  font-family: var(--virta-font-ui);
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  transition: transform var(--virta-motion-fast) ease, box-shadow var(--virta-motion-fast) ease, filter var(--virta-motion-fast) ease;
+}
+.bigStart {
+  background: linear-gradient(135deg, var(--virta-ok), color-mix(in srgb, var(--virta-ok) 75%, var(--virta-accent)));
+  border-color: color-mix(in srgb, var(--virta-ok) 55%, var(--virta-line));
+  box-shadow:
+    0 1px 0 color-mix(in srgb, #fff 14%, transparent) inset,
+    0 8px 22px color-mix(in srgb, var(--virta-ok) 30%, transparent);
+}
+.bigStop {
+  background: linear-gradient(135deg, var(--virta-danger), color-mix(in srgb, var(--virta-danger) 75%, var(--virta-accent)));
+  border-color: color-mix(in srgb, var(--virta-danger) 55%, var(--virta-line));
+  box-shadow:
+    0 1px 0 color-mix(in srgb, #fff 14%, transparent) inset,
+    0 8px 22px color-mix(in srgb, var(--virta-danger) 30%, transparent);
+}
+.bigButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+.bigButton:active:not(:disabled) {
+  transform: translateY(0);
+}
+.bigButton:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.4);
+  opacity: 0.7;
+  box-shadow: none;
+}
+
+.error {
+  padding: var(--virta-space-8) var(--virta-space-12);
+  border: 1px solid color-mix(in srgb, var(--virta-danger) 40%, var(--virta-line));
+  border-radius: var(--virta-radius-md);
+  background: color-mix(in srgb, var(--virta-danger) 8%, var(--virta-bg-1));
+  color: var(--virta-text-0);
+  font-size: 12px;
+}
+
+/* ── Scenes ─────────────────────────────────────────────────────────────── */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-8);
+}
+.sectionHead {
+  font-family: var(--virta-font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--virta-text-2);
+}
+
+.sceneGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--virta-space-8);
+}
+.scene {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  padding: var(--virta-space-12);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-md);
+  background: var(--virta-bg-1);
+  color: var(--virta-text-0);
+  font-family: var(--virta-font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--virta-motion-fast) ease, background var(--virta-motion-fast) ease;
+}
+.scene:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--virta-accent) 50%, var(--virta-line));
+  background: color-mix(in srgb, var(--virta-accent) 8%, var(--virta-bg-1));
+}
+.sceneActive {
+  border-color: color-mix(in srgb, var(--virta-danger) 50%, var(--virta-line));
+  background: color-mix(in srgb, var(--virta-danger) 10%, var(--virta-bg-1));
+  color: color-mix(in srgb, var(--virta-danger) 85%, var(--virta-text-0));
+  cursor: default;
+}
+.sceneName {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sceneBadge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--virta-danger) 22%, transparent);
+}
+.spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid color-mix(in srgb, var(--virta-text-2) 30%, transparent);
+  border-top-color: var(--virta-text-0);
+  border-radius: 50%;
+  animation: obs-spin 0.75s linear infinite;
+}
+@keyframes obs-spin {
+  to { transform: rotate(360deg); }
+}
+:global([data-reduce-motion="1"]) .spinner { animation: none; }
+
+.sceneEmpty {
+  padding: var(--virta-space-12);
+  border: 1px dashed var(--virta-line);
+  border-radius: var(--virta-radius-md);
+  color: var(--virta-text-2);
+  font-size: 12px;
+  text-align: center;
+}

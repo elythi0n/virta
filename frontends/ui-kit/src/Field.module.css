@@ -1,0 +1,45 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  /* 10px between label, control, and hint — tight enough to read as one field, loose enough that
+     each row is its own beat. Matches the rhythm marketbubble uses for forms. */
+  gap: 10px;
+  min-width: 0;
+}
+.labelRow {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  /* The label row is a header above the control; a hair more breathing room than the label-only
+     case is what stops the label from feeling glued to the input. */
+  margin-bottom: 2px;
+}
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--virta-font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--virta-text-1);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.labelMeta {
+  margin-left: auto;
+  font-family: var(--virta-font-mono);
+  font-size: 11px;
+  color: var(--virta-text-2);
+}
+.hint {
+  color: var(--virta-text-2);
+  font-family: var(--virta-font-ui);
+  font-size: 12px;
+  line-height: 16px;
+}
+.error {
+  color: color-mix(in srgb, var(--virta-danger) 80%, var(--virta-text-0));
+  font-family: var(--virta-font-ui);
+  font-size: 12px;
+  line-height: 16px;
+}

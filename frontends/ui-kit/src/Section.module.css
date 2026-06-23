@@ -1,0 +1,57 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-16);
+  padding: var(--virta-space-16);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-lg);
+  background: color-mix(in srgb, var(--virta-bg-1) 88%, transparent);
+}
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-12);
+  min-width: 0;
+}
+.badge {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--virta-bg-2);
+  border: 1px solid var(--virta-line);
+  color: var(--virta-text-1);
+  font-family: var(--virta-font-ui);
+  font-size: 11px;
+  font-weight: 600;
+}
+.title {
+  font-family: var(--virta-font-ui);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--virta-text-0);
+  letter-spacing: -0.005em;
+}
+.meta {
+  margin-left: auto;
+  color: var(--virta-text-2);
+  font-family: var(--virta-font-ui);
+  font-size: 12px;
+}
+.description {
+  margin-top: calc(-1 * var(--virta-space-8));
+  color: var(--virta-text-1);
+  font-family: var(--virta-font-ui);
+  font-size: 12px;
+  line-height: 18px;
+}
+.body {
+  display: flex;
+  flex-direction: column;
+  /* Between consecutive fields. Bigger than the within-field gap (10px) so two fields read as
+     "separate things" rather than "same thing on two lines". */
+  gap: var(--virta-space-16);
+}

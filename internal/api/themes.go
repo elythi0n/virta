@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 )
@@ -14,23 +15,24 @@ type ThemeInfo struct {
 	Warnings   []string `json:"warnings,omitempty"` // non-fatal lint notes
 }
 
-// Themes is the theme management surface. Implemented by the wiring layer; injected via SetThemes.
+// Themes is the theme management surface. Every method takes a context so the controller can
+// scope custom themes by uid(ctx) — built-in themes are global, custom imports are per-user.
 type Themes interface {
-	List() []ThemeInfo
-	Import(data []byte) (ThemeInfo, error) // parse, lint, persist
-	Export(id string) ([]byte, error)      // retrieve .vtheme JSON
-	Delete(id string) error
+	List(ctx context.Context) []ThemeInfo
+	Import(ctx context.Context, data []byte) (ThemeInfo, error) // parse, lint, persist
+	Export(ctx context.Context, id string) ([]byte, error)      // retrieve .vtheme JSON
+	Delete(ctx context.Context, id string) error
 }
 
 // SetThemes installs the theme controller.
 func (s *Server) SetThemes(t Themes) { s.themes = t }
 
-func (s *Server) handleListThemes(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) handleListThemes(w http.ResponseWriter, r *http.Request) {
 	if s.themes == nil {
 		http.Error(w, "themes unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	list := s.themes.List()
+	list := s.themes.List(r.Context())
 	if list == nil {
 		list = []ThemeInfo{}
 	}
@@ -48,7 +50,7 @@ func (s *Server) handleImportTheme(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "expected .vtheme JSON body", http.StatusBadRequest)
 		return
 	}
-	info, err := s.themes.Import(data)
+	info, err := s.themes.Import(r.Context(), data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -62,7 +64,7 @@ func (s *Server) handleExportTheme(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
-	data, err := s.themes.Export(id)
+	data, err := s.themes.Export(r.Context(), id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -78,7 +80,7 @@ func (s *Server) handleDeleteTheme(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
-	if err := s.themes.Delete(id); err != nil {
+	if err := s.themes.Delete(r.Context(), id); err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}

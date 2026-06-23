@@ -392,6 +392,7 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 	}, gov, sendHelpText)
 	srv.SetSend(sendControl{sender: sender})
 	srv.SetDeck(deckControl{twitch: twitchAdapter, kick: kickAdapter})
+	srv.SetDiscovery(discoveryControl{twitch: twitchAdapter})
 	srv.SetHeld(heldControl{queue: heldQueue, sender: sender, emitter: runner})
 	srv.SetHistory(historyControl{store: st, ring: scrollbackRing, loggingOn: logSink.Enabled})
 	srv.SetMoments(momentsControl{repo: st.Moments()})
@@ -1763,6 +1764,65 @@ func (d *Daemon) SetProfanityEnabled(ctx context.Context, enabled bool) error {
 func (d *Daemon) ProfanityEnabled() bool {
 	raw, err := d.store.Settings().Get(context.Background(), "filter.profanity.enabled")
 	return err == nil && string(raw.Data) == "true"
+}
+
+// discoveryControl adapts the Twitch adapter to the API's Discovery interface. Twitch is the
+// only platform with a public search-channels / top-streams API today; Kick's public API only
+// supports lookup by exact slug (already covered by the Add Channel flow), so a Kick discovery
+// request returns an empty result rather than an error — the UI surfaces "Twitch only" instead.
+type discoveryControl struct {
+	twitch *twitch.Adapter
+}
+
+func (c discoveryControl) SearchChannels(ctx context.Context, platformName, query string, first int, liveOnly bool) ([]api.DiscoveryChannel, error) {
+	if !strings.EqualFold(platformName, string(platform.Twitch)) {
+		return []api.DiscoveryChannel{}, nil
+	}
+	page, err := c.twitch.SearchChannels(ctx, query, first, liveOnly)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]api.DiscoveryChannel, 0, len(page.Results))
+	for _, r := range page.Results {
+		out = append(out, api.DiscoveryChannel{
+			Platform:    string(platform.Twitch),
+			Slug:        r.BroadcasterLogin,
+			DisplayName: r.DisplayName,
+			IsLive:      r.IsLive,
+			Title:       r.Title,
+			Category:    r.GameName,
+			Thumbnail:   r.ThumbnailURL,
+			Tags:        r.Tags,
+			StartedAt:   r.StartedAt,
+		})
+	}
+	return out, nil
+}
+
+func (c discoveryControl) TopStreams(ctx context.Context, platformName string, first int, cursor, gameID string) (api.DiscoveryStreamsPage, error) {
+	if !strings.EqualFold(platformName, string(platform.Twitch)) {
+		return api.DiscoveryStreamsPage{Streams: []api.DiscoveryStream{}}, nil
+	}
+	page, err := c.twitch.TopStreams(ctx, first, cursor, gameID)
+	if err != nil {
+		return api.DiscoveryStreamsPage{}, err
+	}
+	out := make([]api.DiscoveryStream, 0, len(page.Streams))
+	for _, s := range page.Streams {
+		out = append(out, api.DiscoveryStream{
+			Platform:    string(platform.Twitch),
+			Slug:        s.UserLogin,
+			DisplayName: s.UserName,
+			Title:       s.Title,
+			Category:    s.GameName,
+			ViewerCount: s.ViewerCount,
+			StartedAt:   s.StartedAt,
+			Thumbnail:   s.ThumbnailURL,
+			Language:    s.Language,
+			Tags:        s.Tags,
+		})
+	}
+	return api.DiscoveryStreamsPage{Streams: out, Cursor: page.Cursor}, nil
 }
 
 // Close shuts everything down in order: stop accepting clients, close adapters so no new

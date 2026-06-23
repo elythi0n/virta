@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { PlatformGlyph, type Platform } from '@virta/feed-core';
-import { Button, Select, Text } from '@virta/ui-kit';
+import { Button, EmptyState, Select, Text } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { channelKey, deleteMoment, listMoments, useChannels, useDaemonStream, type Moment } from '../daemon';
 import styles from './HighlightsPanel.module.css';
@@ -119,19 +119,17 @@ export default function HighlightsPanel() {
       </div>
 
       {state === 'offline' ? (
-        <div className={styles.empty}>
-          <Icon name="flame" size={28} />
-          <Text variant="ui" tone="subtle">
-            Not connected to the daemon.
-          </Text>
-        </div>
+        <EmptyState
+          icon={<Icon name="flame" size={28} />}
+          title="Not connected"
+          hint="Highlights stream from the daemon — start it to capture chat spikes."
+        />
       ) : state === 'ready' && moments.length === 0 ? (
-        <div className={styles.empty}>
-          <Icon name="flame" size={28} />
-          <Text variant="ui" tone="subtle">
-            No moments yet — when chat erupts, the spike gets bookmarked here automatically.
-          </Text>
-        </div>
+        <EmptyState
+          icon={<Icon name="flame" size={28} />}
+          title="No moments yet"
+          hint="When chat erupts, the spike gets bookmarked here automatically."
+        />
       ) : (
         <div className={styles.timeline}>
           {moments.map((m) => {

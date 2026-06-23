@@ -318,6 +318,30 @@ func (m *Manager) GetScenes(ctx context.Context) (SceneList, error) {
 	return SceneList{Scenes: names, Current: resp.CurrentProgramSceneName}, nil
 }
 
+// SetCurrentScene switches OBS's program scene by name. Errors when OBS isn't connected or
+// rejects the request (e.g. unknown scene name).
+func (m *Manager) SetCurrentScene(ctx context.Context, name string) error {
+	c := m.activeConn()
+	if c == nil {
+		return errors.New("not connected to OBS")
+	}
+	if name == "" {
+		return errors.New("scene name required")
+	}
+	payload, err := json.Marshal(map[string]string{"sceneName": name})
+	if err != nil {
+		return err
+	}
+	rd, err := c.request(ctx, "SetCurrentProgramScene", payload)
+	if err != nil {
+		return err
+	}
+	if !rd.Status.Result {
+		return fmt.Errorf("OBS error %d: %s", rd.Status.Code, rd.Status.Comment)
+	}
+	return nil
+}
+
 // StreamStatus is OBS's live broadcast state, returned by GetStreamStatus.
 type StreamStatus struct {
 	Active       bool  `json:"active"`

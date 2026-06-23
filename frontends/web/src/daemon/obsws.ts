@@ -61,6 +61,10 @@ export function getOBSScenes(): Promise<OBSSceneList> {
   return request<OBSSceneList>('/v1/obsws/scenes');
 }
 
+export function setOBSScene(name: string): Promise<void> {
+  return request('/v1/obsws/scenes/current', { method: 'POST', body: JSON.stringify({ name }) });
+}
+
 export function testOBSSource(sourceName: string, value: string): Promise<void> {
   return request('/v1/obsws/test-source', { method: 'POST', body: JSON.stringify({ source_name: sourceName, value }) });
 }

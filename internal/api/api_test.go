@@ -10,6 +10,7 @@ import (
 	"github.com/coder/websocket"
 
 	"github.com/elythi0n/virta/internal/platform"
+	"github.com/elythi0n/virta/internal/userctx"
 )
 
 func start(t *testing.T) *Server {
@@ -216,6 +217,71 @@ func TestStream_SubscribeThenReceive(t *testing.T) {
 	_ = json.Unmarshal(data, &we)
 	if we.Message == nil || we.Message.ID != "x" {
 		t.Fatalf("expected subscribed message, got %+v", we)
+	}
+}
+
+// stubChannels is a per-user joined-channels lister so scopedSubscription's guard can be tested
+// without spinning up an engine. Returns whatever the test seeded for the requested user.
+type stubChannels struct {
+	by map[string][]ChannelInfo
+}
+
+func (s stubChannels) Join(context.Context, string, string, string) error   { return nil }
+func (s stubChannels) Leave(context.Context, string, string) error          { return nil }
+func (s stubChannels) Capabilities() map[string]Capabilities                { return nil }
+func (s stubChannels) Streams(context.Context) []StreamInfo                 { return nil }
+func (s stubChannels) Emotes(context.Context) []EmoteInfo                   { return nil }
+func (s stubChannels) List(ctx context.Context) []ChannelInfo {
+	return s.by[userctx.FromContext(ctx)]
+}
+
+// TestServer_ScopedSubscription confirms the WebSocket subscription guard:
+//   1. A subscribe request for a channel the user has NOT joined is silently dropped.
+//   2. An empty channel list defaults to "all of the requesting user's joined channels".
+//   3. In single-user mode (empty user_id), the user's joined set is the entire joined set —
+//      old behavior is preserved for desktop installs.
+func TestServer_ScopedSubscription(t *testing.T) {
+	srv, err := New(Config{Addr: "127.0.0.1:0", RuntimeDir: t.TempDir()})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	srv.SetChannels(stubChannels{by: map[string][]ChannelInfo{
+		"user-A": {{Platform: "twitch", Slug: "shroud"}, {Platform: "kick", Slug: "xqc"}},
+		"user-B": {{Platform: "twitch", Slug: "forsen"}},
+		"":       {{Platform: "twitch", Slug: "shroud"}}, // single-user mode
+	}})
+
+	ctxA := userctx.WithUser(context.Background(), "user-A")
+	ctxB := userctx.WithUser(context.Background(), "user-B")
+	ctxLocal := context.Background()
+
+	// 1. User A requesting user B's channel: dropped (not in A's joined set).
+	subA := srv.scopedSubscription(ctxA, []string{"twitch:forsen"})
+	if _, ok := subA.channels["twitch:forsen"]; ok {
+		t.Errorf("scopedSubscription leaked twitch:forsen to user A who never joined it")
+	}
+	// User A asking for their own channel: kept.
+	subA = srv.scopedSubscription(ctxA, []string{"twitch:shroud"})
+	if _, ok := subA.channels["twitch:shroud"]; !ok {
+		t.Errorf("scopedSubscription dropped user A's own twitch:shroud")
+	}
+
+	// 2. User B with empty request: gets every channel they own (forsen), nothing else.
+	subB := srv.scopedSubscription(ctxB, nil)
+	if _, ok := subB.channels["twitch:forsen"]; !ok {
+		t.Errorf("scopedSubscription empty-list should default to all of B's joined channels")
+	}
+	if _, ok := subB.channels["twitch:shroud"]; ok {
+		t.Errorf("user B's empty-list subscription must not include user A's shroud")
+	}
+
+	// 3. Single-user mode: empty list returns the (single) user's joined channels — unchanged.
+	subLocal := srv.scopedSubscription(ctxLocal, nil)
+	if _, ok := subLocal.channels["twitch:shroud"]; !ok {
+		t.Errorf("single-user empty-list subscription dropped its own channel")
+	}
+	if len(subLocal.channels) != 1 {
+		t.Errorf("single-user subscription = %v, want exactly 1 channel", subLocal.channels)
 	}
 }
 

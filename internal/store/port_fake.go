@@ -12,7 +12,11 @@ import (
 
 	"github.com/elythi0n/virta/internal/clock"
 	"github.com/elythi0n/virta/internal/platform"
+	"github.com/elythi0n/virta/internal/userctx"
 )
+
+// uid returns the per-user namespace from ctx; empty in single-user mode (and tests).
+func uid(ctx context.Context) string { return userctx.FromContext(ctx) }
 
 // Memory is a complete in-memory Store. It is the unit-test backend for the whole codebase
 // and the reference implementation the storetest conformance suite runs against alongside
@@ -35,7 +39,14 @@ type Memory struct {
 	emoteSets     map[string]EmoteSet
 	emoteFiles    map[string]EmoteFile
 	conversations map[string]Conversation
-	moments       []platform.Moment
+	moments       []ownedMoment
+}
+
+// ownedMoment tags a stored moment with the user_id namespace, mirroring the SQL backends'
+// per-user moments column post-0006. The empty user_id is the single-user namespace.
+type ownedMoment struct {
+	userID string
+	moment platform.Moment
 }
 
 // NewMemory creates an empty in-memory store using clk for timestamps.
@@ -85,10 +96,15 @@ func (m *Memory) Moments() MomentRepo             { return memMoments{m} }
 
 type memSettings struct{ m *Memory }
 
-func (r memSettings) Get(_ context.Context, scope string) (Setting, error) {
+// settingsKey composes user_id + scope into a single map key. The NUL byte can never appear in a
+// scope (or a user_id) so collisions are impossible. Mirrors the (user_id, scope) primary key
+// the SQL backends use post-0006.
+func settingsKey(userID, scope string) string { return userID + "\x00" + scope }
+
+func (r memSettings) Get(ctx context.Context, scope string) (Setting, error) {
 	r.m.mu.Lock()
 	defer r.m.mu.Unlock()
-	s, ok := r.m.settings[scope]
+	s, ok := r.m.settings[settingsKey(uid(ctx), scope)]
 	if !ok {
 		return Setting{}, ErrNotFound
 	}
@@ -96,25 +112,67 @@ func (r memSettings) Get(_ context.Context, scope string) (Setting, error) {
 	return s, nil
 }
 
-func (r memSettings) Put(_ context.Context, s Setting) error {
+func (r memSettings) Put(ctx context.Context, s Setting) error {
 	r.m.mu.Lock()
 	defer r.m.mu.Unlock()
 	s.Data = cloneJSON(s.Data)
 	s.UpdatedAt = r.m.clk.Now()
-	r.m.settings[s.Scope] = s
+	r.m.settings[settingsKey(uid(ctx), s.Scope)] = s
 	return nil
 }
 
-func (r memSettings) All(_ context.Context) ([]Setting, error) {
+func (r memSettings) All(ctx context.Context) ([]Setting, error) {
 	r.m.mu.Lock()
 	defer r.m.mu.Unlock()
-	out := make([]Setting, 0, len(r.m.settings))
-	for _, s := range r.m.settings {
+	prefix := uid(ctx) + "\x00"
+	out := make([]Setting, 0)
+	for k, s := range r.m.settings {
+		if !strings.HasPrefix(k, prefix) {
+			continue
+		}
 		s.Data = cloneJSON(s.Data)
 		out = append(out, s)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Scope < out[j].Scope })
 	return out, nil
+}
+
+func (r memSettings) AllForUser(_ context.Context, userID string) ([]Setting, error) {
+	r.m.mu.Lock()
+	defer r.m.mu.Unlock()
+	prefix := userID + "\x00"
+	out := make([]Setting, 0)
+	for k, s := range r.m.settings {
+		if !strings.HasPrefix(k, prefix) {
+			continue
+		}
+		s.Data = cloneJSON(s.Data)
+		out = append(out, s)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Scope < out[j].Scope })
+	return out, nil
+}
+
+func (r memSettings) EachUser(_ context.Context, fn func(userID string) error) error {
+	r.m.mu.Lock()
+	seen := make(map[string]struct{}, len(r.m.settings))
+	for k := range r.m.settings {
+		if i := strings.Index(k, "\x00"); i >= 0 {
+			seen[k[:i]] = struct{}{}
+		}
+	}
+	r.m.mu.Unlock()
+	users := make([]string, 0, len(seen))
+	for u := range seen {
+		users = append(users, u)
+	}
+	sort.Strings(users)
+	for _, u := range users {
+		if err := fn(u); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ---- profiles ----
@@ -598,23 +656,28 @@ func cloneMoment(m platform.Moment) platform.Moment {
 	return m
 }
 
-func (r memMoments) Add(_ context.Context, m platform.Moment) error {
+func (r memMoments) Add(ctx context.Context, m platform.Moment) error {
 	r.m.mu.Lock()
 	defer r.m.mu.Unlock()
-	r.m.moments = append(r.m.moments, cloneMoment(m))
+	r.m.moments = append(r.m.moments, ownedMoment{userID: uid(ctx), moment: cloneMoment(m)})
 	return nil
 }
 
-func (r memMoments) List(_ context.Context, q MomentQuery) ([]platform.Moment, error) {
+func (r memMoments) List(ctx context.Context, q MomentQuery) ([]platform.Moment, error) {
 	limit := q.Limit
 	if limit <= 0 || limit > 1000 {
 		limit = 100
 	}
+	user := uid(ctx)
 	r.m.mu.Lock()
 	defer r.m.mu.Unlock()
 	// newest-first by ULID id
 	matched := make([]platform.Moment, 0)
-	for _, m := range r.m.moments {
+	for _, om := range r.m.moments {
+		if om.userID != user {
+			continue
+		}
+		m := om.moment
 		if q.Channel != "" && m.Channel.Key() != q.Channel {
 			continue
 		}
@@ -630,11 +693,12 @@ func (r memMoments) List(_ context.Context, q MomentQuery) ([]platform.Moment, e
 	return matched, nil
 }
 
-func (r memMoments) Delete(_ context.Context, id string) error {
+func (r memMoments) Delete(ctx context.Context, id string) error {
+	user := uid(ctx)
 	r.m.mu.Lock()
 	defer r.m.mu.Unlock()
 	for i := range r.m.moments {
-		if r.m.moments[i].ID == id {
+		if r.m.moments[i].userID == user && r.m.moments[i].moment.ID == id {
 			r.m.moments = append(r.m.moments[:i], r.m.moments[i+1:]...)
 			return nil
 		}

@@ -1,4 +1,4 @@
-export type IconName = 'sources' | 'panels' | 'settings' | 'chat' | 'stream' | 'mods' | 'stats' | 'x' | 'popout' | 'search' | 'chevron-down' | 'plus' | 'text-size' | 'plugins' | 'mentions' | 'filter' | 'gift' | 'eye' | 'eye-off' | 'collapse' | 'trash' | 'clock' | 'ban' | 'reply' | 'zap' | 'flame' | 'check' | 'list' | 'grid' | 'star' | 'megaphone' | 'user-plus' | 'user' | 'arrow-up' | 'win-minimise' | 'win-maximise' | 'win-close' | 'studio' | 'scissors' | 'play' | 'pause' | 'download' | 'deck';
+export type IconName = 'sources' | 'panels' | 'settings' | 'chat' | 'stream' | 'mods' | 'stats' | 'x' | 'popout' | 'search' | 'chevron-down' | 'plus' | 'text-size' | 'plugins' | 'mentions' | 'filter' | 'gift' | 'eye' | 'eye-off' | 'collapse' | 'trash' | 'clock' | 'ban' | 'reply' | 'zap' | 'flame' | 'check' | 'list' | 'grid' | 'star' | 'megaphone' | 'user-plus' | 'user' | 'arrow-up' | 'win-minimise' | 'win-maximise' | 'win-close' | 'studio' | 'scissors' | 'play' | 'pause' | 'download' | 'deck' | 'gauge' | 'sliders';
 
 // Stroke icons on a 24px grid (Lucide geometry). Inner markup only; the wrapper sets sizing,
 // stroke, and currentColor so a single icon adapts to any context.
@@ -50,7 +50,11 @@ const PATHS: Record<IconName, string> = {
   pause: '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
   download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>',
   deck:
-    '<line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/>',
+    '<path d="M4.9 16.1C1 12.2 1 5.8 4.9 1.9"/><path d="M7.8 4.7a6.14 6.14 0 0 0-.8 7.5"/><circle cx="12" cy="9" r="2"/><path d="M16.2 4.8c2 2 2.26 5.11.8 7.47"/><path d="M19.1 1.9a9.96 9.96 0 0 1 0 14.1"/><path d="M9.5 18h5"/><path d="m8 22 4-11 4 11"/>',
+  gauge:
+    '<path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/>',
+  sliders:
+    '<line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/>',
   ban: '<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',
   eye: '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
   'eye-off':

@@ -86,7 +86,13 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 		}
 		var msg subscribeMessage
 		if json.Unmarshal(data, &msg) == nil && msg.Action == "subscribe" {
-			c.setSubscription(toSubscription(msg.Channels))
+			// Subscription guard: a client only ever sees events for channels it has joined.
+			// In hosted mode this prevents user A from subscribing to user B's channel keys;
+			// in single-user mode the joined set is the user's own channels and an empty
+			// subscribe-list still defaults to "everything I've joined". An empty joined set
+			// still produces an empty subscription (the client receives only broadcastAll
+			// events — adapter health and similar process-wide signals).
+			c.setSubscription(s.scopedSubscription(ctx, msg.Channels))
 			if msg.Since > 0 {
 				// Resume: replay buffered events past the client's cursor (at-least-once;
 				// the client dedupes by seq).
@@ -96,15 +102,47 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// toSubscription builds a raw subscription set from a channel-key list. Used by tests; the
+// production read pump goes through scopedSubscription instead so per-user ownership is checked.
 func toSubscription(channels []string) subscription {
 	if len(channels) == 0 {
 		return subscription{}
 	}
 	m := make(map[string]struct{}, len(channels))
 	for _, ch := range channels {
-		// Canonicalize to match the key incoming messages carry: slugs are case-insensitive, so
-		// a client subscribing to "twitch:Shroud" must still match "twitch:shroud" on the wire.
 		m[strings.ToLower(ch)] = struct{}{}
 	}
 	return subscription{channels: m}
+}
+
+// scopedSubscription returns the channel set a stream client is allowed to subscribe to,
+// derived from the user's joined channels (per uid(ctx)). When the client sent a list, the
+// result is the intersection — channels the client requested *and* the user owns. When the
+// client sent nothing, the result is the full joined set, scoping "all events" to "all of
+// MY events". A subscription with no channels means "no channel-keyed events"; the client
+// still receives broadcast-to-all events (adapter health) through the hub's broadcastAll path.
+func (s *Server) scopedSubscription(ctx context.Context, requested []string) subscription {
+	owned := make(map[string]struct{})
+	if s.channels != nil {
+		for _, ch := range s.channels.List(ctx) {
+			owned[strings.ToLower(ch.Platform+":"+ch.Slug)] = struct{}{}
+		}
+	}
+	if len(requested) == 0 {
+		// Default: subscribe to every channel the user owns. Equivalent to the old "empty =
+		// all" behavior in single-user mode but never broader than the user's own joined set.
+		return subscription{channels: owned}
+	}
+	allowed := make(map[string]struct{}, len(requested))
+	for _, ch := range requested {
+		// Canonicalize: slugs are case-insensitive on the wire, so the request "twitch:Shroud"
+		// matches the joined key "twitch:shroud".
+		key := strings.ToLower(ch)
+		if _, ok := owned[key]; ok {
+			allowed[key] = struct{}{}
+		}
+		// Keys outside the joined set are silently dropped — we don't tell the client whether
+		// the channel exists or whether another user is in it.
+	}
+	return subscription{channels: allowed}
 }

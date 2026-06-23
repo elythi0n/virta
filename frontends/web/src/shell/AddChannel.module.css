@@ -89,9 +89,3 @@
   font-size: var(--virta-type-meta-size);
   font-weight: 600;
 }
-
-.error {
-  color: var(--virta-danger);
-  font-family: var(--virta-font-ui);
-  font-size: var(--virta-type-meta-size);
-}

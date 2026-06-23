@@ -1,0 +1,286 @@
+.hero {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-24);
+  padding: var(--virta-space-16) var(--virta-space-24);
+  border-bottom: 1px solid var(--virta-line);
+  background:
+    radial-gradient(800px 240px at 80% -80px, color-mix(in srgb, var(--virta-accent) 14%, transparent), transparent 60%),
+    radial-gradient(600px 200px at -10% -80px, color-mix(in srgb, var(--virta-danger) 12%, transparent), transparent 60%),
+    linear-gradient(180deg, color-mix(in srgb, var(--virta-bg-1) 90%, transparent), var(--virta-bg-1));
+}
+.heroLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-12);
+  min-width: 0;
+}
+/* The badge picks its accent from --badge-accent so the gradient, glow, and halo all switch in
+   lockstep when the data-live state flips. Standby = danger (call-to-action red); live = ok
+   (healthy green) — a quiet "you're on air" signal that doesn't fight the CTA. */
+.heroBadge {
+  --badge-accent: var(--virta-danger);
+  flex: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: linear-gradient(135deg,
+    var(--badge-accent),
+    color-mix(in srgb, var(--badge-accent) 70%, var(--virta-accent)));
+  box-shadow:
+    0 1px 0 color-mix(in srgb, #fff 12%, transparent) inset,
+    0 8px 24px color-mix(in srgb, var(--badge-accent) 35%, transparent);
+  position: relative;
+  transition: box-shadow var(--virta-motion-base) ease, background var(--virta-motion-base) ease;
+}
+.heroBadge[data-live="true"] {
+  --badge-accent: var(--virta-ok);
+}
+.heroBadge::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--badge-accent) 50%, transparent);
+  opacity: 0;
+  animation: deck-halo 2.4s ease-out infinite;
+}
+@keyframes deck-halo {
+  0%   { opacity: 0.55; transform: scale(1); }
+  100% { opacity: 0;    transform: scale(1.35); }
+}
+:global([data-reduce-motion="1"]) .heroBadge::after { animation: none; }
+
+.heroText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.heroTitle {
+  font-family: var(--virta-font-ui);
+  font-size: 20px;
+  line-height: 24px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--virta-text-0);
+}
+.heroSub {
+  color: var(--virta-text-1);
+  font-size: 12px;
+  line-height: 16px;
+}
+.heroRight {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* ── Stat bar (segmented status panel) ─────────────────────────────────── */
+/* A single rounded container houses the read-only telemetry — channels selected, channels live,
+   OBS state — separated by 1px dividers. One geometry, one border, one background: the cluster
+   reads as a single instrument instead of three loose pills. */
+.statBar {
+  display: inline-flex;
+  align-items: stretch;
+  height: 32px;
+  border: 1px solid var(--virta-line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--virta-bg-0) 80%, transparent);
+  overflow: hidden;
+  font-family: var(--virta-font-ui);
+  font-size: 12px;
+  line-height: 1;
+}
+.cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  color: var(--virta-text-1);
+  white-space: nowrap;
+}
+.cell + .cell {
+  box-shadow: -1px 0 0 0 var(--virta-line);
+}
+.cellIcon { color: var(--virta-text-2); }
+.cellValue {
+  color: var(--virta-text-0);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.cellLabel { color: var(--virta-text-1); }
+
+/* Live variant: the only cell that's allowed to draw attention to itself. */
+.cellLive {
+  background: color-mix(in srgb, var(--virta-danger) 10%, transparent);
+  color: color-mix(in srgb, var(--virta-danger) 85%, var(--virta-text-0));
+}
+.cellLive .cellValue,
+.cellLive .cellLabel { color: inherit; }
+
+.liveDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--virta-danger);
+  animation: deck-pulse 1.6s ease-in-out infinite;
+}
+@keyframes deck-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+:global([data-reduce-motion="1"]) .liveDot,
+:global([data-reduce-motion="1"]) .obsDotConnecting,
+:global([data-reduce-motion="1"]) .obsDotLive { animation: none; }
+
+/* OBS dot variants — same 6px disc, color signals state. */
+.obsDotOff,
+.obsDotOk,
+.obsDotLive,
+.obsDotConnecting {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: none;
+}
+.obsDotOff { background: color-mix(in srgb, var(--virta-text-2) 50%, transparent); }
+.obsDotOk { background: var(--virta-ok); }
+.obsDotLive {
+  background: var(--virta-danger);
+  animation: deck-pulse 1.6s ease-in-out infinite;
+}
+.obsDotConnecting {
+  background: var(--virta-warn);
+  animation: deck-pulse 1.2s ease-in-out infinite;
+}
+
+/* ── CTA ───────────────────────────────────────────────────────────────── */
+/* Same 32px height as the stat bar so the row reads as one cohesive cluster. Solid red with a
+   restrained inner highlight — no halo glow, no gradient stripe — so it feels like a control
+   surface instead of a marketing button. */
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--virta-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--virta-danger) 50%, var(--virta-line));
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--virta-danger) 90%, #fff 10%),
+    var(--virta-danger));
+  color: #fff;
+  font-family: var(--virta-font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  cursor: pointer;
+  box-shadow:
+    0 1px 0 color-mix(in srgb, #fff 16%, transparent) inset,
+    0 1px 2px color-mix(in srgb, var(--virta-danger) 25%, transparent);
+  transition:
+    transform var(--virta-motion-fast) ease,
+    box-shadow var(--virta-motion-fast) ease,
+    filter var(--virta-motion-fast) ease;
+}
+.cta:hover:not(:disabled) {
+  filter: brightness(1.06);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, #fff 20%, transparent) inset,
+    0 2px 6px color-mix(in srgb, var(--virta-danger) 32%, transparent);
+}
+.cta:active:not(:disabled) { transform: translateY(0.5px); }
+.cta:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--virta-danger) 60%, transparent);
+  outline-offset: 2px;
+}
+.cta:disabled {
+  cursor: not-allowed;
+  background: var(--virta-bg-2);
+  border-color: var(--virta-line);
+  color: var(--virta-text-2);
+  box-shadow: none;
+}
+/* Armed = OBS auto-start engaged. A subtle ring pulse signals the bigger action without
+   shouting; the label already changes to "Go live". */
+.cta[data-armed="true"]:not(:disabled) {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--virta-danger) 50%, transparent),
+    0 1px 0 color-mix(in srgb, #fff 18%, transparent) inset,
+    0 2px 6px color-mix(in srgb, var(--virta-danger) 30%, transparent);
+}
+
+/* ── Confirm dialog diff list ───────────────────────────────────────────── */
+.diffList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-12);
+}
+.diffRow {
+  padding: var(--virta-space-12);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-md);
+  background: var(--virta-bg-1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--virta-space-8);
+}
+.diffHead {
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+}
+.diffChannel {
+  font-family: var(--virta-font-ui);
+  font-weight: 600;
+  color: var(--virta-text-0);
+  font-size: 13px;
+}
+.diffFields {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--virta-space-6) var(--virta-space-12);
+}
+.diffLabel {
+  font-family: var(--virta-font-ui);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 10px;
+  color: var(--virta-text-2);
+  align-self: center;
+}
+.diffValue {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.diffFrom {
+  color: var(--virta-text-2);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in srgb, var(--virta-text-2) 60%, transparent);
+}
+.diffArrow {
+  color: var(--virta-text-2);
+  transform: rotate(90deg);
+}
+.diffTo {
+  color: var(--virta-text-0);
+  font-weight: 500;
+}

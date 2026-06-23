@@ -109,7 +109,9 @@ export default function SignInDialog({ platform, onClose, onAuthorized }: Props)
         <Text as="p">Signed in. You can close this window.</Text>
       )}
 
-      {phase === 'error' && <p className={styles.error}>{message}</p>}
+      {phase === 'error' && (
+        <Text as="p" tone="danger">{message}</Text>
+      )}
     </Dialog>
   );
 }

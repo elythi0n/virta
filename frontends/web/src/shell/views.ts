@@ -20,7 +20,7 @@ export const PRIMARY_VIEWS: ViewDef[] = [
 // Tool views take over the whole main area with their own fixed layout (no dock panels). They sit
 // below the primary views in the activity bar and hide the side bar while active.
 export const TOOL_VIEWS: ViewDef[] = [
-  { id: 'deck', label: 'Deck', icon: 'deck' },
+  { id: 'deck', label: 'Broadcast', icon: 'deck' },
   { id: 'studio', label: 'Studio', icon: 'studio' },
 ];
 
