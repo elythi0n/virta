@@ -60,26 +60,28 @@ type WebhookAttempt struct {
 	LatencyMs  int64  `json:"latency_ms"`
 }
 
-// Webhooks is the webhook management surface.
+// Webhooks is the webhook management surface. Every method except EventCatalog takes a context
+// so the controller can scope by uid(ctx) — single-user mode uses the empty namespace, hosted
+// mode uses the signed-in user. EventCatalog is static and doesn't need scoping.
 type Webhooks interface {
-	List() []WebhookEndpointInfo
+	List(ctx context.Context) []WebhookEndpointInfo
 	Create(ctx context.Context, name, url string, events []string, secret string) (WebhookEndpointInfo, error)
 	Update(ctx context.Context, id string, name, url string, events []string, active bool) (WebhookEndpointInfo, error)
-	Delete(id string) error
-	Log(id string) []WebhookAttempt
-	Resume(id string) error
+	Delete(ctx context.Context, id string) error
+	Log(ctx context.Context, id string) []WebhookAttempt
+	Resume(ctx context.Context, id string) error
 	EventCatalog() []string
 }
 
 // SetWebhooks installs the webhook controller.
 func (s *Server) SetWebhooks(w Webhooks) { s.webhooks = w }
 
-func (s *Server) handleListWebhooks(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) handleListWebhooks(w http.ResponseWriter, r *http.Request) {
 	if s.webhooks == nil {
 		http.Error(w, "webhooks unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	list := s.webhooks.List()
+	list := s.webhooks.List(r.Context())
 	if list == nil {
 		list = []WebhookEndpointInfo{}
 	}
@@ -136,7 +138,7 @@ func (s *Server) handleDeleteWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
-	if err := s.webhooks.Delete(id); err != nil {
+	if err := s.webhooks.Delete(r.Context(), id); err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
@@ -149,7 +151,7 @@ func (s *Server) handleWebhookLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
-	log := s.webhooks.Log(id)
+	log := s.webhooks.Log(r.Context(), id)
 	if log == nil {
 		log = []WebhookAttempt{}
 	}
@@ -161,7 +163,7 @@ func (s *Server) handleResumeWebhook(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "webhooks unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	if err := s.webhooks.Resume(r.PathValue("id")); err != nil {
+	if err := s.webhooks.Resume(r.Context(), r.PathValue("id")); err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}

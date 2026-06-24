@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Dialog, Input, Tooltip } from '@virta/ui-kit';
+import { Button, Dialog, Input, Text, Tooltip } from '@virta/ui-kit';
 import { PlatformGlyph, platformLabel, type Platform } from '@virta/feed-core';
 import Icon from '../Icon';
 import { useChannels } from '../daemon';
@@ -107,7 +107,7 @@ export default function AddChannel() {
             />
           </div>
 
-          {error && <span className={styles.error}>{error}</span>}
+          {error && <Text variant="ui" tone="danger">{error}</Text>}
         </div>
       </Dialog>
     </>

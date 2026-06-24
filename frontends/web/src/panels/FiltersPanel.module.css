@@ -4,13 +4,6 @@
   height: 100%;
   background: var(--virta-bg-0);
 }
-.empty {
-  display: grid;
-  place-items: center;
-  height: 100%;
-  padding: var(--virta-space-16);
-  text-align: center;
-}
 
 .toolbar {
   flex: none;
@@ -105,26 +98,4 @@
 .platforms {
   display: inline-flex;
   gap: var(--virta-space-4);
-}
-.chip {
-  height: 22px;
-  padding: 0 var(--virta-space-8);
-  border: 1px solid var(--virta-line);
-  border-radius: var(--virta-radius-sm);
-  background: var(--virta-bg-0);
-  color: var(--virta-text-2);
-  font-family: var(--virta-font-ui);
-  font-size: var(--virta-type-meta-size);
-  font-weight: 600;
-  text-transform: capitalize;
-  cursor: pointer;
-}
-.chip:hover {
-  border-color: var(--virta-text-2);
-  color: var(--virta-text-0);
-}
-.chipOn {
-  border-color: transparent;
-  background: var(--virta-accent);
-  color: var(--virta-bg-0);
 }

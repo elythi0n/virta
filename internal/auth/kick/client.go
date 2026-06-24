@@ -28,8 +28,9 @@ const (
 	defaultUsersURL = "https://api.kick.com/public/v1/users"
 )
 
-// DefaultScopes are the v1 chat scopes.
-var DefaultScopes = []string{"user:read", "chat:write", "events:subscribe"}
+// DefaultScopes covers v1 chat plus the channel:write scope Deck needs to patch the
+// broadcaster's stream title and category.
+var DefaultScopes = []string{"user:read", "channel:write", "chat:write", "events:subscribe"}
 
 // Token is a stored credential set.
 type Token struct {

@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -390,6 +391,8 @@ func NewDaemon(cfg config.Config) (*Daemon, error) {
 		platform.Kick:   kickAdapter,
 	}, gov, sendHelpText)
 	srv.SetSend(sendControl{sender: sender})
+	srv.SetDeck(deckControl{twitch: twitchAdapter, kick: kickAdapter})
+	srv.SetDiscovery(discoveryControl{twitch: twitchAdapter})
 	srv.SetHeld(heldControl{queue: heldQueue, sender: sender, emitter: runner})
 	srv.SetHistory(historyControl{store: st, ring: scrollbackRing, loggingOn: logSink.Enabled})
 	srv.SetMoments(momentsControl{repo: st.Moments()})
@@ -1455,6 +1458,146 @@ func (c sendControl) Queue(targets []string) ([]api.QueueState, error) {
 	return out, nil
 }
 
+// deckControl adapts the Twitch and Kick adapters to the API's Deck (live-broadcast) controller.
+// Channels are routed to their owning adapter by platform; targets the engine isn't authenticated
+// for come back as excluded. Category is free text and is resolved per-platform via that
+// platform's search endpoint when no pre-resolved id was supplied.
+type deckControl struct {
+	twitch *twitch.Adapter
+	kick   *kick.Adapter
+}
+
+func (c deckControl) GetChannelInfo(ctx context.Context, targets []string) ([]api.DeckChannelState, error) {
+	refs, err := parseTargets(targets)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]api.DeckChannelState, 0, len(refs))
+	for _, ref := range refs {
+		st := api.DeckChannelState{Channel: ref.Key(), Status: api.DeckOK}
+		switch ref.Platform {
+		case platform.Twitch:
+			info, err := c.twitch.GetChannelInfo(ctx, ref.Slug)
+			if err != nil {
+				st.Status, st.Reason = api.DeckError, err.Error()
+				if errors.Is(err, platform.ErrUnsupported) {
+					st.Status, st.Reason = api.DeckExcluded, "not signed in"
+				}
+			} else {
+				st.Title = info.Title
+				st.Category = info.GameName
+				st.CategoryID = info.GameID
+				st.Tags = info.Tags
+			}
+		case platform.Kick:
+			info, err := c.kick.GetChannelInfo(ctx, ref.Slug)
+			if err != nil {
+				st.Status, st.Reason = api.DeckError, err.Error()
+				if errors.Is(err, platform.ErrUnsupported) {
+					st.Status, st.Reason = api.DeckExcluded, "not signed in"
+				}
+			} else {
+				st.Title = info.StreamTitle
+				st.Category = info.Category.Name
+				if info.Category.ID > 0 {
+					st.CategoryID = strconv.FormatInt(info.Category.ID, 10)
+				}
+			}
+		default:
+			st.Status, st.Reason = api.DeckUnsupported, "platform has no channel-info endpoint"
+		}
+		out = append(out, st)
+	}
+	return out, nil
+}
+
+func (c deckControl) UpdateChannelInfo(ctx context.Context, targets []string, info api.DeckInfo) ([]api.DeckResult, error) {
+	refs, err := parseTargets(targets)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]api.DeckResult, 0, len(refs))
+	for _, ref := range refs {
+		res := api.DeckResult{Channel: ref.Key()}
+		switch ref.Platform {
+		case platform.Twitch:
+			gameID := info.CategoryIDs[string(platform.Twitch)]
+			if gameID == "" && info.Category != "" {
+				cats, sErr := c.twitch.SearchCategories(ctx, info.Category)
+				if sErr == nil && len(cats) > 0 {
+					gameID = cats[0].ID
+				}
+			}
+			patch := twitch.ChannelInfoPatch{Title: info.Title, GameID: gameID, Tags: info.Tags}
+			if err := c.twitch.UpdateChannelInfo(ctx, ref.Slug, patch); err != nil {
+				res.Status, res.Reason = api.DeckError, err.Error()
+				if errors.Is(err, platform.ErrUnsupported) {
+					res.Status, res.Reason = api.DeckExcluded, "not signed in"
+				}
+			} else {
+				res.Status = api.DeckOK
+			}
+		case platform.Kick:
+			var catID int64
+			if pre := info.CategoryIDs[string(platform.Kick)]; pre != "" {
+				if n, err := strconv.ParseInt(pre, 10, 64); err == nil {
+					catID = n
+				}
+			}
+			if catID == 0 && info.Category != "" {
+				cats, sErr := c.kick.SearchCategories(ctx, info.Category)
+				if sErr == nil && len(cats) > 0 {
+					catID = cats[0].ID
+				}
+			}
+			patch := kick.ChannelInfoPatch{Title: info.Title, CategoryID: catID}
+			if err := c.kick.UpdateChannelInfo(ctx, ref.Slug, patch); err != nil {
+				res.Status, res.Reason = api.DeckError, err.Error()
+				if errors.Is(err, platform.ErrUnsupported) {
+					res.Status, res.Reason = api.DeckExcluded, "not signed in"
+				}
+			} else {
+				res.Status = api.DeckOK
+			}
+		default:
+			res.Status, res.Reason = api.DeckUnsupported, "platform has no channel-info endpoint"
+		}
+		out = append(out, res)
+	}
+	return out, nil
+}
+
+func (c deckControl) SearchCategories(ctx context.Context, plat, query string) ([]api.DeckCategory, error) {
+	p, ok := parsePlatform(plat)
+	if !ok {
+		return nil, fmt.Errorf("unknown platform %q", plat)
+	}
+	switch p {
+	case platform.Twitch:
+		cats, err := c.twitch.SearchCategories(ctx, query)
+		if err != nil {
+			return nil, err
+		}
+		out := make([]api.DeckCategory, 0, len(cats))
+		for _, ct := range cats {
+			out = append(out, api.DeckCategory{ID: ct.ID, Name: ct.Name, Platform: string(platform.Twitch), BoxArt: ct.BoxArtURL})
+		}
+		return out, nil
+	case platform.Kick:
+		cats, err := c.kick.SearchCategories(ctx, query)
+		if err != nil {
+			return nil, err
+		}
+		out := make([]api.DeckCategory, 0, len(cats))
+		for _, ct := range cats {
+			out = append(out, api.DeckCategory{ID: strconv.FormatInt(ct.ID, 10), Name: ct.Name, Platform: string(platform.Kick)})
+		}
+		return out, nil
+	default:
+		return []api.DeckCategory{}, nil
+	}
+}
+
 // parsePlatform validates a platform string against the known platforms, so an unknown one is
 // the caller's 400 rather than a connection error.
 func parsePlatform(s string) (platform.Platform, bool) {
@@ -1621,6 +1764,65 @@ func (d *Daemon) SetProfanityEnabled(ctx context.Context, enabled bool) error {
 func (d *Daemon) ProfanityEnabled() bool {
 	raw, err := d.store.Settings().Get(context.Background(), "filter.profanity.enabled")
 	return err == nil && string(raw.Data) == "true"
+}
+
+// discoveryControl adapts the Twitch adapter to the API's Discovery interface. Twitch is the
+// only platform with a public search-channels / top-streams API today; Kick's public API only
+// supports lookup by exact slug (already covered by the Add Channel flow), so a Kick discovery
+// request returns an empty result rather than an error — the UI surfaces "Twitch only" instead.
+type discoveryControl struct {
+	twitch *twitch.Adapter
+}
+
+func (c discoveryControl) SearchChannels(ctx context.Context, platformName, query string, first int, liveOnly bool) ([]api.DiscoveryChannel, error) {
+	if !strings.EqualFold(platformName, string(platform.Twitch)) {
+		return []api.DiscoveryChannel{}, nil
+	}
+	page, err := c.twitch.SearchChannels(ctx, query, first, liveOnly)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]api.DiscoveryChannel, 0, len(page.Results))
+	for _, r := range page.Results {
+		out = append(out, api.DiscoveryChannel{
+			Platform:    string(platform.Twitch),
+			Slug:        r.BroadcasterLogin,
+			DisplayName: r.DisplayName,
+			IsLive:      r.IsLive,
+			Title:       r.Title,
+			Category:    r.GameName,
+			Thumbnail:   r.ThumbnailURL,
+			Tags:        r.Tags,
+			StartedAt:   r.StartedAt,
+		})
+	}
+	return out, nil
+}
+
+func (c discoveryControl) TopStreams(ctx context.Context, platformName string, first int, cursor, gameID string) (api.DiscoveryStreamsPage, error) {
+	if !strings.EqualFold(platformName, string(platform.Twitch)) {
+		return api.DiscoveryStreamsPage{Streams: []api.DiscoveryStream{}}, nil
+	}
+	page, err := c.twitch.TopStreams(ctx, first, cursor, gameID)
+	if err != nil {
+		return api.DiscoveryStreamsPage{}, err
+	}
+	out := make([]api.DiscoveryStream, 0, len(page.Streams))
+	for _, s := range page.Streams {
+		out = append(out, api.DiscoveryStream{
+			Platform:    string(platform.Twitch),
+			Slug:        s.UserLogin,
+			DisplayName: s.UserName,
+			Title:       s.Title,
+			Category:    s.GameName,
+			ViewerCount: s.ViewerCount,
+			StartedAt:   s.StartedAt,
+			Thumbnail:   s.ThumbnailURL,
+			Language:    s.Language,
+			Tags:        s.Tags,
+		})
+	}
+	return api.DiscoveryStreamsPage{Streams: out, Cursor: page.Cursor}, nil
 }
 
 // Close shuts everything down in order: stop accepting clients, close adapters so no new

@@ -32,6 +32,7 @@ const TITLES: Record<ViewId, string> = {
   panels: 'Panels',
   streams: 'Streams',
   studio: 'Studio', // full-bleed tool view: the side bar is hidden while it's active
+  deck: 'Deck', // full-bleed tool view: the side bar is hidden while it's active
 };
 
 export default function SideBar({ view, openPanel, openChannel, openStream, listFeeds, mergeChannelIntoFeed, onNewFeed, hidden }: Props) {

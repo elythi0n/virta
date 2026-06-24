@@ -122,11 +122,13 @@ func NewManager(log *slog.Logger, hc *http.Client) *Manager {
 	return &Manager{endpoints: map[string]*endpointWorker{}, log: log, httpClient: hc}
 }
 
-// Register starts a delivery worker for an endpoint. Safe to call multiple times (replaces).
-func (m *Manager) Register(ep Endpoint, secret string) {
+// Register starts a delivery worker keyed by `key`. The key is opaque to the manager — wiring
+// uses "<user_id>|<id>" so two users can each own a webhook with the same short id without
+// colliding inside the manager. Safe to call multiple times (replaces).
+func (m *Manager) Register(key string, ep Endpoint, secret string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if w, ok := m.endpoints[ep.ID]; ok {
+	if w, ok := m.endpoints[key]; ok {
 		close(w.quit)
 		w.wg.Wait()
 	}
@@ -134,19 +136,19 @@ func (m *Manager) Register(ep Endpoint, secret string) {
 		return
 	}
 	w := &endpointWorker{ep: ep, secret: secret, queue: make(chan Delivery, maxQueueDepth), log: &DeliveryLog{}, quit: make(chan struct{})}
-	m.endpoints[ep.ID] = w
+	m.endpoints[key] = w
 	w.wg.Add(1)
 	go m.runWorker(w)
 }
 
-// Deregister stops and removes an endpoint's worker.
-func (m *Manager) Deregister(id string) {
+// Deregister stops and removes a registered worker by its key.
+func (m *Manager) Deregister(key string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if w, ok := m.endpoints[id]; ok {
+	if w, ok := m.endpoints[key]; ok {
 		close(w.quit)
 		w.wg.Wait()
-		delete(m.endpoints, id)
+		delete(m.endpoints, key)
 	}
 }
 
@@ -166,10 +168,10 @@ func (m *Manager) Dispatch(d Delivery) {
 	}
 }
 
-// DeliveryLog returns the last 100 attempt records for an endpoint.
-func (m *Manager) DeliveryLog(id string) []AttemptRecord {
+// DeliveryLog returns the last 100 attempt records for a registered worker (by key).
+func (m *Manager) DeliveryLog(key string) []AttemptRecord {
 	m.mu.RLock()
-	w := m.endpoints[id]
+	w := m.endpoints[key]
 	m.mu.RUnlock()
 	if w == nil {
 		return nil
@@ -177,10 +179,10 @@ func (m *Manager) DeliveryLog(id string) []AttemptRecord {
 	return w.log.Snapshot()
 }
 
-// IsPaused reports whether an endpoint is auto-paused.
-func (m *Manager) IsPaused(id string) bool {
+// IsPaused reports whether a worker is auto-paused (by key).
+func (m *Manager) IsPaused(key string) bool {
 	m.mu.RLock()
-	w := m.endpoints[id]
+	w := m.endpoints[key]
 	m.mu.RUnlock()
 	if w == nil {
 		return false
@@ -190,10 +192,10 @@ func (m *Manager) IsPaused(id string) bool {
 	return w.paused
 }
 
-// Resume un-pauses a paused endpoint.
-func (m *Manager) Resume(id string) {
+// Resume un-pauses a paused worker (by key).
+func (m *Manager) Resume(key string) {
 	m.mu.RLock()
-	w := m.endpoints[id]
+	w := m.endpoints[key]
 	m.mu.RUnlock()
 	if w == nil {
 		return

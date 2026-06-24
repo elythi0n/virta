@@ -290,6 +290,53 @@ func (a *Adapter) Moderate(ctx context.Context, action platform.ModAction) error
 	return au.api.Moderate(ctx, tok, bid, action)
 }
 
+// GetChannelInfo reads the broadcaster's current title/category so the Deck can pre-fill its
+// form with what the streamer already has live. Unsupported without auth.
+func (a *Adapter) GetChannelInfo(ctx context.Context, slug string) (ChannelInfo, error) {
+	au := a.auth.Load()
+	if au == nil {
+		return ChannelInfo{}, platform.ErrUnsupported
+	}
+	bid, err := au.broadcasterID(ctx, strings.ToLower(slug))
+	if err != nil {
+		return ChannelInfo{}, err
+	}
+	tok, err := au.tokens(ctx)
+	if err != nil {
+		return ChannelInfo{}, err
+	}
+	return au.api.GetChannelInfo(ctx, tok, bid)
+}
+
+// UpdateChannelInfo patches the authenticated broadcaster's stream title and/or category. The
+// slug is accepted for cross-platform call symmetry but isn't sent: Kick's API derives the
+// channel from the access token's owner. Unsupported without auth.
+func (a *Adapter) UpdateChannelInfo(ctx context.Context, _ string, patch ChannelInfoPatch) error {
+	au := a.auth.Load()
+	if au == nil {
+		return platform.ErrUnsupported
+	}
+	tok, err := au.tokens(ctx)
+	if err != nil {
+		return err
+	}
+	return au.api.UpdateChannelInfo(ctx, tok, patch)
+}
+
+// SearchCategories resolves a free-text game query to Kick category matches. The caller picks
+// one and feeds its id into UpdateChannelInfo.
+func (a *Adapter) SearchCategories(ctx context.Context, query string) ([]Category, error) {
+	au := a.auth.Load()
+	if au == nil {
+		return nil, platform.ErrUnsupported
+	}
+	tok, err := au.tokens(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return au.api.SearchCategories(ctx, tok, query)
+}
+
 func (a *Adapter) Events() <-chan platform.Event { return a.events }
 
 func (a *Adapter) Health() platform.HealthStatus {

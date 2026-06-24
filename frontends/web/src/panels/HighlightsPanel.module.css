@@ -50,16 +50,6 @@
   border-bottom: 1px solid var(--virta-line);
 }
 
-.empty {
-  display: grid;
-  place-items: center;
-  gap: var(--virta-space-8);
-  height: 100%;
-  padding: var(--virta-space-16);
-  text-align: center;
-  color: var(--virta-text-2);
-}
-
 /* ── Timeline ───────────────────────────────────────────────────────── */
 .timeline {
   flex: 1 1 auto;

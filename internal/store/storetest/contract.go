@@ -12,6 +12,7 @@ import (
 
 	"github.com/elythi0n/virta/internal/platform"
 	"github.com/elythi0n/virta/internal/store"
+	"github.com/elythi0n/virta/internal/userctx"
 )
 
 // RunContract exercises every repository and the load-bearing invariants. newStore must
@@ -455,6 +456,80 @@ func RunContract(t *testing.T, newStore func(t *testing.T) store.Store) {
 		remaining, _ := s.Moments().List(ctx, store.MomentQuery{Limit: 10})
 		if len(remaining) != 2 {
 			t.Errorf("after delete: %v", momentIDs(remaining))
+		}
+	})
+
+	// Multi-tenant invariants — these run against every backend (and the in-memory fake) so a
+	// regression in any one of them shows up in CI before it lands in a hosted deployment. The
+	// empty user_id is the single-user namespace; non-empty ids must be fully isolated.
+	t.Run("settings: isolated by user_id, single-user namespace preserved", func(t *testing.T) {
+		s := newStore(t)
+		// Single-user namespace (empty user_id) and two distinct hosted users.
+		ctxLocal := ctx
+		ctxA := userctx.WithUser(ctx, "user-A")
+		ctxB := userctx.WithUser(ctx, "user-B")
+
+		// User A writes a setting; user B's reads + listing must not see it; the single-user
+		// namespace must not see it either.
+		if err := s.Settings().Put(ctxA, store.Setting{Scope: "webhooks.foo", Data: json.RawMessage(`{"u":"a"}`)}); err != nil {
+			t.Fatalf("A Put: %v", err)
+		}
+		if _, err := s.Settings().Get(ctxB, "webhooks.foo"); !errors.Is(err, store.ErrNotFound) {
+			t.Fatalf("B Get after A Put = %v, want ErrNotFound", err)
+		}
+		if _, err := s.Settings().Get(ctxLocal, "webhooks.foo"); !errors.Is(err, store.ErrNotFound) {
+			t.Fatalf("single-user Get after A Put = %v, want ErrNotFound", err)
+		}
+
+		// User B writes the same scope; both users now own independent rows that don't bleed.
+		if err := s.Settings().Put(ctxB, store.Setting{Scope: "webhooks.foo", Data: json.RawMessage(`{"u":"b"}`)}); err != nil {
+			t.Fatalf("B Put: %v", err)
+		}
+		ga, _ := s.Settings().Get(ctxA, "webhooks.foo")
+		gb, _ := s.Settings().Get(ctxB, "webhooks.foo")
+		if string(ga.Data) != `{"u":"a"}` || string(gb.Data) != `{"u":"b"}` {
+			t.Fatalf("crossed reads: A=%s B=%s", ga.Data, gb.Data)
+		}
+
+		// All() returns only the caller's settings.
+		listA, _ := s.Settings().All(ctxA)
+		if len(listA) != 1 || string(listA[0].Data) != `{"u":"a"}` {
+			t.Fatalf("A.All = %v", listA)
+		}
+		listLocal, _ := s.Settings().All(ctxLocal)
+		if len(listLocal) != 0 {
+			t.Fatalf("single-user.All = %v (want empty — A and B aren't us)", listLocal)
+		}
+	})
+
+	t.Run("moments: isolated by user_id", func(t *testing.T) {
+		s := newStore(t)
+		ctxA := userctx.WithUser(ctx, "user-A")
+		ctxB := userctx.WithUser(ctx, "user-B")
+		mA := platform.Moment{ID: "01M0000000000000000000000A", Channel: platform.ChannelRef{Platform: platform.Twitch, Slug: "shroud"}, StartedAt: time.Unix(100, 0), EndedAt: time.Unix(200, 0)}
+		mB := platform.Moment{ID: "01M0000000000000000000000B", Channel: platform.ChannelRef{Platform: platform.Twitch, Slug: "shroud"}, StartedAt: time.Unix(100, 0), EndedAt: time.Unix(200, 0)}
+		if err := s.Moments().Add(ctxA, mA); err != nil {
+			t.Fatalf("A Add: %v", err)
+		}
+		if err := s.Moments().Add(ctxB, mB); err != nil {
+			t.Fatalf("B Add: %v", err)
+		}
+		listA, _ := s.Moments().List(ctxA, store.MomentQuery{})
+		listB, _ := s.Moments().List(ctxB, store.MomentQuery{})
+		if len(listA) != 1 || listA[0].ID != mA.ID {
+			t.Fatalf("A.List = %v, want only %s", momentIDs(listA), mA.ID)
+		}
+		if len(listB) != 1 || listB[0].ID != mB.ID {
+			t.Fatalf("B.List = %v, want only %s", momentIDs(listB), mB.ID)
+		}
+		// User A cannot delete user B's moment.
+		if err := s.Moments().Delete(ctxA, mB.ID); !errors.Is(err, store.ErrNotFound) {
+			t.Fatalf("A.Delete(B's moment) = %v, want ErrNotFound", err)
+		}
+		// User B's moment is still there.
+		listB, _ = s.Moments().List(ctxB, store.MomentQuery{})
+		if len(listB) != 1 {
+			t.Fatalf("B.List after cross-delete attempt = %d, want still 1", len(listB))
 		}
 	})
 

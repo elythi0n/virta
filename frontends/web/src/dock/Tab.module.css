@@ -3,13 +3,22 @@
   align-items: center;
   gap: var(--virta-space-8);
   height: 100%;
-  padding: 0 var(--virta-space-4) 0 var(--virta-space-12);
+  padding: 0 6px 0 14px;
   font-family: var(--virta-font-ui);
-  font-size: var(--virta-type-ui-size);
+  font-size: 13px;
+  letter-spacing: 0.005em;
+  font-weight: 500;
 }
 
 .title {
   white-space: nowrap;
+}
+
+/* The dockview wrapper toggles its own `.active-tab` class; bump the title weight slightly so
+   the focused tab feels more anchored without relying on color alone. */
+:global(.dv-tab.active-tab) .title {
+  font-weight: 600;
+  color: var(--virta-text-0);
 }
 
 .rename {

@@ -1,4 +1,4 @@
-import { Button, Text } from '@virta/ui-kit';
+import { Button, EmptyState, Text } from '@virta/ui-kit';
 import { PlatformGlyph, type Platform } from '@virta/feed-core';
 import Icon from '../Icon';
 import { useHeld } from '../daemon';
@@ -14,16 +14,11 @@ export default function HeldQueuePanel() {
 
   if (held.length === 0) {
     return (
-      <div className={styles.empty}>
-        <Icon name="mods" size={22} />
-        <Text variant="body" tone="subtle">
-          Nothing held for review.
-        </Text>
-        <Text variant="body" tone="subtle">
-          When Twitch AutoMod catches a message, it appears here for you to approve (post it) or
-          deny (drop it). Enable AutoMod in your Twitch Creator Dashboard → Moderation settings.
-        </Text>
-      </div>
+      <EmptyState
+        icon={<Icon name="mods" size={22} />}
+        title="Nothing held for review"
+        hint="When Twitch AutoMod catches a message it lands here. Enable AutoMod in Twitch Creator Dashboard → Moderation."
+      />
     );
   }
 

@@ -60,6 +60,12 @@
 .tone-subtle {
   color: var(--virta-text-2);
 }
+.tone-danger {
+  color: color-mix(in srgb, var(--virta-danger) 80%, var(--virta-text-0));
+}
+.tone-warn {
+  color: color-mix(in srgb, var(--virta-warn) 80%, var(--virta-text-0));
+}
 .tone-inherit {
   color: inherit;
 }

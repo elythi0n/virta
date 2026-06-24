@@ -2,6 +2,9 @@ import type { ReactNode } from 'react';
 import type { IconName } from '../Icon';
 import AskPanel from './AskPanel';
 import CelebrationsPane from './CelebrationsPane';
+import DiscoveryPanel from './DiscoveryPanel';
+import EncoderHealthPane from './EncoderHealthPane';
+import OBSControlPane from './OBSControlPane';
 import OBSPanel from './OBSPanel';
 import FeedPanel from './FeedPanel';
 import FiltersPanel from './FiltersPanel';
@@ -24,6 +27,12 @@ export interface PanelRenderProps {
 // Our own panels register here exactly the way a third-party plugin's panel will — the dock opens a
 // panel by looking its kind up in this registry, never a hardcoded switch. A plugin host later
 // just appends contributions to this same list.
+// Section a contribution appears under in the "+" popover. Order is meaningful: groups render in
+// PANEL_GROUPS order; anything missing falls into "Plugins" at the bottom so user-installed
+// panels naturally surface together.
+export type PanelGroup = 'Chat' | 'Stream' | 'Broadcast' | 'Tools' | 'Plugins';
+export const PANEL_GROUPS: PanelGroup[] = ['Chat', 'Stream', 'Broadcast', 'Tools', 'Plugins'];
+
 export interface PanelContribution {
   kind: string;
   title: string;
@@ -31,22 +40,31 @@ export interface PanelContribution {
   render: (props: PanelRenderProps) => ReactNode;
   /** Listed in the Panels sidebar catalog. Default true; programmatic-only kinds set false. */
   catalog?: boolean;
+  /** Section header in the "+" popover. Defaults to "Plugins" when omitted. */
+  group?: PanelGroup;
 }
 
-// The registry of built-in panels. Order here is the order in the Panels catalog.
+// The registry of built-in panels. Order inside a group is the order shown in the section.
 export const PANELS: PanelContribution[] = [
-  { kind: 'feed', title: 'Chat', icon: 'chat', render: (p) => <FeedPanel channels={p.channels} panelId={p.panelId} /> },
-  { kind: 'mentions', title: 'Mentions', icon: 'mentions', render: (p) => <MentionInbox panelId={p.panelId} /> },
-  { kind: 'celebrations', title: 'Celebrations', icon: 'gift', render: (p) => <CelebrationsPane panelId={p.panelId} /> },
-  { kind: 'highlights', title: 'Highlights', icon: 'flame', render: () => <HighlightsPanel /> },
-  { kind: 'filters', title: 'Filters', icon: 'filter', render: () => <FiltersPanel /> },
-  { kind: 'stream', title: 'Streams', icon: 'stream', render: () => <StreamPane /> },
-  { kind: 'mods', title: 'Mod queue', icon: 'mods', render: () => <HeldQueuePanel /> },
-  { kind: 'ask', title: 'Ask AI', icon: 'chat', render: () => <AskPanel /> },
-  { kind: 'search', title: 'Search', icon: 'search', render: () => <SearchPanel /> },
-  { kind: 'stats', title: 'Stats', icon: 'stats', render: () => <StatsPanel /> },
-  { kind: 'markets', title: 'Markets', icon: 'stats', render: () => <MarketsPanel /> },
-  { kind: 'obs', title: 'OBS', icon: 'stream', render: () => <OBSPanel /> },
+  // Chat — reading, replying, moderating, searching messages.
+  { kind: 'feed', group: 'Chat', title: 'Chat', icon: 'chat', render: (p) => <FeedPanel channels={p.channels} panelId={p.panelId} /> },
+  { kind: 'mentions', group: 'Chat', title: 'Mentions', icon: 'mentions', render: (p) => <MentionInbox panelId={p.panelId} /> },
+  { kind: 'mods', group: 'Chat', title: 'Mod queue', icon: 'mods', render: () => <HeldQueuePanel /> },
+  { kind: 'highlights', group: 'Chat', title: 'Highlights', icon: 'flame', render: () => <HighlightsPanel /> },
+  { kind: 'filters', group: 'Chat', title: 'Filters', icon: 'filter', render: () => <FiltersPanel /> },
+  { kind: 'search', group: 'Chat', title: 'Search', icon: 'search', render: () => <SearchPanel /> },
+  // Stream — what the live channels are doing right now.
+  { kind: 'stream', group: 'Stream', title: 'Streams', icon: 'stream', render: () => <StreamPane /> },
+  { kind: 'discovery', group: 'Stream', title: 'Discovery', icon: 'search', render: () => <DiscoveryPanel /> },
+  { kind: 'stats', group: 'Stream', title: 'Stats', icon: 'stats', render: () => <StatsPanel /> },
+  { kind: 'celebrations', group: 'Stream', title: 'Gifts', icon: 'gift', render: (p) => <CelebrationsPane panelId={p.panelId} /> },
+  // Broadcast — owning the broadcast: OBS, encoder health, configuration.
+  { kind: 'obs-controls', group: 'Broadcast', title: 'OBS controls', icon: 'sliders', render: () => <OBSControlPane /> },
+  { kind: 'encoder-health', group: 'Broadcast', title: 'Encoder health', icon: 'gauge', render: () => <EncoderHealthPane /> },
+  { kind: 'obs', group: 'Broadcast', title: 'OBS settings', icon: 'stream', render: () => <OBSPanel /> },
+  // Tools — adjacent utilities that aren't chat or stream surfaces.
+  { kind: 'ask', group: 'Tools', title: 'Ask AI', icon: 'chat', render: () => <AskPanel /> },
+  { kind: 'markets', group: 'Tools', title: 'Markets', icon: 'stats', render: () => <MarketsPanel /> },
   // Opened programmatically, not from the catalog.
   { kind: 'watch', title: 'Stream', icon: 'stream', catalog: false, render: (p) => <WatchPane channel={p.channels?.[0]} /> },
   { kind: 'plugins', title: 'Plugins', icon: 'plugins', catalog: false, render: () => <PluginsPanel /> },

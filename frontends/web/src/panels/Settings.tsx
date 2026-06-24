@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useIsDesktop } from '../shell/useIsDesktop';
-import { Badge, Input, Segmented, Select, Text, formatShortcut } from '@virta/ui-kit';
+import { Badge, Button, Input, Segmented, Select, Text, Textarea, formatShortcut } from '@virta/ui-kit';
 import type { Density } from '@virta/feed-core';
 import { useA11y } from '../a11y';
 import { useActions } from '../actions';
@@ -202,8 +202,7 @@ function ChatSettings() {
         />
       </Field>
       <Field label="Quick replies" hint="One canned message per line; offered in the composer's ⚡ menu.">
-        <textarea
-          className={styles.textarea}
+        <Textarea
           aria-label="Quick replies"
           rows={4}
           placeholder={'gg!\nThanks for the follow'}
@@ -266,13 +265,13 @@ function About() {
           <Text variant="meta" tone="subtle" as="p">
             Developer tools
           </Text>
-          <button
-            type="button"
-            className={styles.aboutDevBtn}
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => void window.virta?.Window?.OpenDevTools?.()}
           >
             Open DevTools
-          </button>
+          </Button>
           <Text variant="meta" tone="subtle" as="p" className={styles.aboutDevHint}>
             Opens Chromium DevTools for the main window. You can also press <code>F12</code> or <code>Ctrl+Shift+I</code>.
           </Text>

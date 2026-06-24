@@ -20,13 +20,13 @@ import (
 // it's a test fixture so the shared core can run the full store contract directly, against an
 // in-memory SQLite, with no backend dependency).
 const schema = `
-CREATE TABLE settings (scope TEXT PRIMARY KEY, data TEXT NOT NULL, updated_at INTEGER NOT NULL, user_id TEXT NOT NULL DEFAULT '');
+CREATE TABLE settings (user_id TEXT NOT NULL DEFAULT '', scope TEXT NOT NULL, data TEXT NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (user_id, scope));
 CREATE TABLE profiles (id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, doc TEXT NOT NULL, is_default INTEGER NOT NULL DEFAULT 0, user_id TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
 CREATE TABLE accounts (id TEXT PRIMARY KEY, platform TEXT NOT NULL, platform_uid TEXT NOT NULL, login TEXT NOT NULL DEFAULT '', display_name TEXT NOT NULL DEFAULT '', secret_ref TEXT NOT NULL DEFAULT '', scopes TEXT NOT NULL DEFAULT '[]', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, user_id TEXT NOT NULL DEFAULT '', UNIQUE(platform, platform_uid, user_id));
 CREATE TABLE channels (id TEXT PRIMARY KEY, platform TEXT NOT NULL, platform_id TEXT NOT NULL DEFAULT '', slug TEXT NOT NULL, display_name TEXT NOT NULL DEFAULT '', meta TEXT, last_seen_at INTEGER NOT NULL DEFAULT 0, user_id TEXT NOT NULL DEFAULT '', UNIQUE(platform, slug));
 CREATE TABLE messages (id TEXT PRIMARY KEY, channel_id TEXT NOT NULL, platform TEXT NOT NULL, type TEXT NOT NULL, author_uid TEXT NOT NULL DEFAULT '', author_name TEXT NOT NULL DEFAULT '', body TEXT NOT NULL DEFAULT '', segments TEXT NOT NULL DEFAULT '[]', sent_at INTEGER NOT NULL DEFAULT 0, received_at INTEGER NOT NULL DEFAULT 0, deleted INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE emote_sets (key TEXT PRIMARY KEY, data TEXT NOT NULL, fetched_at INTEGER NOT NULL);
-CREATE TABLE moments (id TEXT PRIMARY KEY, channel_key TEXT NOT NULL DEFAULT '', platform TEXT NOT NULL DEFAULT '', slug TEXT NOT NULL DEFAULT '', started_at INTEGER NOT NULL DEFAULT 0, ended_at INTEGER NOT NULL DEFAULT 0, peak_rate REAL NOT NULL DEFAULT 0, baseline REAL NOT NULL DEFAULT 0, excerpt TEXT NOT NULL DEFAULT '[]');
+CREATE TABLE moments (id TEXT PRIMARY KEY, channel_key TEXT NOT NULL DEFAULT '', platform TEXT NOT NULL DEFAULT '', slug TEXT NOT NULL DEFAULT '', started_at INTEGER NOT NULL DEFAULT 0, ended_at INTEGER NOT NULL DEFAULT 0, peak_rate REAL NOT NULL DEFAULT 0, baseline REAL NOT NULL DEFAULT 0, excerpt TEXT NOT NULL DEFAULT '[]', user_id TEXT NOT NULL DEFAULT '');
 CREATE TABLE emote_files (url_hash TEXT PRIMARY KEY, path TEXT NOT NULL, bytes INTEGER NOT NULL, fetched_at INTEGER NOT NULL);
 CREATE VIRTUAL TABLE messages_fts USING fts5(body, content='messages', content_rowid='rowid');
 CREATE TRIGGER messages_fts_ai AFTER INSERT ON messages BEGIN

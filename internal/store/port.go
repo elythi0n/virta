@@ -69,11 +69,20 @@ type Setting struct {
 	UpdatedAt time.Time       `json:"updated_at"`
 }
 
-// SettingsRepo stores per-scope settings documents.
+// SettingsRepo stores per-scope settings documents. Every method except AllForUser/EachUser
+// scopes to uid(ctx); single-user mode uses the empty user_id so the implicit single-user
+// namespace continues to work without callers caring.
 type SettingsRepo interface {
 	Get(ctx context.Context, scope string) (Setting, error) // ErrNotFound if unset
 	Put(ctx context.Context, s Setting) error               // upsert
 	All(ctx context.Context) ([]Setting, error)
+	// AllForUser is the startup-rehydrate hook: load every setting owned by the given user_id,
+	// bypassing the ctx user. Callers are wiring-layer code (webhooks, themes) that need to
+	// rebuild per-user in-memory state across all users at boot. Not exposed via the API.
+	AllForUser(ctx context.Context, userID string) ([]Setting, error)
+	// EachUser yields every distinct user_id with at least one row; '' is the single-user
+	// namespace. Used at startup to discover the set of users to rehydrate state for.
+	EachUser(ctx context.Context, fn func(userID string) error) error
 }
 
 // ---- Profiles ----

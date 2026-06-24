@@ -4,7 +4,7 @@ import type { IconName } from '../Icon';
 // activity-bar gear opens Settings as a full dock panel (it has too much IA for a 264px rail).
 // Accounts live in Settings → Connections; channels are managed entirely from the Streams view
 // (add via its +, leave via a stream's right-click), so there's no separate Sources view.
-export type ViewId = 'panels' | 'streams' | 'studio';
+export type ViewId = 'panels' | 'streams' | 'studio' | 'deck';
 
 export interface ViewDef {
   id: ViewId;
@@ -20,6 +20,7 @@ export const PRIMARY_VIEWS: ViewDef[] = [
 // Tool views take over the whole main area with their own fixed layout (no dock panels). They sit
 // below the primary views in the activity bar and hide the side bar while active.
 export const TOOL_VIEWS: ViewDef[] = [
+  { id: 'deck', label: 'Broadcast', icon: 'deck' },
   { id: 'studio', label: 'Studio', icon: 'studio' },
 ];
 

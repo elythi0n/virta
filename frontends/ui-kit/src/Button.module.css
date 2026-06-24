@@ -25,7 +25,11 @@
   cursor: not-allowed;
 }
 
-/* Sizes */
+.btn:active:not(:disabled) {
+  transform: translateY(0.5px);
+}
+
+/* Sizes — height-matched so a button group reads as one strip. */
 .s-sm {
   height: 28px;
   padding: 0 var(--virta-space-8);
@@ -33,6 +37,29 @@
 .s-md {
   height: 32px;
   padding: 0 var(--virta-space-12);
+}
+.s-lg {
+  height: 40px;
+  padding: 0 var(--virta-space-16);
+  font-size: 14px;
+  font-weight: 600;
+}
+/* Icon-only variants are square, same height as their text counterparts so a toolbar can mix
+   text buttons and icon buttons without ragged baselines. */
+.s-icon-sm {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+}
+.s-icon {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+.s-icon-lg {
+  width: 40px;
+  height: 40px;
+  padding: 0;
 }
 
 /* Variants */
@@ -60,4 +87,13 @@
 .v-ghost:hover {
   background: var(--virta-bg-2);
   color: var(--virta-text-0);
+}
+/* Toggle-style ghost buttons: aria-pressed="true" reads as the activated state. Mid-weight
+   highlight — uses bg-2 so it sits between the idle ghost and a solid button. */
+.v-ghost[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--virta-accent) 18%, var(--virta-bg-2));
+  color: var(--virta-text-0);
+}
+.v-ghost[aria-pressed='true']:hover {
+  background: color-mix(in srgb, var(--virta-accent) 26%, var(--virta-bg-2));
 }

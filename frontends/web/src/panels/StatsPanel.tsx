@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { PlatformGlyph, platformLabel, type Platform } from '@virta/feed-core';
-import { Text } from '@virta/ui-kit';
+import { EmptyState, Text } from '@virta/ui-kit';
 import Icon from '../Icon';
 import { useChannels, useStats, useStreams, type ChannelStats } from '../daemon';
 import styles from './StatsPanel.module.css';
@@ -99,10 +99,11 @@ export default function StatsPanel() {
   if (status === 'offline') {
     return (
       <div className={styles.panel}>
-        <div className={styles.empty}>
-          <Icon name="stats" size={28} />
-          <Text variant="ui" tone="subtle">Not connected to the daemon.</Text>
-        </div>
+        <EmptyState
+          icon={<Icon name="stats" size={28} />}
+          title="Not connected"
+          hint="Stats stream from the daemon — start it to see live activity."
+        />
       </div>
     );
   }
@@ -110,11 +111,11 @@ export default function StatsPanel() {
   if (channels.length === 0) {
     return (
       <div className={styles.panel}>
-        <div className={styles.empty}>
-          <Icon name="stats" size={28} />
-          <Text variant="ui" tone="subtle">No channels added yet.</Text>
-          <Text variant="meta" tone="subtle">Stats appear once you join a channel.</Text>
-        </div>
+        <EmptyState
+          icon={<Icon name="stats" size={28} />}
+          title="No channels added yet"
+          hint="Stats appear once you join a channel."
+        />
       </div>
     );
   }

@@ -61,10 +61,33 @@ export function getOBSScenes(): Promise<OBSSceneList> {
   return request<OBSSceneList>('/v1/obsws/scenes');
 }
 
+export function setOBSScene(name: string): Promise<void> {
+  return request('/v1/obsws/scenes/current', { method: 'POST', body: JSON.stringify({ name }) });
+}
+
 export function testOBSSource(sourceName: string, value: string): Promise<void> {
   return request('/v1/obsws/test-source', { method: 'POST', body: JSON.stringify({ source_name: sourceName, value }) });
 }
 
 export function detectOBS(): Promise<{ detected: boolean }> {
   return request<{ detected: boolean }>('/v1/obsws/detect', { method: 'POST', body: JSON.stringify({}) });
+}
+
+export interface OBSStreamStatus {
+  active: boolean;
+  reconnecting?: boolean;
+  duration_ms?: number;
+  bytes_sent?: number;
+}
+
+export function getOBSStreamStatus(): Promise<OBSStreamStatus> {
+  return request<OBSStreamStatus>('/v1/obsws/stream/status');
+}
+
+export function startOBSStream(): Promise<void> {
+  return request('/v1/obsws/stream/start', { method: 'POST' });
+}
+
+export function stopOBSStream(): Promise<void> {
+  return request('/v1/obsws/stream/stop', { method: 'POST' });
 }

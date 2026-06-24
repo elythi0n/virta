@@ -57,6 +57,8 @@ type Server struct {
 	authConfig        AuthConfigControl      // OAuth-credentials controller, installed via SetAuthConfig
 	authCtl           Auth                   // account-auth controller, installed via SetAuth
 	send              Send                   // cross-posting controller, installed via SetSend
+	deck              Deck                   // live-broadcast control plane, installed via SetDeck
+	discovery         DiscoveryAPI           // search/browse streamers, installed via SetDiscovery
 	held              Held                   // AutoMod hold-queue controller, installed via SetHeld
 	history           History                // message-log search/scrollback controller, installed via SetHistory
 	moments           Moments                // hype-moment read/manage controller, installed via SetMoments
@@ -448,6 +450,12 @@ func (s *Server) routes() []route {
 		{"POST", "/v1/send/preview", ScopeSend, s.handleSendPreview, "Preview per-target send reachability"},
 		{"POST", "/v1/send/queue", ScopeSend, s.handleSendQueue, "Per-channel send-queue state"},
 
+		{"GET", "/v1/deck/channel-info", ScopeRead, s.handleDeckGet, "Read currently-live stream info per channel"},
+		{"POST", "/v1/deck/channel-info", ScopeControl, s.handleDeckUpdate, "Push title/category/tags across channels"},
+		{"GET", "/v1/deck/categories", ScopeRead, s.handleDeckCategories, "Search a platform's stream categories"},
+		{"GET", "/v1/discovery/channels", ScopeRead, s.handleDiscoveryChannels, "Search a platform for channels by name"},
+		{"GET", "/v1/discovery/streams", ScopeRead, s.handleDiscoveryStreams, "List the top live streams on a platform (paginated)"},
+
 		{"POST", "/v1/held/{id}/approve", ScopeModerate, s.handleApproveHeld, "Approve a held message"},
 		{"POST", "/v1/held/{id}/deny", ScopeModerate, s.handleDenyHeld, "Deny a held message"},
 
@@ -506,8 +514,12 @@ func (s *Server) routes() []route {
 		{"PUT", "/v1/obsws/config", ScopeControl, s.handlePutOBSConfig, "Update OBS WebSocket configuration"},
 		{"GET", "/v1/obsws/sources", ScopeRead, s.handleGetOBSSources, "List OBS input sources"},
 		{"GET", "/v1/obsws/scenes", ScopeRead, s.handleGetOBSScenes, "List OBS scenes"},
+		{"POST", "/v1/obsws/scenes/current", ScopeControl, s.handlePostOBSScene, "Switch the active OBS program scene"},
 		{"POST", "/v1/obsws/test-source", ScopeControl, s.handlePostOBSTestSource, "Set a text source value in OBS"},
 		{"POST", "/v1/obsws/detect", ScopeRead, s.handlePostOBSDetect, "Detect a local OBS WebSocket server"},
+		{"GET", "/v1/obsws/stream/status", ScopeRead, s.handleGetOBSStreamStatus, "OBS stream output state (active, duration, bytes)"},
+		{"POST", "/v1/obsws/stream/start", ScopeControl, s.handlePostOBSStreamStart, "Start the OBS broadcast"},
+		{"POST", "/v1/obsws/stream/stop", ScopeControl, s.handlePostOBSStreamStop, "Stop the OBS broadcast"},
 		{"GET", "/v1/filter/profanity", ScopeRead, s.handleGetProfanity, "Profanity masking toggle"},
 		{"PUT", "/v1/filter/profanity", ScopeControl, s.handleSetProfanity, "Enable/disable profanity masking"},
 		{"GET", "/v1/marketplace", ScopeRead, s.handleListMarketplace, "Plugin marketplace registry"},

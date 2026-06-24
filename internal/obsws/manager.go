@@ -318,6 +318,101 @@ func (m *Manager) GetScenes(ctx context.Context) (SceneList, error) {
 	return SceneList{Scenes: names, Current: resp.CurrentProgramSceneName}, nil
 }
 
+// SetCurrentScene switches OBS's program scene by name. Errors when OBS isn't connected or
+// rejects the request (e.g. unknown scene name).
+func (m *Manager) SetCurrentScene(ctx context.Context, name string) error {
+	c := m.activeConn()
+	if c == nil {
+		return errors.New("not connected to OBS")
+	}
+	if name == "" {
+		return errors.New("scene name required")
+	}
+	payload, err := json.Marshal(map[string]string{"sceneName": name})
+	if err != nil {
+		return err
+	}
+	rd, err := c.request(ctx, "SetCurrentProgramScene", payload)
+	if err != nil {
+		return err
+	}
+	if !rd.Status.Result {
+		return fmt.Errorf("OBS error %d: %s", rd.Status.Code, rd.Status.Comment)
+	}
+	return nil
+}
+
+// StreamStatus is OBS's live broadcast state, returned by GetStreamStatus.
+type StreamStatus struct {
+	Active       bool  `json:"active"`
+	Reconnecting bool  `json:"reconnecting,omitempty"`
+	DurationMs   int64 `json:"duration_ms,omitempty"`
+	BytesSent    int64 `json:"bytes_sent,omitempty"`
+}
+
+// StartStream begins broadcasting in the connected OBS. Errors when OBS isn't connected, or
+// when OBS rejects the request (e.g. already streaming, no stream key configured).
+func (m *Manager) StartStream(ctx context.Context) error {
+	c := m.activeConn()
+	if c == nil {
+		return errors.New("not connected to OBS")
+	}
+	rd, err := c.request(ctx, "StartStream", nil)
+	if err != nil {
+		return err
+	}
+	if !rd.Status.Result {
+		return fmt.Errorf("OBS error %d: %s", rd.Status.Code, rd.Status.Comment)
+	}
+	return nil
+}
+
+// StopStream stops the active OBS broadcast.
+func (m *Manager) StopStream(ctx context.Context) error {
+	c := m.activeConn()
+	if c == nil {
+		return errors.New("not connected to OBS")
+	}
+	rd, err := c.request(ctx, "StopStream", nil)
+	if err != nil {
+		return err
+	}
+	if !rd.Status.Result {
+		return fmt.Errorf("OBS error %d: %s", rd.Status.Code, rd.Status.Comment)
+	}
+	return nil
+}
+
+// StreamStatus reports whether OBS is currently broadcasting and a few headline stats.
+func (m *Manager) StreamStatus(ctx context.Context) (StreamStatus, error) {
+	c := m.activeConn()
+	if c == nil {
+		return StreamStatus{}, errors.New("not connected to OBS")
+	}
+	rd, err := c.request(ctx, "GetStreamStatus", nil)
+	if err != nil {
+		return StreamStatus{}, err
+	}
+	if !rd.Status.Result {
+		return StreamStatus{}, fmt.Errorf("OBS error %d: %s", rd.Status.Code, rd.Status.Comment)
+	}
+	var resp struct {
+		OutputActive       bool    `json:"outputActive"`
+		OutputReconnecting bool    `json:"outputReconnecting"`
+		OutputDuration     float64 `json:"outputDuration"` // milliseconds
+		OutputBytes        int64   `json:"outputBytes"`
+	}
+	if err := json.Unmarshal(rd.Payload, &resp); err != nil {
+		return StreamStatus{}, err
+	}
+	return StreamStatus{
+		Active:       resp.OutputActive,
+		Reconnecting: resp.OutputReconnecting,
+		DurationMs:   int64(resp.OutputDuration),
+		BytesSent:    resp.OutputBytes,
+	}, nil
+}
+
 // TestSource sends a SetInputSettings request to set the "text" field of a text source.
 func (m *Manager) TestSource(ctx context.Context, sourceName, value string) error {
 	c := m.activeConn()

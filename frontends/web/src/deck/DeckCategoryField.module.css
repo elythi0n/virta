@@ -1,0 +1,130 @@
+.wrap {
+  position: relative;
+}
+
+.dropdown {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-md);
+  background: var(--virta-bg-1);
+  box-shadow: 0 12px 28px -16px rgb(0 0 0 / 0.5);
+}
+.empty {
+  padding: var(--virta-space-12);
+  text-align: center;
+}
+
+.row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  padding: var(--virta-space-8) var(--virta-space-12);
+  background: transparent;
+  border: none;
+  color: var(--virta-text-0);
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--virta-font-ui);
+  font-size: var(--virta-type-ui-size);
+  transition: background-color 0.12s ease;
+}
+.row:hover,
+.row:focus-visible {
+  background: var(--virta-bg-2);
+  outline: none;
+}
+.thumb {
+  flex: none;
+  width: 32px;
+  height: 44px;
+  border-radius: var(--virta-radius-sm);
+  background: var(--virta-bg-2);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--virta-text-2);
+}
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.rowMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.rowName {
+  color: var(--virta-text-0);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rowPlatforms {
+  color: var(--virta-text-2);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.chipRow {
+  display: flex;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--virta-space-8);
+  padding: var(--virta-space-6) var(--virta-space-8) var(--virta-space-6) var(--virta-space-12);
+  border: 1px solid var(--virta-line);
+  border-radius: var(--virta-radius-md);
+  background: var(--virta-bg-1);
+}
+.chipName {
+  color: var(--virta-text-0);
+  font-weight: 500;
+}
+.chipPlatforms {
+  display: flex;
+  gap: 4px;
+}
+.chipPlatform {
+  padding: 2px 6px;
+  border-radius: var(--virta-radius-sm);
+  background: var(--virta-bg-2);
+  color: var(--virta-text-2);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.chipClear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: var(--virta-text-2);
+  cursor: pointer;
+  border-radius: var(--virta-radius-sm);
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+.chipClear:hover {
+  background: var(--virta-bg-2);
+  color: var(--virta-text-0);
+}
+.chipClear:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
